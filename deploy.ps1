@@ -36,7 +36,10 @@ try {
 Write-Header "Creating Complete Project Structure"
 
 $directories = @(
-    ".github/workflows", ".devcontainer", "src/ai", "tests/unit", "docs"
+    ".github/workflows", ".devcontainer", 
+    "src/ai", "src/utils", "src/styles", "src/workers",
+    "tests/unit/ai", "tests/integration", "tests/performance", 
+    "docs", "scripts"
 )
 
 foreach ($dir in $directories) {
