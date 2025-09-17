@@ -1,158 +1,245 @@
-// MD Reader Pro - Main Application Entry Point
-// 🎊 Built through an amazing collaboration between Human & Claude AI!
-// Demo created live with real problem-solving and teamwork 🚀
+// MD Reader Pro - Professional Markdown Editor
+// Real-time markdown processing with live preview
 
-console.log('🎉 MD Reader Pro - Collaborative Demo Success!');
-console.log('👥 Built by: Human + Claude AI partnership');
-console.log('🚀 Live debugging session: COMPLETED');
-console.log('🎯 Teamwork makes the dream work!');
-console.log('');
-console.log('🎊 EASTER EGG: Type "showCollabStory()" in console!');
+import { marked } from 'marked';
 
-// Demo application initialization
-class MDReaderDemo {
+class MarkdownEditor {
     constructor() {
         this.version = '3.0.0';
-        this.collaborators = ['Human Developer', 'Claude AI Assistant'];
-        this.features = [
-            'Local AI Processing',
-            'Complete Privacy Protection', 
-            'High Performance Rendering',
-            'Smart AI Annotations',
-            'Live Debugging Session (COMPLETED! 🎉)'
-        ];
+        this.editor = null;
+        this.preview = null;
+        this.fileInput = null;
+        this.uploadArea = null;
         
         this.init();
     }
     
     init() {
         console.log(`✅ MD Reader Pro v${this.version} initialized`);
-        console.log('👥 Collaboration team:', this.collaborators.join(' + '));
-        console.log('🎯 Features available:', this.features);
+        console.log('📝 Professional markdown editor ready');
         
-        // Simulate AI engine initialization
-        this.initAIEngine();
-        
-        // Setup demo functionality
-        this.setupDemo();
-        
-        // Display success message
-        this.showSuccessMessage();
-        
-        // Make collab story globally available
-        window.showCollabStory = () => this.showCollaborationStory();
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupEditor());
+        } else {
+            this.setupEditor();
+        }
     }
     
+    setupEditor() {
+        // Get DOM elements
+        this.editor = document.getElementById('markdown-editor');
+        this.preview = document.getElementById('markdown-preview');
+        this.fileInput = document.getElementById('file-input');
+        this.uploadArea = document.querySelector('.upload-area');
+        
+        if (!this.editor || !this.preview) {
+            console.error('Required DOM elements not found');
+            return;
+        }
+        
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            sanitize: false
+        });
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Initial render of placeholder content
+        this.updatePreview();
+        
+        console.log('📝 Markdown editor initialized successfully');
+    }
+    
+    setupEventListeners() {
+        // Real-time markdown preview
+        this.editor.addEventListener('input', () => this.updatePreview());
+        
+        // File upload handling
+        if (this.fileInput) {
+            this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        }
+        
+        // Drag and drop functionality
+        if (this.uploadArea) {
+            this.setupDragAndDrop();
+        }
+        
+        // Keyboard shortcuts
+        this.editor.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+    }
+    
+    updatePreview() {
+        if (!this.editor || !this.preview) return;
+        
+        const markdownText = this.editor.value;
+        
+        if (!markdownText.trim()) {
+            this.preview.innerHTML = `
+                <div style="color: #666; text-align: center; padding: 2rem;">
+                    <h2>📝 Start typing markdown</h2>
+                    <p>Your preview will appear here as you type</p>
+                </div>
+            `;
+            return;
+        }
+        
+        try {
+            // Parse markdown to HTML
+            const html = marked.parse(markdownText);
+            this.preview.innerHTML = html;
+        } catch (error) {
+            console.error('Markdown parsing error:', error);
+            this.preview.innerHTML = `
+                <div style="color: #ff6b6b; padding: 1rem; background: rgba(255, 107, 107, 0.1); border-radius: 4px;">
+                    <strong>Markdown Error:</strong> ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        this.loadFile(file);
+    }
+    
+    loadFile(file) {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const content = e.target.result;
+            this.editor.value = content;
+            this.updatePreview();
+            console.log(`📄 Loaded file: ${file.name}`);
+        };
+        
+        reader.onerror = (e) => {
+            console.error('File reading error:', e);
+            alert('Error reading file. Please try again.');
+        };
+        
+        reader.readAsText(file);
+    }
+    
+    setupDragAndDrop() {
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            this.uploadArea.addEventListener(eventName, this.preventDefaults, false);
+            document.body.addEventListener(eventName, this.preventDefaults, false);
+        });
+        
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            this.uploadArea.addEventListener(eventName, () => {
+                this.uploadArea.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            this.uploadArea.addEventListener(eventName, () => {
+                this.uploadArea.classList.remove('drag-over');
+            }, false);
+        });
+        
+        // Handle dropped files
+        this.uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                this.loadFile(files[0]);
+            }
+        }, false);
+    }
+    
+    preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    handleKeyboardShortcuts(e) {
+        // Ctrl/Cmd + S to save (prevent browser save dialog)
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            this.saveMarkdown();
+        }
+        
+        // Tab key for indentation
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.editor.selectionStart;
+            const end = this.editor.selectionEnd;
+            
+            // Insert tab or spaces
+            this.editor.value = this.editor.value.substring(0, start) + 
+                               '    ' + 
+                               this.editor.value.substring(end);
+            
+            // Move cursor
+            this.editor.selectionStart = this.editor.selectionEnd = start + 4;
+            this.updatePreview();
+        }
+    }
+    
+    saveMarkdown() {
+        const content = this.editor.value;
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'document.md';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('💾 Markdown saved');
+    }
+    
+    // Console helper for collaboration story
     showCollaborationStory() {
         console.log('');
         console.log('🎭 ======================================');
-        console.log('📖 THE COLLABORATION STORY');
+        console.log('📖 THE DEVELOPMENT JOURNEY');
         console.log('🎭 ======================================');
         console.log('');
-        console.log('🚀 Started: Complete GitHub deployment challenge');
-        console.log('⚡ Challenge: Create production-ready setup in minutes');
-        console.log('🐛 Plot twist: Webpack entry point missing!');
-        console.log('🔍 Human debugging: "I created the index.js"');
-        console.log('🤝 Teamwork: Claude + Human solved it together');
-        console.log('🎯 Result: Professional setup + live problem solving');
-        console.log('🎊 Outcome: Even more impressive demo!');
+        console.log('🚀 Phase 1: Professional tooling setup');
+        console.log('🧪 Phase 2: Comprehensive testing suite');
+        console.log('✨ Phase 3: Real markdown functionality!');
+        console.log('🎯 Result: From demo to actual working editor');
         console.log('');
-        console.log('💡 Moral: Real development = collaboration + debugging');
-        console.log('🚀 This demo shows BOTH automation AND human skills!');
+        console.log('💡 Features now working:');
+        console.log('   • Real-time markdown parsing');
+        console.log('   • File upload & drag-drop');
+        console.log('   • Professional split-pane UI');
+        console.log('   • Keyboard shortcuts (Tab, Ctrl+S)');
+        console.log('   • Live preview with styling');
         console.log('');
-        console.log('👏 Thanks for the amazing collaboration! 🎉');
-    }
-    
-    initAIEngine() {
-        console.log('🤖 Initializing AI Engine...');
-        console.log('   • TensorFlow.js: Ready');
-        console.log('   • Local Processing: Enabled');
-        console.log('   • Privacy Mode: Local Only');
-        console.log('   • Collaboration Mode: ACTIVE 🤝');
-        console.log('✅ AI Engine initialized successfully');
-    }
-    
-    setupDemo() {
-        console.log('🎭 Setting up demo functionality...');
-        
-        // Add interactive elements
-        document.addEventListener('DOMContentLoaded', () => {
-            this.addInteractivity();
-        });
-        
-        // Performance monitoring
-        this.trackPerformance();
-    }
-    
-    addInteractivity() {
-        // Add click handlers for demo
-        const features = document.querySelectorAll('.feature');
-        features.forEach(feature => {
-            feature.addEventListener('click', () => {
-                console.log('🎯 Feature clicked:', feature.querySelector('h3').textContent);
-                feature.style.transform = 'scale(1.05)';
-                setTimeout(() => {
-                    feature.style.transform = 'scale(1)';
-                }, 200);
-            });
-        });
-        
-        console.log('✅ Interactive demo elements activated');
-        console.log('💡 Click on features for interaction!');
-    }
-    
-    trackPerformance() {
-        const startTime = performance.now();
-        
-        window.addEventListener('load', () => {
-            const loadTime = performance.now() - startTime;
-            console.log(`⚡ Page load time: ${Math.round(loadTime)}ms`);
-            console.log('📊 Performance metrics:');
-            console.log(`   • Load time: ${Math.round(loadTime)}ms`);
-            console.log(`   • Memory usage: ${this.getMemoryUsage()}MB`);
-            console.log('   • Collaboration factor: 💯%');
-            console.log('✅ Performance tracking active');
-        });
-    }
-    
-    getMemoryUsage() {
-        if (performance.memory) {
-            return Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
-        }
-        return 'N/A';
-    }
-    
-    showSuccessMessage() {
-        console.log('');
-        console.log('🎊 ================================');
-        console.log('🎉 COLLABORATIVE DEMO SUCCESS!');
-        console.log('🎊 ================================');
-        console.log('');
-        console.log('✅ GitHub repository created and deployed');
-        console.log('✅ Modern CI/CD pipeline configured'); 
-        console.log('✅ Professional development environment ready');
-        console.log('✅ Live debugging session completed');
-        console.log('✅ Human + AI collaboration demonstrated');
-        console.log('');
-        console.log('🚀 Repository: https://github.com/KHET-1/md-reader-pro');
-        console.log('👥 Powered by: Human creativity + AI assistance');
-        console.log('📖 This represents collaborative engineering!');
-        console.log('');
-        console.log('🎊 BONUS: Try "showCollabStory()" for the full story!');
+        console.log('🎊 This is now a REAL markdown editor! 🎉');
     }
 }
 
-// Initialize the demo application
-const mdReaderDemo = new MDReaderDemo();
+// Initialize the markdown editor
+const markdownEditor = new MarkdownEditor();
 
-// Export for potential use
+// Export for testing and potential use
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = MDReaderDemo;
+    module.exports = MarkdownEditor;
 }
 
-// Global demo object for console interaction
-window.mdReaderDemo = mdReaderDemo;
+// Global access for console interaction
+if (typeof window !== 'undefined') {
+    window.markdownEditor = markdownEditor;
+    window.showCollabStory = () => markdownEditor.showCollaborationStory();
+}
 
 console.log('💡 Console commands available:');
-console.log('   • mdReaderDemo - Demo object');
-console.log('   • showCollabStory() - Our collaboration story!');
+console.log('   • markdownEditor - Editor instance');
+console.log('   • showCollabStory() - Development journey!');

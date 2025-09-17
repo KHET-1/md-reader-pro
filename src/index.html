@@ -12,113 +12,241 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
+        }
+        
+        .header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
         }
         
-        .container {
-            text-align: center;
-            max-width: 800px;
-            padding: 2rem;
-        }
-        
         .logo {
-            font-size: 3rem;
+            font-size: 1.5rem;
             font-weight: bold;
             background: linear-gradient(45deg, #00d4ff, #7b68ee);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+        
+        .editor-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+        
+        .editor-pane, .preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .pane-header {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .editor {
+            flex: 1;
+            background: #1a1a1a;
+            border: none;
+            color: #ffffff;
+            padding: 1rem;
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+        
+        .preview {
+            flex: 1;
+            padding: 1rem;
+            background: #0f0f0f;
+            overflow-y: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .upload-area input {
+            display: none;
+        }
+        
+        /* Markdown Preview Styling */
+        .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+            color: #ffffff;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            line-height: 1.3;
+        }
+        
+        .preview h1 {
+            font-size: 2rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 0.5rem;
+        }
+        
+        .preview h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 0.3rem;
+        }
+        
+        .preview p {
+            color: #e0e0e0;
+            line-height: 1.7;
             margin-bottom: 1rem;
         }
         
-        .subtitle {
-            font-size: 1.2rem;
-            color: #888;
-            margin-bottom: 2rem;
+        .preview code {
+            background: rgba(255, 255, 255, 0.1);
+            color: #7b68ee;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
         }
         
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        
-        .feature {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .status {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
+        .preview pre {
+            background: rgba(0, 0, 0, 0.3);
+            color: #ffffff;
             padding: 1rem;
             border-radius: 8px;
-            margin-top: 2rem;
+            overflow-x: auto;
+            border-left: 4px solid #00d4ff;
         }
         
-        .demo-badge {
-            background: linear-gradient(45deg, #ff6b35, #f7931e);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
+        .preview pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        .preview blockquote {
+            border-left: 4px solid #7b68ee;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #b0b0b0;
+            font-style: italic;
+        }
+        
+        .preview ul, .preview ol {
+            color: #e0e0e0;
+            line-height: 1.7;
+        }
+        
+        .preview a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+        
+        .preview a:hover {
+            text-decoration: underline;
+        }
+        
+        .preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+        
+        .preview th, .preview td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
+            text-align: left;
+        }
+        
+        .preview th {
+            background: rgba(255, 255, 255, 0.1);
             font-weight: bold;
-            display: inline-block;
-            margin-bottom: 1rem;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="demo-badge">🎉 DEMO SUCCESS!</div>
-        
+    <div class="header">
         <div class="logo">MD Reader Pro</div>
-        <div class="subtitle">AI-powered markdown reader with local processing and complete privacy protection</div>
-        
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">🤖</div>
-                <h3>Local AI Processing</h3>
-                <p>TensorFlow.js powered, zero external API calls</p>
+        <div style="color: #888; font-size: 0.9rem;">Professional Markdown Editor</div>
+    </div>
+    
+    <div class="editor-container">
+        <div class="editor-pane">
+            <div class="pane-header">
+                📝 Markdown Editor
+                <span style="float: right; font-size: 0.8rem; color: #666;">
+                    <label for="file-input" style="cursor: pointer; color: #00d4ff;">
+                        📁 Open File
+                    </label>
+                </span>
             </div>
+            <textarea 
+                id="markdown-editor" 
+                class="editor" 
+                placeholder="# Welcome to MD Reader Pro
+
+Start typing your markdown here...
+
+## Features
+- Real-time preview
+- Drag & drop file support
+- Professional styling
+- Local processing
+
+```javascript
+// Code highlighting coming soon!
+console.log('Hello, Markdown!');
+```
+
+> This is a blockquote example
+
+**Bold text** and *italic text* are supported!
+
+[Visit GitHub](https://github.com)"></textarea>
             
-            <div class="feature">
-                <div class="feature-icon">🔒</div>
-                <h3>Complete Privacy</h3>
-                <p>All data stays on your device</p>
-            </div>
-            
-            <div class="feature">
-                <div class="feature-icon">⚡</div>
-                <h3>High Performance</h3>
-                <p>Optimized rendering with intelligent caching</p>
-            </div>
-            
-            <div class="feature">
-                <div class="feature-icon">🎯</div>
-                <h3>Smart Annotations</h3>
-                <p>Context-aware AI assistance</p>
+            <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                <input type="file" id="file-input" accept=".md,.txt,.markdown" />
+                <div>📄 Drop markdown files here or click to browse</div>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">
+                    Supports .md, .txt, .markdown files
+                </div>
             </div>
         </div>
         
-        <div class="status">
-            <h3>🚀 Project Successfully Deployed!</h3>
-            <p><strong>Repository:</strong> <a href="https://github.com/KHET-1/md-reader-pro" style="color: #00d4ff;">https://github.com/KHET-1/md-reader-pro</a></p>
-            <p><strong>Development Server:</strong> Running on http://localhost:3000</p>
-            <p><strong>CI/CD Pipeline:</strong> Automated testing and deployment configured</p>
-            <p><strong>Modern Tooling:</strong> Webpack 5, Jest 29, ESLint 8, Semantic Release</p>
-        </div>
-        
-        <div style="margin-top: 2rem; color: #666;">
-            <p>🎊 <strong>Demo Complete!</strong> This represents a professional, production-ready setup with modern 2025 development practices.</p>
+        <div class="preview-pane">
+            <div class="pane-header">👁️ Live Preview</div>
+            <div id="markdown-preview" class="preview">
+                <h1>Welcome to MD Reader Pro</h1>
+                <p>Start typing in the editor to see your markdown rendered here in real-time!</p>
+                <h2>Features</h2>
+                <ul>
+                    <li>Real-time preview</li>
+                    <li>Drag &amp; drop file support</li>
+                    <li>Professional styling</li>
+                    <li>Local processing</li>
+                </ul>
+                <pre><code>// Code highlighting coming soon!
+console.log('Hello, Markdown!');</code></pre>
+                <blockquote>
+                    <p>This is a blockquote example</p>
+                </blockquote>
+                <p><strong>Bold text</strong> and <em>italic text</em> are supported!</p>
+                <p><a href="https://github.com">Visit GitHub</a></p>
+            </div>
         </div>
     </div>
     
