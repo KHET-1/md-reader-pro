@@ -46,6 +46,44 @@ foreach ($dir in $directories) {
 
 Write-Header "Creating All Configuration Files"
 
+# Create webpack.config.js
+@"
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+  entry: './src/index.js',
+  mode: 'development',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'bundle.js'
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './src/index.html'
+    })
+  ],
+  devServer: {
+    port: 3000,
+    open: true
+  }
+};
+"@ | Out-File -FilePath "webpack.config.js" -Encoding UTF8
+
+# Create src/index.js
+@"
+console.log('🚀 MD Reader Pro - Demo Application Started!');
+console.log('✅ All systems ready for demonstration!');
+console.log('🎊 Repository: https://github.com/$GitHubUsername/$RepoName');
+"@ | Out-File -FilePath "src/index.js" -Encoding UTF8
+
+# Create src/index.html
+@"
+<!DOCTYPE html>
+<html><head><title>MD Reader Pro</title></head>
+<body><h1>🚀 MD Reader Pro Demo Success!</h1></body></html>
+"@ | Out-File -FilePath "src/index.html" -Encoding UTF8
+
 # Package.json with all modern dependencies
 @"
 {
