@@ -10,7 +10,7 @@
 
 ## Quick Start
 ```bash
-git clone https://github.com/KHeT-1/md-reader-pro.git
+git clone https://github.com/khet-1/md-reader-pro.git
 cd md-reader-pro
 npm install
 npm run dev

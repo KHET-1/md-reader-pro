@@ -9,7 +9,7 @@
     "lint": "eslint src/**/*.js --fix",
     "validate": "npm run lint && npm run test"
   },
-  "repository": "https://github.com/KHeT-1/md-reader-pro.git",
+  "repository": "https://github.com/khet-1/md-reader-pro.git",
   "dependencies": {
     "@tensorflow/tfjs": "^4.0.0",
     "marked": "^5.0.0"
