@@ -6,42 +6,15 @@ module.exports = {
   mode: 'development',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js',
-    clean: true
-  },
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env']
-          }
-        }
-      },
-      {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
-      }
-    ]
+    filename: 'bundle.js'
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './src/index.html',
-      filename: 'index.html'
+      template: './src/index.html'
     })
   ],
   devServer: {
-    static: {
-      directory: path.join(__dirname, 'dist')
-    },
     port: 3000,
-    open: true,
-    hot: true
-  },
-  resolve: {
-    extensions: ['.js', '.json']
+    open: true
   }
 };
