@@ -1,0 +1,28 @@
+
+> md-reader-pro@3.0.0 test:benchmarks
+> jest tests/benchmarks.test.js --verbose --runInBand --verbose --silent=false
+
+PASS tests/benchmarks.test.js
+  Benchmark Tests
+    Rendering Benchmarks
+      √ benchmark small markdown rendering (56 ms)
+      √ benchmark medium markdown rendering (207 ms)
+      √ benchmark large markdown rendering (659 ms)
+    Interactive Benchmarks
+      √ benchmark typing simulation (13 ms)
+      √ benchmark keyboard shortcuts (26 ms)
+    File Operations Benchmarks
+      √ benchmark file loading (273 ms)
+      √ benchmark save operations (30 ms)
+    Memory Usage Benchmarks
+      √ benchmark memory usage during operations (38 ms)
+      √ benchmark memory stability over time (21 ms)
+    Stress Tests
+      √ benchmark under high load (716 ms)
+      √ benchmark concurrent operations (16 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       11 passed, 11 total
+Snapshots:   0 total
+Time:        3.066 s, estimated 4 s
+Ran all test suites matching /tests\\benchmarks.test.js/i.
