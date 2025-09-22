@@ -2,7 +2,7 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { castArray, isNil, isPlainObject, isString, pickBy } from "lodash-es";
-import { readPackageUp } from "read-pkg-up";
+import { readPackageUp } from "read-package-up";
 import { cosmiconfig } from "cosmiconfig";
 import importFrom from "import-from-esm";
 import debugConfig from "debug";
@@ -64,6 +64,7 @@ export default async (context, cliOptions) => {
     branches: [
       "+([0-9])?(.{+([0-9]),x}).x",
       "master",
+      "main",
       "next",
       "next-major",
       { name: "beta", prerelease: true },
