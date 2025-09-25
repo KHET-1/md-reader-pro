@@ -1,0 +1,40 @@
+# Dependabot configuration for version updates.
+# For full documentation and options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot-yml-file
+
+version: 2
+updates:
+  # Update npm (Node.js) dependencies, weekly
+  - package-ecosystem: "npm"
+    directory: "/" # Root directory for package.json
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    ignore:
+      - dependency-name: "react"
+        versions: ["18.x.x"]
+    commit-message:
+      prefix: "build"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+    assignees:
+      - "KHET-1"
+
+  # Update GitHub Actions, weekly
+  - package-ecosystem: "github-actions"
+    directory: "/" # Root directory for workflows
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    rebase-strategy: "auto"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    assignees:
+      - "KHET-1"
