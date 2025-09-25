@@ -2,7 +2,7 @@ import { basename, resolve } from "node:path";
 
 import { isPlainObject, castArray, uniqWith, uniq } from "lodash-es";
 import dirGlob from "dir-glob";
-import { globby } from "globby";
+import { glob as tinyglobby } from "tinyglobby";
 import debugFactory from "debug";
 
 const debug = debugFactory("semantic-release:github");
@@ -27,10 +27,9 @@ export default async function globAssets({ cwd }, assets) {
             return [];
           }
 
-          const globbed = await globby(glob, {
+          const globbed = await tinyglobby(glob, {
             cwd,
             expandDirectories: false, // TODO Temporary workaround for https://github.com/mrmlnc/fast-glob/issues/47
-            gitignore: false,
             dot: true,
             onlyFiles: false,
           });
