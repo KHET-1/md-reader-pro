@@ -1,6 +1,6 @@
 {
   "name": "md-reader-pro",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
   "description": "AI-powered markdown reader with local processing and complete privacy protection",
   "scripts": {
@@ -40,7 +40,7 @@
   },
   "repository": "https://github.com/khet-1/md-reader-pro.git",
   "dependencies": {
-    "@tensorflow/tfjs": "^4.0.0",
+    "dompurify": "^3.0.9",
     "marked": "^5.1.2"
   },
   "devDependencies": {
