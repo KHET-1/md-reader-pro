@@ -69,7 +69,7 @@ test.describe('Production Coverage Validation', () => {
     const testContent = '# Test Markdown\n\nThis is a test file for production validation.';
 
     // Simulate file loading by directly calling the loadFile method
-    const result = await page.evaluate((content) => {
+    const result = await page.evaluate(({ content }) => {
       // Create a mock file object
       const mockFile = {
         name: 'test-file.md',
@@ -106,7 +106,7 @@ test.describe('Production Coverage Validation', () => {
         // Restore original FileReader
         window.FileReader = originalFileReader;
       }
-    }, testContent);
+    }, { content: testContent });
 
     await page.waitForTimeout(1000);
 
@@ -178,7 +178,7 @@ test.describe('Production Coverage Validation', () => {
     const testContent = '# Special Characters Test\n\nTesting filename handling.';
 
     // Simulate file loading with special characters
-    await page.evaluate((filename, content) => {
+    await page.evaluate(({ filename, content }) => {
       const mockFile = {
         name: filename,
         size: content.length,
@@ -208,7 +208,7 @@ test.describe('Production Coverage Validation', () => {
       } finally {
         window.FileReader = originalFileReader;
       }
-    }, specialFilename, testContent);
+    }, { filename: specialFilename, content: testContent });
 
     await page.waitForTimeout(1000);
 

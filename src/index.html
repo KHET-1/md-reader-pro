@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self';">
     <title>MD Reader Pro</title>
     <style>
         body {
@@ -27,6 +28,7 @@
             font-weight: bold;
             background: linear-gradient(45deg, #00d4ff, #7b68ee);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         
@@ -176,7 +178,7 @@
             background: rgba(255, 255, 255, 0.1);
             font-weight: bold;
         }
-
+        
         /* Help Bar Styles */
         .help-bar {
             position: fixed;
@@ -191,11 +193,11 @@
             overflow-y: auto;
             box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
         }
-
+        
         .help-bar.show {
             right: 0;
         }
-
+        
         .help-toggle {
             position: fixed;
             top: 20px;
@@ -216,16 +218,16 @@
             box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
             transition: all 0.3s ease;
         }
-
+        
         .help-toggle:hover {
             transform: scale(1.1);
             box-shadow: 0 6px 16px rgba(0, 212, 255, 0.4);
         }
-
+        
         .help-toggle:active {
             transform: scale(0.95);
         }
-
+        
         .help-bar-header {
             padding: 1rem;
             background: rgba(0, 212, 255, 0.1);
@@ -234,13 +236,13 @@
             justify-content: space-between;
             align-items: center;
         }
-
+        
         .help-bar-title {
             font-size: 1.2rem;
             font-weight: bold;
             color: #00d4ff;
         }
-
+        
         .help-close-btn {
             background: none;
             border: none;
@@ -251,17 +253,17 @@
             border-radius: 4px;
             transition: all 0.2s ease;
         }
-
+        
         .help-close-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             color: #fff;
         }
-
+        
         .help-section {
             padding: 1.5rem 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
-
+        
         .help-section-title {
             font-size: 1rem;
             font-weight: bold;
@@ -271,7 +273,7 @@
             align-items: center;
             gap: 0.5rem;
         }
-
+        
         .help-example {
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -279,7 +281,7 @@
             margin-bottom: 1rem;
             overflow: hidden;
         }
-
+        
         .help-example-header {
             background: rgba(255, 255, 255, 0.05);
             padding: 0.5rem 1rem;
@@ -289,7 +291,7 @@
             font-size: 0.85rem;
             color: #aaa;
         }
-
+        
         .help-example-code {
             padding: 1rem;
             font-family: 'Fira Code', monospace;
@@ -299,7 +301,7 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
-
+        
         .copy-btn {
             background: #7b68ee;
             color: white;
@@ -310,16 +312,16 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-
+        
         .copy-btn:hover {
             background: #6b58de;
             transform: translateY(-1px);
         }
-
+        
         .copy-btn.copied {
             background: #00d4aa;
         }
-
+        
         .help-toggle-btn {
             position: fixed;
             top: 50%;
@@ -337,50 +339,71 @@
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
         }
-
+        
         .help-toggle-btn:hover {
             transform: translateY(-50%) scale(1.1);
             box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
         }
-
+        
         .help-toggle-btn.help-open {
             right: 420px;
         }
-
+        
         /* Scrollbar for help bar */
         .help-bar::-webkit-scrollbar {
             width: 6px;
         }
-
+        
         .help-bar::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.05);
         }
-
+        
         .help-bar::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
         }
-
+        
         .help-bar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Additional utility classes for previously inline styles */
+        .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .file-input-label {
+            float: right;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .file-input-link {
+            cursor: pointer;
+            color: #00d4ff;
+        }
+
+        .upload-hint {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
         }
     </style>
 </head>
 <body>
     <!-- Help Toggle Button -->
     <button id="help-toggle" class="help-toggle" aria-label="Open help">?</button>
-
     <div class="header">
         <div class="logo">MD Reader Pro</div>
-        <div style="color: #888; font-size: 0.9rem;">Professional Markdown Editor</div>
+        <div class="subtitle">Professional Markdown Editor</div>
     </div>
-    
     <div class="editor-container">
         <div class="editor-pane">
             <div class="pane-header">
                 📝 Markdown Editor
-                <span style="float: right; font-size: 0.8rem; color: #666;">
-                    <label for="file-input" style="cursor: pointer; color: #00d4ff;">
+                <span class="file-input-label">
+                    <label for="file-input" class="file-input-link">
                         📁 Open File
                     </label>
                 </span>
@@ -389,35 +412,27 @@
                 id="markdown-editor" 
                 class="editor" 
                 placeholder="# Welcome to MD Reader Pro
-
 Start typing your markdown here...
-
 ## Features
 - Real-time preview
 - Drag & drop file support
 - Professional styling
 - Local processing
-
 ```javascript
 // Code highlighting coming soon!
 console.log('Hello, Markdown!');
 ```
-
 > This is a blockquote example
-
 **Bold text** and *italic text* are supported!
-
 [Visit GitHub](https://github.com)"></textarea>
-            
             <div class="upload-area" onclick="document.getElementById('file-input').click()">
                 <input type="file" id="file-input" accept=".md,.txt,.markdown" />
                 <div>📄 Drop markdown files here or click to browse</div>
-                <div style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">
+                <div class="upload-hint">
                     Supports .md, .txt, .markdown files
                 </div>
             </div>
         </div>
-        
         <div class="preview-pane">
             <div class="pane-header">👁️ Live Preview</div>
             <div id="markdown-preview" class="preview">
@@ -440,25 +455,27 @@ console.log('Hello, Markdown!');</code></pre>
             </div>
         </div>
     </div>
-
     <!-- Help Toggle Button -->
     <button class="help-toggle-btn" id="help-toggle-btn" title="Show Markdown Help">
         📚
     </button>
-
     <!-- Help Bar -->
     <div class="help-bar" id="help-bar">
         <div class="help-bar-header">
             <div class="help-bar-title">📚 Markdown Guide</div>
             <button class="help-close-btn" id="help-close-btn">&times;</button>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">📝 Headings</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Six heading levels</span>
-                    <button class="copy-btn" onclick="copyToEditor('# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6')">Copy</button>
+                    <button class="copy-btn" data-copy-text="# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6">Copy</button>
                 </div>
                 <div class="help-example-code"># Heading 1
 ## Heading 2
@@ -468,13 +485,15 @@ console.log('Hello, Markdown!');</code></pre>
 ###### Heading 6</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">✨ Text Formatting</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Bold and italic</span>
-                    <button class="copy-btn" onclick="copyToEditor('**Bold text**\n*Italic text*\n***Bold and italic***\n~~Strikethrough~~')">Copy</button>
+                    <button class="copy-btn" data-copy-text="**Bold text**
+*Italic text*
+***Bold and italic***
+~~Strikethrough~~">Copy</button>
                 </div>
                 <div class="help-example-code">**Bold text**
 *Italic text*
@@ -482,39 +501,46 @@ console.log('Hello, Markdown!');</code></pre>
 ~~Strikethrough~~</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">💻 Code</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Inline code</span>
-                    <button class="copy-btn" onclick="copyToEditor('Use `console.log()` for debugging.\nThe `npm install` command installs packages.')">Copy</button>
+                    <button class="copy-btn" data-copy-text="Use `console.log()` for debugging.
+The `npm install` command installs packages.">Copy</button>
                 </div>
                 <div class="help-example-code">Use `console.log()` for debugging.
 The `npm install` command installs packages.</div>
             </div>
-
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Code blocks</span>
-                    <button class="copy-btn" onclick="copyToEditor('```javascript\nfunction greet(name) {\n  console.log(\"Hello, \" + name + \"!\");\n}\n\ngreet(\"World\");\n```')">Copy</button>
+                    <button class="copy-btn" data-copy-text="```javascript
+function greet(name) {
+  console.log(\"Hello, \" + name + \"!\");
+}
+
+greet(\"World\");
+```">Copy</button>
                 </div>
                 <div class="help-example-code">```javascript
 function greet(name) {
   console.log(`Hello, ${name}!`);
 }
-
 greet("World");
 ```</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">📋 Lists</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Unordered lists</span>
-                    <button class="copy-btn" onclick="copyToEditor('- First item\n- Second item\n  - Nested item\n  - Another nested item\n- Third item')">Copy</button>
+                    <button class="copy-btn" data-copy-text="- First item
+- Second item
+  - Nested item
+  - Another nested item
+- Third item">Copy</button>
                 </div>
                 <div class="help-example-code">- First item
 - Second item
@@ -522,11 +548,14 @@ greet("World");
   - Another nested item
 - Third item</div>
             </div>
-
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Ordered lists</span>
-                    <button class="copy-btn" onclick="copyToEditor('1. First item\n2. Second item\n   1. Nested item\n   2. Another nested item\n3. Third item')">Copy</button>
+                    <button class="copy-btn" data-copy-text="1. First item
+2. Second item
+   1. Nested item
+   2. Another nested item
+3. Third item">Copy</button>
                 </div>
                 <div class="help-example-code">1. First item
 2. Second item
@@ -534,63 +563,72 @@ greet("World");
    2. Another nested item
 3. Third item</div>
             </div>
-
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Task lists</span>
-                    <button class="copy-btn" onclick="copyToEditor('- [x] Completed task\n- [ ] Pending task\n- [ ] Another pending task')">Copy</button>
+                    <button class="copy-btn" data-copy-text="- [x] Completed task
+- [ ] Pending task
+- [ ] Another pending task">Copy</button>
                 </div>
                 <div class="help-example-code">- [x] Completed task
 - [ ] Pending task
 - [ ] Another pending task</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">🔗 Links & Images</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Links</span>
-                    <button class="copy-btn" onclick="copyToEditor('[GitHub](https://github.com)\n[Google](https://google.com \"Google Search\")\nhttps://example.com')">Copy</button>
+                    <button class="copy-btn" data-copy-text="[GitHub](https://github.com)
+[Google](https://google.com &quot;Google Search&quot;)
+https://example.com">Copy</button>
                 </div>
                 <div class="help-example-code">[GitHub](https://github.com)
 [Google](https://google.com "Google Search")
 https://example.com</div>
             </div>
-
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Images</span>
-                    <button class="copy-btn" onclick="copyToEditor('![Alt text](https://picsum.photos/300/200)\n![Logo](logo.png \"Company Logo\")')">Copy</button>
+                    <button class="copy-btn" data-copy-text="![Alt text](https://picsum.photos/300/200)
+![Logo](logo.png &quot;Company Logo&quot;)">Copy</button>
                 </div>
                 <div class="help-example-code">![Alt text](https://picsum.photos/300/200)
 ![Logo](logo.png "Company Logo")</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">💬 Blockquotes</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Simple and nested quotes</span>
-                    <button class="copy-btn" onclick="copyToEditor('> This is a blockquote.\n>\n> It can span multiple lines.\n\n> > This is a nested blockquote.\n> \n> Back to the first level.')">Copy</button>
+                    <button class="copy-btn" data-copy-text="> This is a blockquote.
+>
+> It can span multiple lines.
+
+> > This is a nested blockquote.
+> 
+> Back to the first level.">Copy</button>
                 </div>
                 <div class="help-example-code">> This is a blockquote.
 >
 > It can span multiple lines.
-
 > > This is a nested blockquote.
 >
 > Back to the first level.</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">📊 Tables</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Table with alignment</span>
-                    <button class="copy-btn" onclick="copyToEditor('| Feature    | Status | Priority |\n|------------|:------:|---------:|\n| Headings   | ✅     |     High |\n| Lists      | ✅     |   Medium |\n| Tables     | ✅     |      Low |')">Copy</button>
+                    <button class="copy-btn" data-copy-text="| Feature    | Status | Priority |
+|------------|:------:|---------:|
+| Headings   | [x]     |     High |
+| Lists      | [x]     |   Medium |
+| Tables     | [x]     |      Low |">Copy</button>
                 </div>
                 <div class="help-example-code">| Feature    | Status | Priority |
 |------------|:------:|---------:|
@@ -599,15 +637,12 @@ https://example.com</div>
 | Tables     | ✅     |      Low |</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">➖ Horizontal Rules</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Section dividers</span>
-                    <button class="copy-btn" onclick="copyToEditor('Above the line\n\n---\n\nBelow the line\n\n***\n\nAnother section')">Copy</button>
-                </div>
-                <div class="help-example-code">Above the line
+                    <button class="copy-btn" data-copy-text="Above the line
 
 ---
 
@@ -615,18 +650,21 @@ Below the line
 
 ***
 
+Another section">Copy</button>
+                </div>
+                <div class="help-example-code">Above the line
+---
+Below the line
+***
 Another section</div>
             </div>
         </div>
-
         <div class="help-section">
             <div class="help-section-title">🎯 Complex Example</div>
             <div class="help-example">
                 <div class="help-example-header">
                     <span>Everything combined</span>
-                    <button class="copy-btn" onclick="copyToEditor('# Project Documentation\n\n## Overview\nThis is a **comprehensive** example of *markdown* features.\n\n### Features\n- [x] Headings\n- [x] Text formatting\n- [ ] Advanced features\n\n### Code Example\n```python\ndef hello_world():\n    print(\"Hello, World!\")\n    return True\n```\n\n> **Note:** This example demonstrates multiple markdown features working together.\n\n| Element | Support | Notes |\n|---------|:-------:|-------|\n| Headers | ✅ | All levels |\n| Lists | ✅ | Nested support |\n\n---\n\n*Happy documenting!* 🚀')">Copy</button>
-                </div>
-                <div class="help-example-code"># Project Documentation
+                    <button class="copy-btn" data-copy-text="# Project Documentation
 
 ## Overview
 This is a **comprehensive** example of *markdown* features.
@@ -639,7 +677,7 @@ This is a **comprehensive** example of *markdown* features.
 ### Code Example
 ```python
 def hello_world():
-    print("Hello, World!")
+    print(&quot;Hello, World!&quot;)
     return True
 ```
 
@@ -647,16 +685,36 @@ def hello_world():
 
 | Element | Support | Notes |
 |---------|:-------:|-------|
-| Headers | ✅ | All levels |
-| Lists | ✅ | Nested support |
+| Headers | [x] | All levels |
+| Lists | [x] | Nested support |
 
 ---
 
+*Happy documenting!*">Copy</button>
+                </div>
+                <div class="help-example-code"># Project Documentation
+## Overview
+This is a **comprehensive** example of *markdown* features.
+### Features
+- [x] Headings
+- [x] Text formatting
+- [ ] Advanced features
+### Code Example
+```python
+def hello_world():
+    print("Hello, World!")
+    return True
+```
+> **Note:** This example demonstrates multiple markdown features working together.
+| Element | Support | Notes |
+|---------|:-------:|-------|
+| Headers | ✅ | All levels |
+| Lists | ✅ | Nested support |
+---
 *Happy documenting!* 🚀</div>
             </div>
         </div>
     </div>
-
     <script src="bundle.js"></script>
 </body>
 </html>

@@ -1,15 +1,19 @@
 {
   "name": "md-reader-pro",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "type": "module",
   "description": "AI-powered markdown reader with local processing and complete privacy protection",
   "scripts": {
-    "dev": "webpack serve --config webpack.config.cjs --mode development --open",
+    "dev": "webpack serve --config webpack.config.cjs --mode development",
+    "dev:server": "webpack serve --config webpack.config.cjs --mode development",
     "dev:ready": "node scripts/dev-ready.js",
+    "dev:orchestrate": "node scripts/dev-orchestrator.cjs",
+    "logs:analyze": "node scripts/log-analyzer.cjs",
     "serve:dist": "http-server dist -s -c-1 -p %PORT%",
-    "serve:dist:build": "npm run build && http-server dist -s -c-1 -p %PORT%",
     "build": "webpack --mode production --config webpack.config.cjs",
     "build:clean": "webpack --mode production --config webpack.config.cjs --no-color",
+    "build:analyze": "webpack --mode production --config webpack.config.cjs --analyze",
+    "build:bundle-analyzer": "webpack-bundle-analyzer dist",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -26,22 +30,31 @@
     "validate:clean": "npm run lint:clean && npm run test && npm run build:clean",
     "validate:full": "npm run lint && npm run test:all && npm run build",
     "validate:production": "npm run validate:full && npx playwright test tests/e2e/production-coverage-simple.spec.js",
+    "test:edge-tools": "npx playwright test tests/edge-tools.test.js --project=edge",
+    "test:accessibility": "npx playwright test tests/accessibility.test.js --project=edge",
+    "test:performance:edge": "npx playwright test tests/performance-edge.test.js --project=edge",
     "test:e2e": "npx playwright test",
     "test:e2e:production": "npx playwright test tests/e2e/production-coverage-simple.spec.js",
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:ui": "npx playwright test --ui",
+    "test:server": "node test-server.cjs",
     "production:validate": "npm run build && npm run production:checklist",
     "production:checklist": "echo 'Manual production validation checklist - see PRODUCTION_TESTING_STRATEGY.md'",
     "clean:test": "jest --clearCache",
     "clean:output": "node scripts/clean-output.js",
     "deploy:prepare": "node scripts/deploy.cjs",
     "deploy:build": "npm run build && npm run deploy:prepare",
-    "deploy:validate": "npm run validate:full && npm run deploy:build",
+    "deploy:validate-full": "npm run validate:full && npm run deploy:build",
     "deploy:github-pages": "npm run deploy:validate",
-    "pages:setup": "echo 'Setting up GitHub Pages - see DEPLOYMENT.md for instructions'",
-    "pages:status": "echo 'Check deployment status at: https://your-username.github.io/md-reader-pro/status.html'"
+    "pages:setup": "echo 'Setting up GitHub Pages - see GITHUB_PAGES_SETUP.md for instructions'",
+    "pages:status": "echo 'Check deployment status at: https://khet-1.github.io/md-reader-pro/status.html'",
+    "deploy:validate": "node scripts/validate-deployment.js"
   },
-  "repository": "https://github.com/khet-1/md-reader-pro.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khet-1/md-reader-pro.git"
+  },
+  "homepage": "https://khet-1.github.io/md-reader-pro",
   "dependencies": {
     "dompurify": "^3.0.9",
     "marked": "^5.1.2"
@@ -55,6 +68,7 @@
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.8.0",
     "eslint": "^8.44.0",
+    "express": "^5.1.0",
     "html-webpack-plugin": "^5.6.4",
     "http-server": "^14.1.1",
     "jest": "^29.5.0",
@@ -64,7 +78,8 @@
     "style-loader": "^3.3.0",
     "webpack": "^5.88.0",
     "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.2"
+    "webpack-dev-server": "^5.2.2",
+    "webpack-bundle-analyzer": "^4.9.0"
   },
   "overrides": {
     "tough-cookie": "4.1.3"

@@ -63,6 +63,14 @@ Thumbs.db
 nul
 file.sh
 
+# Test artifacts
+test-report.html
+test-results/
+playwright-report/
+
+# PowerShell scripts (moved to scripts/)
+*.ps1
+
 # Package manager
 package-lock.json.bak
 yarn.lock.bak

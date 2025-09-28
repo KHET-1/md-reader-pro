@@ -1,8 +1,18 @@
 // Jest setup file for MD Reader Pro
 // This configures the testing environment
 
-// Mock DOM environment setup  
+// Mock DOM environment setup
 require('jest-environment-jsdom');
+
+// Make Jest globals available
+const { describe, test, expect, beforeAll, beforeEach, afterEach, afterAll } = require('@jest/globals');
+global.describe = describe;
+global.test = test;
+global.expect = expect;
+global.beforeAll = beforeAll;
+global.beforeEach = beforeEach;
+global.afterEach = afterEach;
+global.afterAll = afterAll;
 
 const originalLog = console.log;
 const originalWarn = console.warn;
@@ -64,3 +74,45 @@ global.performance = {
   }
 };
 
+// Mock DOM APIs
+
+global.File = class File {
+  constructor(chunks, filename, options = {}) {
+    this.name = filename;
+    this.type = options.type || '';
+    this.chunks = chunks;
+  }
+};
+
+// Mock FileReader
+global.FileReader = class FileReader {
+  constructor() {
+    this.readyState = 0;
+    this.result = null;
+    this.error = null;
+    this.onload = null;
+    this.onerror = null;
+  }
+  
+  readAsText(file) {
+    if (file instanceof File) {
+      this.result = 'test markdown content';
+      this.readyState = 2;
+      if (this.onload) {
+        this.onload({ target: this });
+      }
+    } else {
+      this.error = new Error('Invalid file type');
+      this.readyState = 2;
+      if (this.onerror) {
+        this.onerror({ target: this });
+      }
+    }
+  }
+};
+
+// Use JSDOM's Event constructor
+global.Event = global.window.Event;
+
+// Use JSDOM's KeyboardEvent constructor
+global.KeyboardEvent = global.window.KeyboardEvent;

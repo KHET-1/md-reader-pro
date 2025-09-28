@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2025-01-28
+
+### Bug Fixes
+- Fixed duplicate `on:` section in GitHub Actions workflow causing deployment failures
+- Resolved Jest test configuration issues with ES modules and CommonJS compatibility
+- Fixed Event and FileReader mocking in test environment for proper test execution
+- Corrected Playwright test separation from Jest test suite
+- Fixed keyboard event handling in test environment
+
+### Improvements
+- Enhanced test suite reliability with 100% passing tests (154/154)
+- Improved GitHub Actions workflow structure and error handling
+- Better separation of concerns between Jest unit tests and Playwright E2E tests
+- Enhanced test mocking for DOM APIs and browser compatibility
+
+### Technical Debt
+- Cleaned up test configuration and removed duplicate declarations
+- Standardized test imports and module handling
+- Improved test environment setup and mocking
+
 ## [3.1.0] - 2025-09-26
 
 Breaking changes

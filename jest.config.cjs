@@ -3,13 +3,18 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testMatch: [
     '<rootDir>/tests/**/*.test.js',
-    '!<rootDir>/tests/e2e/**/*'
+    '!<rootDir>/tests/e2e/**/*',
+    '!<rootDir>/tests/edge-tools.test.js'
   ],
   testPathIgnorePatterns: [
     '<rootDir>/tests/e2e/',
+    '<rootDir>/tests/edge-tools.test.js',
     '<rootDir>/node_modules/',
     '<rootDir>/dist/'
   ],
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/**/*.min.js',
