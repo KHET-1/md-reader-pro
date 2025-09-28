@@ -7,7 +7,7 @@ const webServer = process.env.PLAYWRIGHT_NO_WEBSERVER === '1'
   ? undefined
   : {
       command: serveDist ? 'npm run serve:dist:build' : 'npm run dev',
-      url: `http://localhost:${port}`,
+      url: `http://localhost:${port}/index.html`,
       reuseExistingServer: true,
       timeout: 120 * 1000,
       env: { PORT: String(port) }
