@@ -4,7 +4,21 @@
       "Bash(npm test)",
       "Bash(npm run validate:*)",
       "Bash(npm run test:coverage:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npm install:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(npm run performance:regression:*)",
+      "Bash(npm run performance:update-baseline:*)",
+      "Bash(npm run test:benchmarks:*)",
+      "Bash(tee:*)",
+      "Bash(npm run performance:monitor:*)",
+      "Bash(npm run test:*)",
+      "Bash(find:*)",
+      "Bash(npm audit:*)",
+      "Bash(npx playwright test:*)"
     ],
     "deny": [],
     "ask": []

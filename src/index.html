@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MD Reader Pro - AI-Powered Markdown Reader</title>
+    <title>MD Reader Pro</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -12,297 +12,651 @@
             margin: 0;
             padding: 0;
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding-top: 2rem;
         }
         
-        .container {
-            text-align: center;
-            max-width: 1200px;
-            padding: 2rem;
-            width: 100%;
+        .header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .logo {
-            font-size: 3rem;
+            font-size: 1.5rem;
             font-weight: bold;
             background: linear-gradient(45deg, #00d4ff, #7b68ee);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
-        }
-        
-        .subtitle {
-            font-size: 1.2rem;
-            color: #888;
-            margin-bottom: 2rem;
-        }
-        
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        
-        .feature {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .tutorial-section {
-            margin: 2rem 0;
-        }
-        
-        .tutorial-banner {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            padding: 2rem;
-            border-radius: 12px;
-            margin: 2rem 0;
-        }
-        
-        .tutorial-btn {
-            background: linear-gradient(45deg, #00d4ff, #7b68ee);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            margin: 0.5rem;
-            font-size: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .tutorial-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
-        }
-        
-        .markdown-editor {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 2rem;
-            margin: 2rem 0;
-            text-align: left;
-        }
-        
-        .markdown-editor.hidden {
-            display: none;
-        }
-        
-        .editor-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .close-btn {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        
-        .close-btn:hover {
-            background: rgba(255, 0, 0, 0.3);
         }
         
         .editor-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-top: 1rem;
+            display: flex;
+            height: calc(100vh - 80px);
         }
         
         .editor-pane, .preview-pane {
-            min-height: 400px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
         
-        .editor-pane h4, .preview-pane h4 {
-            margin-top: 0;
-            color: #00d4ff;
-            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+        .pane-header {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .editor {
+            flex: 1;
+            background: #1a1a1a;
+            border: none;
+            color: #ffffff;
+            padding: 1rem;
+            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+        
+        .preview {
+            flex: 1;
+            padding: 1rem;
+            background: #0f0f0f;
+            overflow-y: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .upload-area input {
+            display: none;
+        }
+        
+        /* Markdown Preview Styling */
+        .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+            color: #ffffff;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            line-height: 1.3;
+        }
+        
+        .preview h1 {
+            font-size: 2rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
             padding-bottom: 0.5rem;
         }
         
-        #markdownInput {
-            width: 100%;
-            height: 350px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            color: white;
-            padding: 1rem;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            resize: vertical;
-            line-height: 1.5;
+        .preview h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 0.3rem;
         }
         
-        #markdownInput:focus {
-            outline: none;
-            border-color: #00d4ff;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        .preview p {
+            color: #e0e0e0;
+            line-height: 1.7;
+            margin-bottom: 1rem;
         }
         
-        .preview-content {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 1rem;
-            height: 350px;
-            overflow-y: auto;
-            line-height: 1.6;
-        }
-        
-        .preview-content h1, .preview-content h2, .preview-content h3 {
-            color: #00d4ff;
-            margin-top: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .preview-content h1 { font-size: 1.8rem; }
-        .preview-content h2 { font-size: 1.5rem; }
-        .preview-content h3 { font-size: 1.3rem; }
-        
-        .preview-content code {
-            background: rgba(0, 212, 255, 0.1);
-            color: #00d4ff;
+        .preview code {
+            background: rgba(255, 255, 255, 0.1);
+            color: #7b68ee;
             padding: 0.2rem 0.4rem;
             border-radius: 4px;
-            font-family: 'Courier New', monospace;
+            font-family: 'Fira Code', monospace;
         }
         
-        .preview-content pre {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
+        .preview pre {
+            background: rgba(0, 0, 0, 0.3);
+            color: #ffffff;
             padding: 1rem;
+            border-radius: 8px;
             overflow-x: auto;
+            border-left: 4px solid #00d4ff;
         }
         
-        .preview-content pre code {
+        .preview pre code {
             background: none;
-            color: #fff;
+            color: inherit;
             padding: 0;
         }
         
-        .preview-content blockquote {
-            border-left: 4px solid #00d4ff;
+        .preview blockquote {
+            border-left: 4px solid #7b68ee;
             padding-left: 1rem;
-            margin-left: 0;
-            color: #ccc;
+            margin: 1rem 0;
+            color: #b0b0b0;
             font-style: italic;
         }
         
-        .preview-content ul {
-            padding-left: 1.5rem;
+        .preview ul, .preview ol {
+            color: #e0e0e0;
+            line-height: 1.7;
         }
         
-        .preview-content li {
-            margin-bottom: 0.5rem;
-        }
-        
-        .preview-content a {
+        .preview a {
             color: #00d4ff;
             text-decoration: none;
         }
         
-        .preview-content a:hover {
+        .preview a:hover {
             text-decoration: underline;
         }
         
-        .status {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 2rem;
+        .preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
         }
         
-        .demo-badge {
-            background: linear-gradient(45deg, #ff6b35, #f7931e);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
+        .preview th, .preview td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
+            text-align: left;
+        }
+        
+        .preview th {
+            background: rgba(255, 255, 255, 0.1);
             font-weight: bold;
-            display: inline-block;
-            margin-bottom: 1rem;
         }
-        
-        @media (max-width: 768px) {
-            .editor-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .container {
-                padding: 1rem;
-            }
-            
-            .logo {
-                font-size: 2rem;
-            }
+
+        /* Help Bar Styles */
+        .help-bar {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .help-bar.show {
+            right: 0;
+        }
+
+        .help-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #00d4ff, #7b68ee);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .help-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 212, 255, 0.4);
+        }
+
+        .help-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .help-bar-header {
+            padding: 1rem;
+            background: rgba(0, 212, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .help-bar-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .help-close-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .help-close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .help-section {
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .help-section-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .help-example {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .help-example-header {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .help-example-code {
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #e0e0e0;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .copy-btn {
+            background: #7b68ee;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #6b58de;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn.copied {
+            background: #00d4aa;
+        }
+
+        .help-toggle-btn {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: linear-gradient(45deg, #00d4ff, #7b68ee);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 999;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .help-toggle-btn:hover {
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .help-toggle-btn.help-open {
+            right: 420px;
+        }
+
+        /* Scrollbar for help bar */
+        .help-bar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .help-bar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .help-bar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .help-bar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="demo-badge">🎉 ENHANCED MD READER!</div>
+    <!-- Help Toggle Button -->
+    <button id="help-toggle" class="help-toggle" aria-label="Open help">?</button>
+
+    <div class="header">
         <div class="logo">MD Reader Pro</div>
-        <div class="subtitle">AI-powered markdown reader with local processing and complete privacy protection</div>
-        
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">🤖</div>
-                <h3>Local AI Processing</h3>
-                <p>TensorFlow.js powered, zero external API calls</p>
+        <div style="color: #888; font-size: 0.9rem;">Professional Markdown Editor</div>
+    </div>
+    
+    <div class="editor-container">
+        <div class="editor-pane">
+            <div class="pane-header">
+                📝 Markdown Editor
+                <span style="float: right; font-size: 0.8rem; color: #666;">
+                    <label for="file-input" style="cursor: pointer; color: #00d4ff;">
+                        📁 Open File
+                    </label>
+                </span>
             </div>
-            <div class="feature">
-                <div class="feature-icon">🔒</div>
-                <h3>Complete Privacy</h3>
-                <p>All data stays on your device</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">⚡</div>
-                <h3>High Performance</h3>
-                <p>Optimized rendering with intelligent caching</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎯</div>
-                <h3>Smart Annotations</h3>
-                <p>Context-aware AI assistance</p>
+            <textarea 
+                id="markdown-editor" 
+                class="editor" 
+                placeholder="# Welcome to MD Reader Pro
+
+Start typing your markdown here...
+
+## Features
+- Real-time preview
+- Drag & drop file support
+- Professional styling
+- Local processing
+
+```javascript
+// Code highlighting coming soon!
+console.log('Hello, Markdown!');
+```
+
+> This is a blockquote example
+
+**Bold text** and *italic text* are supported!
+
+[Visit GitHub](https://github.com)"></textarea>
+            
+            <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                <input type="file" id="file-input" accept=".md,.txt,.markdown" />
+                <div>📄 Drop markdown files here or click to browse</div>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">
+                    Supports .md, .txt, .markdown files
+                </div>
             </div>
         </div>
         
-        <div class="status">
-            <h3>🚀 Project Successfully Enhanced!</h3>
-            <p><strong>Repository:</strong> <a href="https://github.com/KHET-1/md-reader-pro" style="color: #00d4ff;">https://github.com/KHET-1/md-reader-pro</a></p>
-            <p><strong>Development Server:</strong> Running on http://localhost:3000</p>
-            <p><strong>Features:</strong> Interactive Markdown Tutorial + Live Editor</p>
-            <p><strong>Modern Tooling:</strong> Webpack 5, Jest 29, ESLint 8, AI-Ready Architecture</p>
-        </div>
-        
-        <div style="margin-top: 2rem; color: #666;">
-            <p>🎊 <strong>Enhanced Demo!</strong> Now featuring interactive markdown learning and live editing capabilities.</p>
+        <div class="preview-pane">
+            <div class="pane-header">👁️ Live Preview</div>
+            <div id="markdown-preview" class="preview">
+                <h1>Welcome to MD Reader Pro</h1>
+                <p>Start typing in the editor to see your markdown rendered here in real-time!</p>
+                <h2>Features</h2>
+                <ul>
+                    <li>Real-time preview</li>
+                    <li>Drag &amp; drop file support</li>
+                    <li>Professional styling</li>
+                    <li>Local processing</li>
+                </ul>
+                <pre><code>// Code highlighting coming soon!
+console.log('Hello, Markdown!');</code></pre>
+                <blockquote>
+                    <p>This is a blockquote example</p>
+                </blockquote>
+                <p><strong>Bold text</strong> and <em>italic text</em> are supported!</p>
+                <p><a href="https://github.com">Visit GitHub</a></p>
+            </div>
         </div>
     </div>
+
+    <!-- Help Toggle Button -->
+    <button class="help-toggle-btn" id="help-toggle-btn" title="Show Markdown Help">
+        📚
+    </button>
+
+    <!-- Help Bar -->
+    <div class="help-bar" id="help-bar">
+        <div class="help-bar-header">
+            <div class="help-bar-title">📚 Markdown Guide</div>
+            <button class="help-close-btn" id="help-close-btn">&times;</button>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">📝 Headings</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Six heading levels</span>
+                    <button class="copy-btn" onclick="copyToEditor('# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6')">Copy</button>
+                </div>
+                <div class="help-example-code"># Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">✨ Text Formatting</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Bold and italic</span>
+                    <button class="copy-btn" onclick="copyToEditor('**Bold text**\n*Italic text*\n***Bold and italic***\n~~Strikethrough~~')">Copy</button>
+                </div>
+                <div class="help-example-code">**Bold text**
+*Italic text*
+***Bold and italic***
+~~Strikethrough~~</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">💻 Code</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Inline code</span>
+                    <button class="copy-btn" onclick="copyToEditor('Use `console.log()` for debugging.\nThe `npm install` command installs packages.')">Copy</button>
+                </div>
+                <div class="help-example-code">Use `console.log()` for debugging.
+The `npm install` command installs packages.</div>
+            </div>
+
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Code blocks</span>
+                    <button class="copy-btn" onclick="copyToEditor('```javascript\nfunction greet(name) {\n  console.log(\"Hello, \" + name + \"!\");\n}\n\ngreet(\"World\");\n```')">Copy</button>
+                </div>
+                <div class="help-example-code">```javascript
+function greet(name) {
+  console.log(`Hello, ${name}!`);
+}
+
+greet("World");
+```</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">📋 Lists</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Unordered lists</span>
+                    <button class="copy-btn" onclick="copyToEditor('- First item\n- Second item\n  - Nested item\n  - Another nested item\n- Third item')">Copy</button>
+                </div>
+                <div class="help-example-code">- First item
+- Second item
+  - Nested item
+  - Another nested item
+- Third item</div>
+            </div>
+
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Ordered lists</span>
+                    <button class="copy-btn" onclick="copyToEditor('1. First item\n2. Second item\n   1. Nested item\n   2. Another nested item\n3. Third item')">Copy</button>
+                </div>
+                <div class="help-example-code">1. First item
+2. Second item
+   1. Nested item
+   2. Another nested item
+3. Third item</div>
+            </div>
+
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Task lists</span>
+                    <button class="copy-btn" onclick="copyToEditor('- [x] Completed task\n- [ ] Pending task\n- [ ] Another pending task')">Copy</button>
+                </div>
+                <div class="help-example-code">- [x] Completed task
+- [ ] Pending task
+- [ ] Another pending task</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">🔗 Links & Images</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Links</span>
+                    <button class="copy-btn" onclick="copyToEditor('[GitHub](https://github.com)\n[Google](https://google.com \"Google Search\")\nhttps://example.com')">Copy</button>
+                </div>
+                <div class="help-example-code">[GitHub](https://github.com)
+[Google](https://google.com "Google Search")
+https://example.com</div>
+            </div>
+
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Images</span>
+                    <button class="copy-btn" onclick="copyToEditor('![Alt text](https://picsum.photos/300/200)\n![Logo](logo.png \"Company Logo\")')">Copy</button>
+                </div>
+                <div class="help-example-code">![Alt text](https://picsum.photos/300/200)
+![Logo](logo.png "Company Logo")</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">💬 Blockquotes</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Simple and nested quotes</span>
+                    <button class="copy-btn" onclick="copyToEditor('> This is a blockquote.\n>\n> It can span multiple lines.\n\n> > This is a nested blockquote.\n> \n> Back to the first level.')">Copy</button>
+                </div>
+                <div class="help-example-code">> This is a blockquote.
+>
+> It can span multiple lines.
+
+> > This is a nested blockquote.
+>
+> Back to the first level.</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">📊 Tables</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Table with alignment</span>
+                    <button class="copy-btn" onclick="copyToEditor('| Feature    | Status | Priority |\n|------------|:------:|---------:|\n| Headings   | ✅     |     High |\n| Lists      | ✅     |   Medium |\n| Tables     | ✅     |      Low |')">Copy</button>
+                </div>
+                <div class="help-example-code">| Feature    | Status | Priority |
+|------------|:------:|---------:|
+| Headings   | ✅     |     High |
+| Lists      | ✅     |   Medium |
+| Tables     | ✅     |      Low |</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">➖ Horizontal Rules</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Section dividers</span>
+                    <button class="copy-btn" onclick="copyToEditor('Above the line\n\n---\n\nBelow the line\n\n***\n\nAnother section')">Copy</button>
+                </div>
+                <div class="help-example-code">Above the line
+
+---
+
+Below the line
+
+***
+
+Another section</div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-section-title">🎯 Complex Example</div>
+            <div class="help-example">
+                <div class="help-example-header">
+                    <span>Everything combined</span>
+                    <button class="copy-btn" onclick="copyToEditor('# Project Documentation\n\n## Overview\nThis is a **comprehensive** example of *markdown* features.\n\n### Features\n- [x] Headings\n- [x] Text formatting\n- [ ] Advanced features\n\n### Code Example\n```python\ndef hello_world():\n    print(\"Hello, World!\")\n    return True\n```\n\n> **Note:** This example demonstrates multiple markdown features working together.\n\n| Element | Support | Notes |\n|---------|:-------:|-------|\n| Headers | ✅ | All levels |\n| Lists | ✅ | Nested support |\n\n---\n\n*Happy documenting!* 🚀')">Copy</button>
+                </div>
+                <div class="help-example-code"># Project Documentation
+
+## Overview
+This is a **comprehensive** example of *markdown* features.
+
+### Features
+- [x] Headings
+- [x] Text formatting
+- [ ] Advanced features
+
+### Code Example
+```python
+def hello_world():
+    print("Hello, World!")
+    return True
+```
+
+> **Note:** This example demonstrates multiple markdown features working together.
+
+| Element | Support | Notes |
+|---------|:-------:|-------|
+| Headers | ✅ | All levels |
+| Lists | ✅ | Nested support |
+
+---
+
+*Happy documenting!* 🚀</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="bundle.js"></script>
 </body>
 </html>

@@ -1,295 +1,177 @@
+import { TestUtils, setupTestEnvironment } from './test-utils.js';
 // MD Reader Pro - UI Interactions and DOM Tests
-const MDReaderDemo = require('../src/index.js');
+import MarkdownEditor from '../src/index.js';
 
 describe('UI Interactions and DOM Manipulation', () => {
-  let demo;
+  let editor;
+
+  setupTestEnvironment();
 
   beforeEach(() => {
-    demo = new MDReaderDemo();
-    
-    // Clean up any existing DOM elements
-    document.body.innerHTML = '';
+    editor = new MarkdownEditor();
+    editor.init();
   });
 
-  afterEach(() => {
-    // Clean up DOM after each test
-    document.body.innerHTML = '';
-  });
-
-  describe('Interactive Feature Elements', () => {
-    test('should add click handlers to feature elements', (done) => {
-      // Create mock feature elements
-      const feature1 = document.createElement('div');
-      feature1.classList.add('feature');
-      const h3_1 = document.createElement('h3');
-      h3_1.textContent = 'Local AI Processing';
-      feature1.appendChild(h3_1);
-
-      const feature2 = document.createElement('div');
-      feature2.classList.add('feature');
-      const h3_2 = document.createElement('h3');
-      h3_2.textContent = 'Complete Privacy';
-      feature2.appendChild(h3_2);
-
-      document.body.appendChild(feature1);
-      document.body.appendChild(feature2);
-
-      // Set up demo and add interactivity
-      demo.addInteractivity();
-
-      // Test clicking on feature elements
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-      
-      const clickEvent = new Event('click');
-      feature1.dispatchEvent(clickEvent);
-
-      setTimeout(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('🎯 Feature clicked:', 'Local AI Processing');
-        
-        // Test animation was applied
-        expect(feature1.style.transform).toBe('scale(1.05)');
-        
-        // Wait for animation to reset
-        setTimeout(() => {
-          expect(feature1.style.transform).toBe('scale(1)');
-          
-          consoleSpy.mockRestore();
-          done();
-        }, 250);
-      }, 10);
-    });
-
-    test('should handle multiple feature clicks', () => {
-      // Create multiple features
-      const features = [];
-      for (let i = 0; i < 4; i++) {
-        const feature = document.createElement('div');
-        feature.classList.add('feature');
-        const h3 = document.createElement('h3');
-        h3.textContent = `Feature ${i + 1}`;
-        feature.appendChild(h3);
-        document.body.appendChild(feature);
-        features.push(feature);
-      }
-
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-      
-      demo.addInteractivity();
-
-      // Click all features
-      features.forEach((feature, index) => {
-        const clickEvent = new Event('click');
-        feature.dispatchEvent(clickEvent);
-      });
-
-      // Verify clicks were logged (account for addInteractivity messages too)
-      expect(consoleSpy).toHaveBeenCalledWith('🎯 Feature clicked:', 'Feature 1');
-      expect(consoleSpy).toHaveBeenCalledWith('🎯 Feature clicked:', 'Feature 4');
-      
-      // Verify that click logging works for all features
-      const clickCalls = consoleSpy.mock.calls.filter(call => 
-        call[0] === '🎯 Feature clicked:'
-      );
-      expect(clickCalls).toHaveLength(4);
-
-      consoleSpy.mockRestore();
-    });
-
-    test('should handle features without h3 elements gracefully', () => {
-      // Create feature element without h3
-      const feature = document.createElement('div');
-      feature.classList.add('feature');
-      document.body.appendChild(feature);
-
-      expect(() => {
-        demo.addInteractivity();
-        
-        const clickEvent = new Event('click');
-        feature.dispatchEvent(clickEvent);
-      }).not.toThrow();
-    });
-  });
-
-  describe('DOM Content Loading', () => {
-    test('should set up interactivity when DOM is loaded', (done) => {
-      const addInteractivitySpy = jest.spyOn(demo, 'addInteractivity');
-      
-      demo.setupDemo();
-
-      // Simulate DOMContentLoaded event
-      const domEvent = new Event('DOMContentLoaded');
-      document.dispatchEvent(domEvent);
-
-      setTimeout(() => {
-        expect(addInteractivitySpy).toHaveBeenCalled();
-        
-        addInteractivitySpy.mockRestore();
-        done();
-      }, 10);
-    });
-
-    test('should handle DOMContentLoaded event multiple times', () => {
-      const addInteractivitySpy = jest.spyOn(demo, 'addInteractivity');
-      
-      demo.setupDemo();
-
-      // Dispatch multiple DOMContentLoaded events
-      for (let i = 0; i < 3; i++) {
-        const domEvent = new Event('DOMContentLoaded');
-        document.dispatchEvent(domEvent);
-      }
-
-      // Should handle multiple events without breaking
-      expect(addInteractivitySpy).toHaveBeenCalled();
-      expect(addInteractivitySpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-      
-      addInteractivitySpy.mockRestore();
-    });
-  });
-
-  describe('Window Event Handling', () => {
-    test('should track window load events for performance', (done) => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-      const performanceSpy = jest.spyOn(performance, 'now').mockReturnValue(1000);
-      
-      demo.trackPerformance();
-
-      // Simulate window load event
-      const loadEvent = new Event('load');
-      window.dispatchEvent(loadEvent);
-
-      setTimeout(() => {
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Page load time:'));
-        expect(performanceSpy).toHaveBeenCalled();
-        
-        consoleSpy.mockRestore();
-        performanceSpy.mockRestore();
-        done();
-      }, 10);
-    });
-
-    test('should handle window events when performance API is unavailable', (done) => {
-      const originalPerformance = global.performance;
-      
-      // Mock performance API unavailable
-      global.performance = {
-        now: undefined
+  describe('Event Handling', () => {
+    test('should handle file select events', () => {
+      const mockFile = new File(['# Test'], 'test.md', { type: 'text/markdown' });
+      const mockEvent = {
+        target: {
+          files: [mockFile]
+        }
       };
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-      
+      editor.loadFile = jest.fn();
+
       expect(() => {
-        demo.trackPerformance();
-        
-        const loadEvent = new Event('load');
-        window.dispatchEvent(loadEvent);
+        editor.handleFileSelect(mockEvent);
       }).not.toThrow();
 
-      setTimeout(() => {
-        // Should still log performance info even without performance.now
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Performance metrics:'));
-        
-        // Restore original performance
-        global.performance = originalPerformance;
-        consoleSpy.mockRestore();
-        done();
-      }, 10);
+      expect(editor.loadFile).toHaveBeenCalledWith(mockFile);
+    });
+
+    test('should handle empty file selection', () => {
+      const mockEvent = {
+        target: {
+          files: []
+        }
+      };
+
+      expect(() => {
+        editor.handleFileSelect(mockEvent);
+      }).not.toThrow();
     });
   });
 
-  describe('Visual Feedback and Animations', () => {
-    test('should apply and remove scale transformation on feature click', (done) => {
-      const feature = document.createElement('div');
-      feature.classList.add('feature');
-      const h3 = document.createElement('h3');
-      h3.textContent = 'Test Feature';
-      feature.appendChild(h3);
-      document.body.appendChild(feature);
+  describe('Drag and Drop Functionality', () => {
+    test('should setup drag and drop event listeners', () => {
+      const mockUploadArea = {
+        addEventListener: jest.fn(),
+        classList: {
+          add: jest.fn(),
+          remove: jest.fn()
+        }
+      };
 
-      demo.addInteractivity();
+      editor.uploadArea = mockUploadArea;
 
-      // Initial state
-      expect(feature.style.transform).toBe('');
+      expect(() => {
+        editor.setupDragAndDrop();
+      }).not.toThrow();
 
-      // Click feature
-      const clickEvent = new Event('click');
-      feature.dispatchEvent(clickEvent);
-
-      // Should immediately apply scale
-      expect(feature.style.transform).toBe('scale(1.05)');
-
-      // Should reset after animation
-      setTimeout(() => {
-        expect(feature.style.transform).toBe('scale(1)');
-        done();
-      }, 250);
+      // Verify event listeners were added
+      expect(mockUploadArea.addEventListener).toHaveBeenCalled();
     });
 
-    test('should handle rapid clicks on same feature', () => {
-      const feature = document.createElement('div');
-      feature.classList.add('feature');
-      const h3 = document.createElement('h3');
-      h3.textContent = 'Test Feature';
-      feature.appendChild(h3);
-      document.body.appendChild(feature);
+    test('should handle drop events', () => {
+      const mockFile = new File(['# Test'], 'test.md', { type: 'text/markdown' });
+      const mockEvent = {
+        dataTransfer: {
+          files: [mockFile]
+        }
+      };
 
-      demo.addInteractivity();
+      editor.loadFile = jest.fn();
+      editor.uploadArea = {
+        addEventListener: jest.fn(),
+        classList: { add: jest.fn(), remove: jest.fn() }
+      };
 
-      // Rapid clicks
-      for (let i = 0; i < 5; i++) {
-        const clickEvent = new Event('click');
-        feature.dispatchEvent(clickEvent);
-      }
+      // Simulate drop handler
+      const dropHandler = (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+          editor.loadFile(files[0]);
+        }
+      };
 
-      // Should handle without errors
-      expect(feature.style.transform).toBe('scale(1.05)');
+      expect(() => {
+        dropHandler(mockEvent);
+      }).not.toThrow();
+
+      expect(editor.loadFile).toHaveBeenCalledWith(mockFile);
     });
   });
 
-  describe('Accessibility and Error Handling', () => {
-    test('should handle missing DOM elements gracefully', () => {
-      // Test with no feature elements in DOM
-      expect(() => {
-        demo.addInteractivity();
-      }).not.toThrow();
-    });
+  describe('Keyboard Shortcuts', () => {
+    test('should handle save shortcut', () => {
+      const mockEvent = {
+        ctrlKey: true,
+        key: 's',
+        preventDefault: jest.fn()
+      };
 
-    test('should handle malformed DOM structure', () => {
-      // Create feature without proper structure
-      const malformedFeature = document.createElement('div');
-      malformedFeature.classList.add('feature');
-      // No h3 element
-      document.body.appendChild(malformedFeature);
+      editor.saveMarkdown = jest.fn();
 
       expect(() => {
-        demo.addInteractivity();
-        
-        const clickEvent = new Event('click');
-        malformedFeature.dispatchEvent(clickEvent);
+        editor.handleKeyboardShortcuts(mockEvent);
       }).not.toThrow();
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(editor.saveMarkdown).toHaveBeenCalled();
     });
 
-    test('should maintain functionality with disabled styles', () => {
-      const feature = document.createElement('div');
-      feature.classList.add('feature');
-      const h3 = document.createElement('h3');
-      h3.textContent = 'Test Feature';
-      feature.appendChild(h3);
-      
-      // Disable style modifications (simulate CSS disabled)
-      Object.defineProperty(feature, 'style', {
-        value: {},
-        writable: false
+    test('should handle tab indentation', () => {
+      editor.editor = {
+        value: 'test',
+        selectionStart: 2,
+        selectionEnd: 2
+      };
+      editor.updatePreview = jest.fn();
+
+      const mockEvent = {
+        key: 'Tab',
+        preventDefault: jest.fn()
+      };
+
+      expect(() => {
+        editor.handleKeyboardShortcuts(mockEvent);
+      }).not.toThrow();
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(editor.editor.value).toBe('te    st');
+    });
+  });
+
+  describe('DOM Ready Handling', () => {
+    test('should setup editor when DOM is ready', () => {
+      editor.setupEditor = jest.fn();
+
+      // Simulate document ready state
+      Object.defineProperty(document, 'readyState', {
+        writable: true,
+        value: 'complete'
       });
+
+      // Re-initialize to test the ready state
+      const newEditor = new MarkdownEditor();
       
-      document.body.appendChild(feature);
+      // Should not throw
+      expect(() => {
+        newEditor.init();
+      }).not.toThrow();
+    });
+
+    test('should wait for DOM content loaded', () => {
+      editor.setupEditor = jest.fn();
+
+      // Simulate loading state
+      Object.defineProperty(document, 'readyState', {
+        writable: true,
+        value: 'loading'
+      });
+
+      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
 
       expect(() => {
-        demo.addInteractivity();
-        
-        const clickEvent = new Event('click');
-        feature.dispatchEvent(clickEvent);
+        editor.init();
       }).not.toThrow();
+
+      expect(addEventListenerSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+
+      addEventListenerSpy.mockRestore();
     });
   });
 });

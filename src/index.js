@@ -1,231 +1,367 @@
-// MD Reader Pro - AI-powered markdown reader with local processing
-console.log('🚀 MD Reader Pro - Loading Advanced Markdown Reader...');
+import { marked } from 'marked';
 
-// Initialize the application when DOM is loaded
-if (typeof document !== 'undefined') {
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeMDReaderPro();
-    });
-} else {
-    // Node.js environment - for testing
-    console.log('✅ MD Reader Pro - Module loaded successfully!');
-}
-
-function initializeMDReaderPro() {
-    console.log('🎊 MD Reader Pro - Initializing Application...');
-    
-    // Add markdown tutorial button to the interface
-    addMarkdownTutorialButton();
-    
-    // Add live markdown editor
-    addMarkdownEditor();
-    
-    // Initialize AI features (placeholder for future TensorFlow.js integration)
-    initializeAIFeatures();
-    
-    console.log('✅ MD Reader Pro - Application ready!');
-    console.log('📖 Repository: https://github.com/KHET-1/md-reader-pro');
-}
-
-function addMarkdownTutorialButton() {
-    const container = document.querySelector('.container');
-    if (!container) return;
-    
-    // Add tutorial button after the features section
-    const tutorialSection = document.createElement('div');
-    tutorialSection.className = 'tutorial-section';
-    tutorialSection.innerHTML = `
-        <div class="tutorial-banner">
-            <h3>📖 Learn Markdown Interactively</h3>
-            <p>Master markdown syntax with our comprehensive tutorial</p>
-            <button id="openTutorial" class="tutorial-btn">
-                🚀 Open Markdown Tutorial
-            </button>
-            <button id="toggleEditor" class="tutorial-btn">
-                ✏️ Try Live Editor
-            </button>
-        </div>
-    `;
-    
-    // Insert after features but before status
-    const statusDiv = container.querySelector('.status');
-    if (statusDiv) {
-        container.insertBefore(tutorialSection, statusDiv);
-    } else {
-        container.appendChild(tutorialSection);
+class MarkdownEditor {
+    constructor() {
+        this.version = '3.0.0';
+        this.editor = null;
+        this.preview = null;
+        this.fileInput = null;
+        this.uploadArea = null;
     }
     
-    // Add event listeners
-    document.getElementById('openTutorial')?.addEventListener('click', () => {
-        window.open('markdown-tutorial.md', '_blank');
-    });
+    init() {
+        // Only initialize if we are in a browser environment
+        if (typeof window === 'undefined') return;
+
+        console.log(`✅ MD Reader Pro v${this.version} initialized`);
+        console.log('📝 Professional markdown editor ready');
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupEditor());
+        }
+        else {
+            this.setupEditor();
+        }
+    }
     
-    document.getElementById('toggleEditor')?.addEventListener('click', () => {
-        toggleMarkdownEditor();
-    });
-}
-
-function addMarkdownEditor() {
-    const container = document.querySelector('.container');
-    if (!container) return;
+    setupEditor() {
+        // Get DOM elements
+        this.editor = document.getElementById('markdown-editor');
+        this.preview = document.getElementById('markdown-preview');
+        this.fileInput = document.getElementById('file-input');
+        this.uploadArea = document.querySelector('.upload-area');
+        
+        if (!this.editor || !this.preview) {
+            // Do not log error in test environment
+            if (typeof jest === 'undefined') {
+                console.error('Required DOM elements not found');
+            }
+            return;
+        }
+        
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            sanitize: false,
+            mangle: false, // Disable deprecated mangle option
+            async: false // Ensure synchronous parsing
+        });
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Initial render of placeholder content
+        this.updatePreview();
+        
+        console.log('📝 Markdown editor initialized successfully');
+    }
     
-    // Create markdown editor section
-    const editorSection = document.createElement('div');
-    editorSection.id = 'markdownEditor';
-    editorSection.className = 'markdown-editor hidden';
-    editorSection.innerHTML = `
-        <div class="editor-header">
-            <h3>✏️ Live Markdown Editor</h3>
-            <button id="closeEditor" class="close-btn">✕</button>
-        </div>
-        <div class="editor-container">
-            <div class="editor-pane">
-                <h4>📝 Write Markdown</h4>
-                <textarea id="markdownInput" placeholder="# Try typing some markdown here!
+    setupEventListeners() {
+        // Real-time markdown preview
+        this.editor.addEventListener('input', () => this.updatePreview());
 
-## Features
-- **Bold text**
-- *Italic text*  
-- [Links](https://example.com)
-- \`inline code\`
+        // File upload handling
+        if (this.fileInput) {
+            this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        }
 
-\`\`\`javascript
-console.log('Hello, World!');
-\`\`\`
+        // Drag and drop functionality
+        if (this.uploadArea) {
+            this.setupDragAndDrop();
+        }
 
-> This is a blockquote
+        // Keyboard shortcuts
+        this.editor.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
 
-### Happy writing! 🚀"></textarea>
-            </div>
-            <div class="preview-pane">
-                <h4>👁️ Live Preview</h4>
-                <div id="markdownPreview" class="preview-content">
-                    <p><em>Your markdown preview will appear here...</em></p>
+        // Help bar functionality
+        this.setupHelpBar();
+    }
+    
+    updatePreview() {
+        if (!this.editor || !this.preview) return;
+        
+        const markdownText = this.editor.value;
+        
+        if (!markdownText.trim()) {
+            this.preview.innerHTML = `
+                <div style="color: #666; text-align: center; padding: 2rem;">
+                    <h2>📝 Start typing markdown</h2>
+                    <p>Your preview will appear here as you type</p>
                 </div>
-            </div>
-        </div>
-    `;
-    
-    container.appendChild(editorSection);
-    
-    // Add event listeners
-    document.getElementById('closeEditor')?.addEventListener('click', () => {
-        toggleMarkdownEditor(false);
-    });
-    
-    const input = document.getElementById('markdownInput');
-    if (input) {
-        input.addEventListener('input', updatePreview);
-        // Initial preview update
-        setTimeout(updatePreview, 100);
-    }
-}
+            `;
+            return;
+        }
+        
+        try {
+            // Parse markdown to HTML
+            const html = marked.parse(markdownText);
+            this.preview.innerHTML = html;
+        } catch (error) {
+            console.error('Markdown parsing error:', error);
+            // Safely escape error message to prevent XSS
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'color: #ff6b6b; padding: 1rem; background: rgba(255, 107, 107, 0.1); border-radius: 4px;';
 
-function toggleMarkdownEditor(show = null) {
-    const editor = document.getElementById('markdownEditor');
-    if (!editor) return;
-    
-    if (show === null) {
-        editor.classList.toggle('hidden');
-    } else {
-        editor.classList.toggle('hidden', !show);
+            const errorTitle = document.createElement('strong');
+            errorTitle.textContent = 'Markdown Error: ';
+
+            const errorMessage = document.createTextNode(error.message);
+
+            errorDiv.appendChild(errorTitle);
+            errorDiv.appendChild(errorMessage);
+
+            this.preview.innerHTML = '';
+            this.preview.appendChild(errorDiv);
+        }
     }
     
-    // Update button text
-    const button = document.getElementById('toggleEditor');
-    if (button) {
-        const isHidden = editor.classList.contains('hidden');
-        button.textContent = isHidden ? '✏️ Try Live Editor' : '📖 Hide Editor';
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        this.loadFile(file);
     }
-}
+    
+    loadFile(file) {
+        if (!file) {
+            console.error('No file provided to loadFile method');
+            return;
+        }
 
-function updatePreview() {
-    const input = document.getElementById('markdownInput');
-    const preview = document.getElementById('markdownPreview');
-    
-    if (!input || !preview) return;
-    
-    const markdown = input.value;
-    
-    // Simple markdown to HTML conversion (basic implementation)
-    // In a real app, you'd use the 'marked' library here
-    const html = convertMarkdownToHTML(markdown);
-    
-    preview.innerHTML = html;
-}
+        const reader = new FileReader();
 
-function convertMarkdownToHTML(markdown) {
-    // Basic markdown conversion (simplified version)
-    // In production, use the 'marked' library for full functionality
-    
-    let html = markdown
-        // Headers
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        
-        // Bold and italic
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        
-        // Code blocks
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-        
-        // Links
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-        
-        // Line breaks
-        .replace(/\n/g, '<br>');
-    
-    // Handle lists (basic)
-    html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-    
-    // Handle blockquotes
-    html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
-    
-    return html;
-}
+        const cleanup = () => {
+            // Clean up event handlers to prevent memory leaks
+            reader.onload = null;
+            reader.onerror = null;
+            reader.onabort = null;
+        };
 
-function initializeAIFeatures() {
-    // Placeholder for future TensorFlow.js integration
-    console.log('🤖 AI Features initialized (ready for TensorFlow.js integration)');
+        reader.onload = (e) => {
+            const content = e.target.result;
+            this.editor.value = content;
+            this.updatePreview();
+            // Only log in production environment, not during tests
+            if (typeof jest === 'undefined') {
+                console.log(`📄 Loaded file: ${file.name}`);
+            }
+            cleanup();
+        };
+
+        reader.onerror = (e) => {
+            console.error('File reading error:', e);
+            alert('Error reading file. Please try again.');
+            cleanup();
+        };
+
+        reader.onabort = () => {
+            console.warn('File reading was aborted');
+            cleanup();
+        };
+
+        reader.readAsText(file);
+    }
     
-    // Add AI assistance hints
-    setTimeout(() => {
-        const input = document.getElementById('markdownInput');
-        if (input) {
-            input.addEventListener('keyup', () => {
-                // Future: Add AI-powered suggestions here
-                showAIHints();
+    setupDragAndDrop() {
+        // Only setup if uploadArea exists
+        if (!this.uploadArea) return;
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            this.uploadArea.addEventListener(eventName, this.preventDefaults, false);
+            document.body.addEventListener(eventName, this.preventDefaults, false);
+        });
+        
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            this.uploadArea.addEventListener(eventName, () => {
+                this.uploadArea.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            this.uploadArea.addEventListener(eventName, () => {
+                this.uploadArea.classList.remove('drag-over');
+            }, false);
+        });
+        
+        // Handle dropped files
+        this.uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                this.loadFile(files[0]);
+            }
+        }, false);
+    }
+    
+    preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    handleKeyboardShortcuts(e) {
+        // Ctrl/Cmd + S to save (prevent browser save dialog)
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            this.saveMarkdown();
+        }
+        
+        // Tab key for indentation - only if editor exists
+        if (e.key === 'Tab' && this.editor) {
+            e.preventDefault();
+            const start = this.editor.selectionStart;
+            const end = this.editor.selectionEnd;
+            
+            // Insert tab or spaces
+            this.editor.value = this.editor.value.substring(0, start) + 
+                               '    ' + 
+                               this.editor.value.substring(end);
+            
+            // Move cursor
+            this.editor.selectionStart = this.editor.selectionEnd = start + 4;
+            this.updatePreview();
+        }
+    }
+    
+    saveMarkdown() {
+        const content = this.editor ? this.editor.value : '';
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'document.md';
+        document.body.appendChild(a);
+a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log('💾 Markdown saved');
+    }
+
+    setupHelpBar() {
+        const helpToggle = document.getElementById('help-toggle');
+        const helpBar = document.querySelector('.help-bar');
+
+        if (helpToggle && helpBar) {
+            helpToggle.addEventListener('click', () => {
+                helpBar.classList.toggle('show');
+
+                // Update button text/icon
+                const isVisible = helpBar.classList.contains('show');
+                helpToggle.textContent = isVisible ? '✕' : '?';
+                helpToggle.setAttribute('aria-label', isVisible ? 'Close help' : 'Open help');
+            });
+
+            // Close help bar when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!helpBar.contains(e.target) && !helpToggle.contains(e.target)) {
+                    helpBar.classList.remove('show');
+                    helpToggle.textContent = '?';
+                    helpToggle.setAttribute('aria-label', 'Open help');
+                }
+            });
+
+            // Prevent help bar clicks from closing it
+            helpBar.addEventListener('click', (e) => {
+                e.stopPropagation();
             });
         }
-    }, 1000);
-}
 
-function showAIHints() {
-    // Placeholder for AI-powered writing assistance
-    const hints = [
-        '💡 Try adding headers with # for better structure',
-        '🎯 Use **bold** text to emphasize important points',
-        '📝 Consider adding a table to organize data',
-        '🔗 Add links to make your content more interactive',
-        '📊 Code blocks make technical content clearer'
-    ];
+        // Make copyToEditor globally available for onclick handlers
+        window.copyToEditor = (example) => this.copyToEditor(example);
+    }
+
+    copyToEditor(example) {
+        if (!this.editor) return;
+
+        // Clear current content and add the example
+        this.editor.value = example;
+
+        // Update the preview
+        this.updatePreview();
+
+        // Focus the editor
+        this.editor.focus();
+
+        // Show success feedback
+        this.showCopyFeedback();
+
+        console.log('📋 Example copied to editor');
+    }
+
+    showCopyFeedback() {
+        // Create temporary feedback element
+        const feedback = document.createElement('div');
+        feedback.textContent = '✅ Example copied!';
+        feedback.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 420px;
+            background: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        `;
+
+        document.body.appendChild(feedback);
+
+        // Remove after animation
+        setTimeout(() => {
+            feedback.style.opacity = '0';
+            feedback.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.parentNode.removeChild(feedback);
+                }
+            }, 300);
+        }, 2000);
+    }
     
-    // Randomly show hints (simplified version)
-    if (Math.random() < 0.1) { // 10% chance
-        const hint = hints[Math.floor(Math.random() * hints.length)];
-        console.log(`🤖 AI Suggestion: ${hint}`);
+    // Console helper for collaboration story
+    showCollaborationStory() {
+        console.log('');
+        console.log('🎭 ======================================');
+        console.log('📖 THE DEVELOPMENT JOURNEY');
+        console.log('🎭 ======================================');
+        console.log('');
+        console.log('🚀 Phase 1: Professional tooling setup');
+        console.log('🧪 Phase 2: Comprehensive testing suite');
+        console.log('✨ Phase 3: Real markdown functionality!');
+        console.log('🎯 Result: From demo to actual working editor');
+        console.log('');
+        console.log('💡 Features now working:');
+        console.log('   • Real-time markdown parsing');
+        console.log('   • File upload & drag-drop');
+        console.log('   • Professional split-pane UI');
+        console.log('   • Keyboard shortcuts (Tab, Ctrl+S)');
+        console.log('   • Live preview with styling');
+        console.log('');
+        console.log('🎊 This is now a REAL markdown editor! 🎉');
     }
 }
 
-// Export for testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        initializeMDReaderPro,
-        convertMarkdownToHTML,
-        updatePreview
-    };
+// Export the class as default
+export default MarkdownEditor;
+
+// Initialize the markdown editor only in browser environment
+if (typeof window !== 'undefined' && typeof jest === 'undefined') {
+    const markdownEditor = new MarkdownEditor();
+    markdownEditor.init(); // Initialize the editor
+    window.markdownEditor = markdownEditor;
+    window.showCollabStory = () => markdownEditor.showCollaborationStory();
+
+    console.log('💡 Console commands available:');
+    console.log('   • markdownEditor - Editor instance');
+    console.log('   • showCollabStory() - Development journey!');
 }

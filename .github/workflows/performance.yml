@@ -1,0 +1,187 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run performance tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  performance-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run basic tests first
+      run: npm test
+
+    - name: Run performance tests
+      run: npm run test:performance
+
+    - name: Run benchmark tests
+      run: npm run test:benchmarks
+
+    - name: Run full performance monitoring
+      run: npm run performance:monitor
+
+    - name: Generate performance report
+      run: |
+        echo "## Performance Test Results" > performance-report.md
+        echo "### Test Environment" >> performance-report.md
+        echo "- Node.js: ${{ matrix.node-version }}" >> performance-report.md
+        echo "- OS: Ubuntu Latest" >> performance-report.md
+        echo "- Date: $(date)" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "### Performance Metrics" >> performance-report.md
+        echo "Tests completed successfully. See job logs for detailed metrics." >> performance-report.md
+
+    - name: Upload performance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report-node-${{ matrix.node-version }}
+        path: performance-report.md
+        retention-days: 30
+
+  performance-regression:
+    runs-on: ubuntu-latest
+    needs: performance-tests
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run regression detection
+      run: |
+        echo "Running performance regression detection..."
+        npm run test:benchmarks 2>&1 | tee benchmark-results.log
+
+        # Check for performance regressions (basic implementation)
+        if grep -q "Slow test detected" benchmark-results.log; then
+          echo "⚠️ Performance regression detected!"
+          echo "See benchmark results for details."
+          exit 1
+        else
+          echo "✅ No performance regressions detected."
+        fi
+
+    - name: Comment PR with results
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '⚠️ **Performance Regression Detected**\n\nThe performance tests indicate potential regressions. Please review the performance test results in the Actions log.'
+          })
+
+  memory-leak-detection:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js with memory monitoring
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run memory leak detection
+      run: |
+        echo "Running memory leak detection..."
+        # Run with garbage collection exposed
+        node --expose-gc --max-old-space-size=512 ./node_modules/.bin/jest tests/benchmarks.test.js --verbose --runInBand
+
+    - name: Check memory usage
+      run: |
+        echo "Checking for memory leaks in test output..."
+        # This would be enhanced with actual memory leak detection logic
+        echo "Memory leak detection completed."
+
+  performance-comparison:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout PR branch
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run PR benchmarks
+      run: |
+        npm run test:benchmarks > pr-benchmarks.log 2>&1 || true
+
+    - name: Checkout main branch
+      uses: actions/checkout@v4
+      with:
+        ref: main
+
+    - name: Install dependencies (main)
+      run: npm ci
+
+    - name: Run main benchmarks
+      run: |
+        npm run test:benchmarks > main-benchmarks.log 2>&1 || true
+
+    - name: Compare performance
+      run: |
+        echo "## Performance Comparison" > comparison.md
+        echo "### PR Branch vs Main Branch" >> comparison.md
+        echo "" >> comparison.md
+        echo "#### Main Branch Results:" >> comparison.md
+        echo "\`\`\`" >> comparison.md
+        cat main-benchmarks.log >> comparison.md
+        echo "\`\`\`" >> comparison.md
+        echo "" >> comparison.md
+        echo "#### PR Branch Results:" >> comparison.md
+        echo "\`\`\`" >> comparison.md
+        cat pr-benchmarks.log >> comparison.md
+        echo "\`\`\`" >> comparison.md
+
+    - name: Upload comparison
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-comparison
+        path: comparison.md

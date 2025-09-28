@@ -4,30 +4,22 @@
 // Mock DOM environment setup  
 require('jest-environment-jsdom');
 
-// Mock console methods to reduce noise in tests
-const originalError = console.error;
+const originalLog = console.log;
 const originalWarn = console.warn;
+const originalError = console.error;
 
 beforeAll(() => {
-  // Suppress expected warnings/errors during tests
-  console.error = (...args) => {
-    if (args[0]?.includes?.('Warning: ReactDOM.render is no longer supported')) {
-      return;
-    }
-    originalError.call(console, ...args);
-  };
-  
-  console.warn = (...args) => {
-    if (args[0]?.includes?.('deprecated')) {
-      return;
-    }
-    originalWarn.call(console, ...args);
-  };
+  // Suppress all console output during tests
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
 });
 
 afterAll(() => {
-  console.error = originalError;
+  // Restore original console methods
+  console.log = originalLog;
   console.warn = originalWarn;
+  console.error = originalError;
 });
 
 // Mock TensorFlow.js for testing
@@ -55,6 +47,12 @@ const localStorageMock = {
 };
 global.localStorage = localStorageMock;
 
+// Mock URL APIs for file operations
+global.URL = {
+  createObjectURL: jest.fn(() => 'blob:test-url'),
+  revokeObjectURL: jest.fn()
+};
+
 // Mock performance API
 global.performance = {
   now: jest.fn(() => Date.now()),
@@ -66,4 +64,3 @@ global.performance = {
   }
 };
 
-console.log('✅ Jest environment configured for MD Reader Pro testing');

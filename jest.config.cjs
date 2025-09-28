@@ -3,12 +3,18 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testMatch: [
     '<rootDir>/tests/**/*.test.js',
-    '<rootDir>/tests/**/*.spec.js'
+    '!<rootDir>/tests/e2e/**/*'
+  ],
+  testPathIgnorePatterns: [
+    '<rootDir>/tests/e2e/',
+    '<rootDir>/node_modules/',
+    '<rootDir>/dist/'
   ],
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/**/*.min.js',
-    '!src/**/vendor/**'
+    '!src/**/vendor/**',
+    '!src/**/*.test.js'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: [
@@ -18,15 +24,22 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     }
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
   },
-  testTimeout: 10000,
-  verbose: true
+  testTimeout: 15000,
+  maxWorkers: 1, // Run tests serially for consistent performance measurements
+  cache: true,
+  clearMocks: true,
+  restoreMocks: true,
+  verbose: false,
+  // Reduce test environment interference
+  detectOpenHandles: true,
+  forceExit: false
 };

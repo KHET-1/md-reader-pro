@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-09-19T00:00:00.000Z",
+  "benchmarks": {
+    "small_markdown_rendering": {
+      "average": 56,
+      "description": "Small markdown rendering performance"
+    },
+    "medium_markdown_rendering": {
+      "average": 207,
+      "description": "Medium markdown rendering performance"
+    },
+    "large_markdown_rendering": {
+      "average": 659,
+      "description": "Large markdown rendering performance"
+    },
+    "typing_simulation": {
+      "average": 13,
+      "description": "Interactive typing simulation performance"
+    },
+    "keyboard_shortcuts": {
+      "average": 26,
+      "description": "Keyboard shortcuts performance"
+    },
+    "file_loading": {
+      "average": 273,
+      "description": "File loading performance"
+    },
+    "save_operations": {
+      "average": 30,
+      "description": "Save operations performance"
+    },
+    "memory_operations": {
+      "average": 38,
+      "description": "Memory usage during operations"
+    },
+    "memory_stability": {
+      "average": 21,
+      "description": "Memory stability over time"
+    },
+    "high_load_stress": {
+      "average": 716,
+      "description": "Performance under high load"
+    },
+    "concurrent_operations": {
+      "average": 16,
+      "description": "Concurrent operations performance"
+    }
+  },
+  "performance": {
+    "slowTests": [],
+    "memoryIssues": []
+  },
+  "summary": {
+    "totalBenchmarks": 11,
+    "slowTestsCount": 0,
+    "memoryIssuesCount": 0,
+    "averageBenchmarkTime": 186.8,
+    "totalTestTime": 3066,
+    "testsPassed": 11
+  },
+  "metadata": {
+    "captureMethod": "manual_baseline",
+    "testSuite": "jest",
+    "environment": "development",
+    "nodeVersion": "current",
+    "platform": "win32"
+  }
+}
