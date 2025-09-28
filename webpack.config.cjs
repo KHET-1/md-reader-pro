@@ -21,7 +21,8 @@ module.exports = (env, argv) => {
       })
     ],
     devServer: {
-      port: 3000,
+      port: Number(process.env.PORT) || 3000,
+      host: 'localhost',
       open: true,
       hot: true,
       compress: true,

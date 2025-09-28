@@ -5,6 +5,9 @@
   "description": "AI-powered markdown reader with local processing and complete privacy protection",
   "scripts": {
     "dev": "webpack serve --config webpack.config.cjs --mode development --open",
+    "dev:ready": "node scripts/dev-ready.js",
+    "serve:dist": "http-server dist -s -c-1 -p %PORT%",
+    "serve:dist:build": "npm run build && http-server dist -s -c-1 -p %PORT%",
     "build": "webpack --mode production --config webpack.config.cjs",
     "build:clean": "webpack --mode production --config webpack.config.cjs --no-color",
     "test": "jest",
@@ -53,6 +56,7 @@
     "css-loader": "^6.8.0",
     "eslint": "^8.44.0",
     "html-webpack-plugin": "^5.6.4",
+    "http-server": "^14.1.1",
     "jest": "^29.5.0",
     "jest-environment-jsdom": "^29.7.0",
     "mini-css-extract-plugin": "^2.7.0",

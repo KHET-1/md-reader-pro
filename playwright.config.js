@@ -1,5 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = Number(process.env.E2E_PORT || process.env.PORT || 3100);
+
+const serveDist = process.env.PLAYWRIGHT_SERVE_DIST === '1';
+const webServer = process.env.PLAYWRIGHT_NO_WEBSERVER === '1'
+  ? undefined
+  : {
+      command: serveDist ? 'npm run serve:dist:build' : 'npm run dev',
+      url: `http://localhost:${port}`,
+      reuseExistingServer: true,
+      timeout: 120 * 1000,
+      env: { PORT: String(port) }
+    };
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
@@ -9,7 +22,7 @@ export default defineConfig({
   timeout: 60000,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${port}`,
     trace: 'on-first-retry',
     actionTimeout: 10000,
     navigationTimeout: 30000,
@@ -22,10 +35,5 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  webServer,
 });
