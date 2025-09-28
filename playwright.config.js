@@ -6,7 +6,7 @@ const serveDist = process.env.PLAYWRIGHT_SERVE_DIST === '1';
 const webServer = process.env.PLAYWRIGHT_NO_WEBSERVER === '1'
   ? undefined
   : {
-      command: serveDist ? `npx http-server dist -s -c-1 -p ${port}` : 'npm run dev',
+command: serveDist ? `http-server dist -s -c-1 -p ${port}` : 'npm run dev',
       url: `http://localhost:${port}/index.html`,
       reuseExistingServer: true,
       timeout: 120 * 1000,
