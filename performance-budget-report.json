@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-09-29T09:57:06.570Z",
+  "budgets": {
+    "bundle": {
+      "max": 102400,
+      "warning": 81920,
+      "current": 83429
+    },
+    "rendering": {
+      "small": {
+        "max": 50,
+        "warning": 40
+      },
+      "medium": {
+        "max": 200,
+        "warning": 150
+      },
+      "large": {
+        "max": 1000,
+        "warning": 800
+      }
+    },
+    "memory": {
+      "max": 52428800,
+      "warning": 41943040,
+      "current": 26214400
+    },
+    "fileLoading": {
+      "max": 150,
+      "warning": 100
+    }
+  },
+  "results": {
+    "bundle": {
+      "size": 83429,
+      "budget": 102400,
+      "status": "pass",
+      "warning": "warning"
+    },
+    "rendering": {
+      "small": {
+        "actual": 45,
+        "budget": 50,
+        "status": "pass",
+        "warning": "warning"
+      },
+      "medium": {
+        "actual": 180,
+        "budget": 200,
+        "status": "pass",
+        "warning": "warning"
+      },
+      "large": {
+        "actual": 850,
+        "budget": 1000,
+        "status": "pass",
+        "warning": "warning"
+      }
+    },
+    "memory": {
+      "used": 26214400,
+      "budget": 52428800,
+      "status": "pass",
+      "warning": "ok"
+    },
+    "fileLoading": {
+      "loadTime": 120,
+      "budget": 150,
+      "status": "pass",
+      "warning": "warning"
+    }
+  },
+  "summary": {
+    "passed": 6,
+    "total": 6,
+    "warnings": 5,
+    "overallStatus": "pass",
+    "score": 100
+  }
+}

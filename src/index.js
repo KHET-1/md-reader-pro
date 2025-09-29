@@ -1,4 +1,11 @@
 import { marked } from 'marked';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-javascript.js';
+import 'prismjs/components/prism-python.js';
+import 'prismjs/components/prism-css.js';
+import 'prismjs/components/prism-markup.js';
+import 'prismjs/components/prism-json.js';
+import 'prismjs/components/prism-markdown.js';
 
 class MarkdownEditor {
     constructor() {
@@ -73,14 +80,20 @@ class MarkdownEditor {
             return;
         }
         
-        // Configure marked options
+        // Configure marked options with syntax highlighting
         marked.setOptions({
             breaks: true,
             gfm: true,
             headerIds: false,
             sanitize: false,
             mangle: false, // Disable deprecated mangle option
-            async: false // Ensure synchronous parsing
+            async: false, // Ensure synchronous parsing
+            highlight: function(code, lang) {
+                if (lang && Prism.languages[lang]) {
+                    return Prism.highlight(code, Prism.languages[lang], lang);
+                }
+                return code;
+            }
         });
         
         // Set up event listeners
@@ -307,16 +320,29 @@ a.click();
 
                 // Update button text/icon
                 const isVisible = helpBar.classList.contains('show');
-                helpToggle.textContent = isVisible ? '✕' : '?';
-                helpToggle.setAttribute('aria-label', isVisible ? 'Close help' : 'Open help');
+                const helpIcon = helpToggle.querySelector('.help-icon');
+                const helpText = helpToggle.querySelector('.help-text');
+                
+                if (isVisible) {
+                    if (helpIcon) helpIcon.textContent = '✕';
+                    if (helpText) helpText.textContent = 'Close';
+                    helpToggle.setAttribute('aria-label', 'Close Markdown Help');
+                } else {
+                    if (helpIcon) helpIcon.textContent = '📚';
+                    if (helpText) helpText.textContent = 'Help';
+                    helpToggle.setAttribute('aria-label', 'Open Markdown Help');
+                }
             });
 
             // Close help bar when clicking outside
             document.addEventListener('click', (e) => {
                 if (!helpBar.contains(e.target) && !helpToggle.contains(e.target)) {
                     helpBar.classList.remove('show');
-                    helpToggle.textContent = '?';
-                    helpToggle.setAttribute('aria-label', 'Open help');
+                    const helpIcon = helpToggle.querySelector('.help-icon');
+                    const helpText = helpToggle.querySelector('.help-text');
+                    if (helpIcon) helpIcon.textContent = '📚';
+                    if (helpText) helpText.textContent = 'Help';
+                    helpToggle.setAttribute('aria-label', 'Open Markdown Help');
                 }
             });
 

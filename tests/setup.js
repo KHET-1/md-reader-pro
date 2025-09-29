@@ -4,15 +4,8 @@
 // Mock DOM environment setup
 require('jest-environment-jsdom');
 
-// Make Jest globals available
-const { describe, test, expect, beforeAll, beforeEach, afterEach, afterAll } = require('@jest/globals');
-global.describe = describe;
-global.test = test;
-global.expect = expect;
-global.beforeAll = beforeAll;
-global.beforeEach = beforeEach;
-global.afterEach = afterEach;
-global.afterAll = afterAll;
+// Jest globals are automatically available in test environment
+// No need to manually import and assign them
 
 const originalLog = console.log;
 const originalWarn = console.warn;

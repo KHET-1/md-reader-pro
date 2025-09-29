@@ -76,11 +76,11 @@ describe('Accessibility and User Experience', () => {
 
             // Click to open
             helpToggle.click();
-            expect(helpToggle.getAttribute('aria-label')).toBe('Close help');
+            expect(helpToggle.getAttribute('aria-label')).toBe('Close Markdown Help');
 
             // Click to close
             helpToggle.click();
-            expect(helpToggle.getAttribute('aria-label')).toBe('Open help');
+            expect(helpToggle.getAttribute('aria-label')).toBe('Open Markdown Help');
         });
     });
 
