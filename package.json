@@ -57,7 +57,8 @@
   "homepage": "https://khet-1.github.io/md-reader-pro",
   "dependencies": {
     "dompurify": "^3.0.9",
-    "marked": "^5.1.2"
+    "marked": "^5.1.2",
+    "escape-html": "^1.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.22.0",

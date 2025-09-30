@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const escape = require('escape-html');
 
 const app = express();
 const PORT = process.env.PORT || 3100;
@@ -28,7 +29,7 @@ app.get('/test-missing-dom.html', (req, res) => {
 <body>
     <h1>Missing DOM Elements Test</h1>
     <!-- Missing: textarea#markdown-editor, div#markdown-preview, input#file-input -->
-    <script src="/${bundleFile}"></script>
+    <script src="/${escape(bundleFile)}"></script>
 </body>
 </html>`;
   res.send(html);
