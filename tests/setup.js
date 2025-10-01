@@ -109,3 +109,19 @@ global.Event = global.window.Event;
 
 // Use JSDOM's KeyboardEvent constructor
 global.KeyboardEvent = global.window.KeyboardEvent;
+
+// Mock document.execCommand for clipboard operations
+document.execCommand = jest.fn((command) => {
+  if (command === 'copy') {
+    return true;
+  }
+  return false;
+});
+
+// Mock navigator.clipboard for modern clipboard API
+if (!global.navigator.clipboard) {
+  global.navigator.clipboard = {
+    writeText: jest.fn().mockResolvedValue(undefined),
+    readText: jest.fn().mockResolvedValue(''),
+  };
+}

@@ -45,6 +45,10 @@ module.exports = (env, argv) => {
       hot: true,
       compress: true,
       historyApiFallback: true,
+      static: {
+        directory: path.join(__dirname, 'src'),
+        publicPath: '/',
+      },
       setupMiddlewares: (middlewares, devServer) => {
         if (!devServer) {
           throw new Error('webpack-dev-server is not defined');

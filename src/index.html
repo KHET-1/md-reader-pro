@@ -6,36 +6,567 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self';">
     <title>MD Reader Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --accent-color: #00d4ff;
+            --accent-glow: rgba(0, 212, 255, 0.4);
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-muted: #888888;
+            --border-color: #333333;
+            --border-hover: #555555;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.3s ease;
+            --transition-slow: 0.5s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-            color: #ffffff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             margin: 0;
             padding: 0;
             min-height: 100vh;
+            line-height: 1.6;
+            letter-spacing: -0.01em;
+            font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         
         .header {
-            padding: 1rem 2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 20px;
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            min-height: 60px;
+            gap: 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: all var(--transition-normal);
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(26, 26, 26, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            max-width: 600px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-normal);
+        }
+        
+        .tab {
+            position: relative;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0;
+            flex: 1;
+            outline: none;
+            overflow: hidden;
+        }
+        
+        .tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.05));
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+        
+        .tab:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 20%;
+            bottom: 20%;
+            width: 1px;
+            background: var(--border-color);
+            transition: all var(--transition-normal);
+        }
+        
+        .tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-1px);
+        }
+        
+        .tab:hover::before {
+            opacity: 1;
+        }
+        
+        .tab:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: -2px;
+        }
+        
+        .tab.active {
+            color: var(--text-primary);
+            background: linear-gradient(135deg, rgba(42, 42, 42, 0.8), rgba(26, 26, 26, 0.9));
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-weight: 600;
+        }
+        
+        .tab.active::before {
+            opacity: 1;
+        }
+        
+        .tab.active:not(:last-child)::after {
+            background: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-glow);
+            top: 10%;
+            bottom: 10%;
+        }
+        
+        .tab:active {
+            transform: translateY(0);
+            transition: transform var(--transition-fast);
+        }
+        
+        /* Enhanced header controls */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: rgba(42, 42, 42, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            outline: none;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .toolbar-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left var(--transition-slow);
+        }
+        
+        .toolbar-btn:hover {
+            background: rgba(42, 42, 42, 0.8);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .toolbar-btn:hover::before {
+            left: 100%;
+        }
+        
+        .toolbar-btn:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+        
+        .toolbar-btn:active {
+            transform: translateY(0);
+            transition: transform var(--transition-fast);
+        }
+        
+        /* Command palette */
+        .command-palette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all var(--transition-normal);
+        }
+        
+        .command-palette.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .command-palette-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform var(--transition-normal);
+        }
+        
+        .command-palette.show .command-palette-content {
+            transform: scale(1);
+        }
+        
+        .command-palette-input {
+            width: 100%;
+            padding: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: 500;
+            outline: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .command-palette-input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .command-palette-results {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .command-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .command-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .command-item.selected {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid var(--accent-color);
+        }
+        
+        .command-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .command-text {
+            flex: 1;
+        }
+        
+        .command-shortcut {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #888;
+            padding: 4px 8px;
+            background: #222;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Enhanced tab effects */
+        .tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, 
+                rgba(255, 215, 0, 0.05) 0%, 
+                transparent 50%, 
+                rgba(255, 215, 0, 0.02) 100%);
+            border-radius: 8px 8px 0 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .tab:hover::before {
+            opacity: 1;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 8px;
+                padding: 8px;
+                min-height: auto;
+            }
+            
+            .tabs {
+                order: 2;
+                width: 100%;
+                max-width: none;
+                flex-wrap: wrap;
+                gap: 4px;
+                justify-content: center;
+            }
+            
+            .tab {
+                padding: 8px 12px;
+                font-size: 11px;
+                flex: 1;
+                min-width: 0;
+                margin: 0 1px;
+            }
+            
+            .tab:not(:last-child)::after {
+                right: -8px;
+                font-size: 10px;
+            }
+            
+            .header-controls {
+                order: 1;
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .content-area {
+                height: calc(100vh - 80px);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .tab {
+                padding: 6px 8px;
+                font-size: 10px;
+                margin: 0;
+            }
+            
+            .tab:not(:last-child)::after {
+                right: -6px;
+                font-size: 8px;
+            }
+            
+            .toolbar-btn {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+        }
+        
+        /* Ultra-wide screen optimization */
+        @media (min-width: 1400px) {
+            .tabs {
+                max-width: 800px;
+            }
+            
+            .tab {
+                padding: 14px 24px;
+                font-size: 15px;
+            }
+            
+            .tab:not(:last-child)::after {
+                font-size: 14px;
+                right: -14px;
+            }
+        }
+        
+        .pane-header-left, .pane-header-right {
+            font-weight: 600;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .minimalist-btn {
+            position: relative;
+            background: transparent;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            z-index: 1;
+            min-width: 120px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .minimalist-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 215, 0, 0.2), 
+                rgba(255, 215, 0, 0.4),
+                rgba(255, 215, 0, 0.2),
+                transparent
+            );
+            transition: left 0.6s ease;
+            z-index: -1;
+        }
+
+        .minimalist-btn:hover {
+            border-color: rgba(255, 215, 0, 0.8);
+            color: #FFD700;
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 20px rgba(255, 215, 0, 0.4),
+                0 0 30px rgba(255, 215, 0, 0.2),
+                inset 0 1px 0 rgba(255, 215, 0, 0.3);
+            text-shadow: 
+                0 0 8px rgba(255, 215, 0, 0.8),
+                0 0 16px rgba(255, 215, 0, 0.4);
+        }
+
+        .minimalist-btn:hover::before {
+            left: 100%;
+        }
+
+        .minimalist-btn:active {
+            transform: translateY(0);
+            box-shadow: 
+                0 2px 8px rgba(255, 215, 0, 0.3),
+                inset 0 1px 0 rgba(255, 215, 0, 0.2);
         }
         
         .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            background: linear-gradient(45deg, #00d4ff, #7b68ee);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffd700;
+            letter-spacing: 0.5px;
+        }
+        
+        .content-area {
+            height: calc(100vh - 58px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .main-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .toolbar {
+            padding: 8px 16px;
+            background: #111;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .toolbar-btn {
+            padding: 6px 12px;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .toolbar-btn:hover {
+            background: #333;
+            border-color: #555;
         }
         
         .editor-container {
             display: flex;
-            height: calc(100vh - 80px);
+            flex: 1;
         }
         
         .editor-pane, .preview-pane {
@@ -54,23 +585,1113 @@
         
         .editor {
             flex: 1;
-            background: #1a1a1a;
+            background: var(--bg-primary);
             border: none;
-            color: #ffffff;
-            padding: 1rem;
-            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+            color: var(--text-primary);
+            padding: 24px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
             font-size: 14px;
-            line-height: 1.6;
+            line-height: 1.7;
             resize: none;
             outline: none;
+            font-feature-settings: 'liga' 1, 'calt' 1;
+            tab-size: 2;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            transition: all var(--transition-normal);
+        }
+        
+        .editor:focus {
+            background: var(--bg-primary);
+            box-shadow: inset 0 0 0 1px var(--accent-color);
+        }
+        
+        .editor::placeholder {
+            color: var(--text-muted);
+            font-style: italic;
         }
         
         .preview {
             flex: 1;
-            padding: 1rem;
-            background: #0f0f0f;
+            padding: 24px;
+            background: var(--bg-primary);
             overflow-y: auto;
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 1px solid var(--border-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+        
+        .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            line-height: 1.3;
+        }
+        
+        .preview h1 {
+            font-size: 2em;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.3em;
+        }
+        
+        .preview h2 {
+            font-size: 1.5em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+        
+        .preview code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.2em 0.4em;
+            border-radius: var(--radius-sm);
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .preview pre {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1em;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+        
+        .preview pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+        
+        .preview blockquote {
+            border-left: 4px solid var(--accent-color);
+            margin: 1em 0;
+            padding-left: 1em;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+        
+        .preview th, .preview td {
+            border: 1px solid var(--border-color);
+            padding: 0.5em;
+            text-align: left;
+        }
+        
+        .preview th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+        }
+        
+        .preview a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+        
+        .preview a:hover {
+            color: var(--accent-glow);
+            text-decoration: underline;
+        }
+        
+        /* Loading states */
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: loading-shimmer 1.5s infinite;
+        }
+        
+        @keyframes loading-shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Phase 1: Essential 2025 Standards */
+        
+        /* Enhanced Accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        /* Focus management for better accessibility */
+        .focus-trap {
+            outline: none;
+        }
+        
+        /* Skip to content link */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--accent-color);
+            color: var(--bg-primary);
+            padding: 8px;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            z-index: 1000;
+            transition: top var(--transition-fast);
+        }
+        
+        .skip-link:focus {
+            top: 6px;
+        }
+        
+        /* Enhanced button states */
+        .btn-primary {
+            background: var(--accent-color);
+            color: var(--bg-primary);
+            border: 1px solid var(--accent-color);
+            font-weight: 600;
+            transition: all var(--transition-normal);
+        }
+        
+        .btn-primary:hover {
+            background: var(--accent-glow);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-primary:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--accent-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-color);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform var(--transition-normal);
+            max-width: 400px;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            border-left-color: #10b981;
+        }
+        
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+        
+        .toast.warning {
+            border-left-color: #f59e0b;
+        }
+        
+        .toast-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .toast-icon {
+            font-size: 20px;
+        }
+        
+        .toast-message {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+        
+        .toast-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        /* Enhanced mobile experience */
+        @media (max-width: 768px) {
+            .header {
+                padding: 8px 12px;
+                min-height: 50px;
+                gap: 12px;
+            }
+            
+            .tabs {
+                max-width: none;
+                border-radius: var(--radius-md);
+            }
+            
+            .tab {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            
+            .toolbar-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .command-palette-content {
+                width: 95%;
+                margin: 0 10px;
+            }
+            
+            .toast {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --border-color: #666666;
+                --text-muted: #aaaaaa;
+            }
+            
+            .tab:focus-visible,
+            .toolbar-btn:focus-visible {
+                outline: 3px solid var(--accent-color);
+                outline-offset: 2px;
+            }
+        }
+        
+        /* Phase 2: Advanced Animations & Micro-interactions */
+        
+        /* Smooth page transitions */
+        .page-transition {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .page-transition.enter {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .page-transition.exit {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        
+        /* Advanced hover effects */
+        .hover-lift {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .hover-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hover-glow::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+        
+        .hover-glow:hover::before {
+            left: 100%;
+        }
+        
+        /* Ripple effect for buttons */
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ripple::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .ripple:active::after {
+            width: 300px;
+            height: 300px;
+        }
+        
+        /* Floating animation for status indicator */
+        .status-indicator {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-2px); }
+        }
+        
+        /* Pulse animation for loading states */
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Slide animations for panels */
+        .slide-in-right {
+            animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .slide-in-left {
+            animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Scale animations for modals */
+        .scale-in {
+            animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* Morphing animations for tab switching */
+        .tab-morph {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tab-morph::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--accent-color);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .tab-morph.active::before {
+            transform: scaleX(1);
+        }
+        
+        /* Scroll-triggered animations */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Parallax effect for background elements */
+        .parallax {
+            transform: translateZ(0);
+            will-change: transform;
+        }
+        
+        /* Gesture support for touch devices */
+        .swipeable {
+            touch-action: pan-x;
+            user-select: none;
+        }
+        
+        .swipe-left {
+            animation: swipeLeft 0.3s ease-out;
+        }
+        
+        .swipe-right {
+            animation: swipeRight 0.3s ease-out;
+        }
+        
+        @keyframes swipeLeft {
+            from { transform: translateX(0); }
+            to { transform: translateX(-100%); }
+        }
+        
+        @keyframes swipeRight {
+            from { transform: translateX(0); }
+            to { transform: translateX(100%); }
+        }
+        
+        /* Advanced button interactions */
+        .btn-interactive {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-interactive::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-interactive:hover::before {
+            left: 100%;
+        }
+        
+        .btn-interactive:active {
+            transform: scale(0.98);
+        }
+        
+        /* Magnetic effect for interactive elements */
+        .magnetic {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .magnetic:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Stagger animation for lists */
+        .stagger-item {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: staggerIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        .stagger-item:nth-child(1) { animation-delay: 0.1s; }
+        .stagger-item:nth-child(2) { animation-delay: 0.2s; }
+        .stagger-item:nth-child(3) { animation-delay: 0.3s; }
+        .stagger-item:nth-child(4) { animation-delay: 0.4s; }
+        .stagger-item:nth-child(5) { animation-delay: 0.5s; }
+        
+        @keyframes staggerIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Performance optimizations */
+        .gpu-accelerated {
+            transform: translateZ(0);
+            will-change: transform, opacity;
+        }
+        
+        .smooth-scroll {
+            scroll-behavior: smooth;
+        }
+        
+        /* Advanced loading states */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-color) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Phase 3: Enhanced Editor Features & Productivity Tools */
+        
+        /* Enhanced editor styling */
+        .editor-container {
+            position: relative;
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        .editor-stats {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .editor-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .editor-btn {
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all var(--transition-fast);
+        }
+        
+        .editor-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+        }
+        
+        .editor-btn.active {
+            background: var(--accent-color);
+            color: var(--bg-primary);
+            border-color: var(--accent-color);
+        }
+        
+        /* Enhanced textarea styling */
+        .editor {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            padding: 20px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: none;
+            outline: none;
+            resize: none;
+            width: 100%;
+            min-height: 400px;
+            font-feature-settings: 'liga' 1, 'calt' 1;
+            tab-size: 2;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+        
+        .editor::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .editor::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .editor::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+        
+        .editor::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+        
+        /* Find and replace modal */
+        .find-replace-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all var(--transition-normal);
+        }
+        
+        .find-replace-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .find-replace-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            transform: scale(0.9);
+            transition: transform var(--transition-normal);
+        }
+        
+        .find-replace-modal.show .find-replace-content {
+            transform: scale(1);
+        }
+        
+        .find-replace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .find-replace-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .find-replace-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+        
+        .find-replace-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .find-replace-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .find-replace-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .find-replace-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        
+        .find-replace-input {
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all var(--transition-fast);
+        }
+        
+        .find-replace-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+        
+        .find-replace-options {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .find-replace-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .find-replace-option input[type="checkbox"] {
+            accent-color: var(--accent-color);
+        }
+        
+        .find-replace-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        
+        .find-replace-btn {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+        }
+        
+        .find-replace-btn:hover {
+            background: var(--border-hover);
+        }
+        
+        .find-replace-btn.primary {
+            background: var(--accent-color);
+            color: var(--bg-primary);
+            border-color: var(--accent-color);
+        }
+        
+        .find-replace-btn.primary:hover {
+            background: var(--accent-glow);
+        }
+        
+        /* Auto-complete dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            transition: background var(--transition-fast);
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: var(--bg-tertiary);
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-snippet {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Word count and reading time */
+        .reading-stats {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .reading-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .reading-stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Export options */
+        .export-options {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            padding: 8px 0;
+            min-width: 150px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .export-options.show {
+            display: block;
+        }
+        
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: background var(--transition-fast);
+        }
+        
+        .export-option:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .export-option-icon {
+            font-size: 14px;
+        }
+        
+        /* Keyboard shortcuts help */
+        .shortcuts-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all var(--transition-normal);
+        }
+        
+        .shortcuts-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .shortcuts-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform var(--transition-normal);
+        }
+        
+        .shortcuts-modal.show .shortcuts-content {
+            transform: scale(1);
+        }
+        
+        .shortcuts-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .shortcuts-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .shortcuts-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+        
+        .shortcuts-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .shortcuts-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .shortcuts-section {
+            margin-bottom: 24px;
+        }
+        
+        .shortcuts-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .shortcuts-list {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px 16px;
+            align-items: center;
+        }
+        
+        .shortcut-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .shortcut-keys {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        
+        .shortcut-key {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 2px 6px;
+            font-size: 11px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            color: var(--text-primary);
+            font-weight: 500;
         }
         
         .upload-area {
@@ -251,49 +1872,163 @@
         .help-bar {
             position: fixed;
             top: 0;
-            right: -400px;
-            width: 400px;
+            right: -450px;
+            width: 450px;
             height: 100vh;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            transition: right 0.3s ease;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.9) 0%, transparent 50%),
+                linear-gradient(145deg, #000000, #0a0a0a);
+            border-left: 2px solid rgba(255, 215, 0, 0.3);
+            transition: right 0.4s ease;
             z-index: 1000;
             overflow-y: auto;
-            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 
+                -10px 0 30px rgba(0, 0, 0, 0.9),
+                inset 0 0 30px rgba(0, 0, 0, 0.8);
         }
         
         .help-bar.show {
             right: 0;
         }
         
-        .help-toggle {
+        .settings-panel {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(26, 26, 26, 0.95);
-            backdrop-filter: blur(10px);
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            top: 60px;
+            right: -320px;
+            width: 300px;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.9) 0%, transparent 50%),
+                linear-gradient(145deg, #000000, #0a0a0a);
+            border: 2px solid rgba(255, 215, 0, 0.3);
             border-radius: 12px;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-            min-width: 80px;
-            justify-content: center;
+            transition: right 0.4s ease;
+            z-index: 1000;
+            box-shadow: 
+                -10px 0 30px rgba(0, 0, 0, 0.9),
+                inset 0 0 30px rgba(0, 0, 0, 0.8);
+            padding: 20px;
         }
         
+        .settings-panel.show {
+            right: 20px;
+        }
+        
+        .color-picker h3 {
+            color: var(--accent-color, #00d4ff);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .color-option {
+            padding: 8px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #222;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+        }
+        
+        .color-option:hover {
+            border-color: var(--accent-color, #00d4ff);
+            background: #333;
+            transform: scale(1.05);
+        }
+        
+        .color-option.active {
+            border-color: var(--accent-color, #00d4ff);
+            background: #333;
+            box-shadow: 0 0 10px var(--accent-glow, rgba(0, 212, 255, 0.3));
+            transform: scale(1.1);
+        }
+        
+        .color-preview {
+            width: 100%;
+            height: 16px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            border: 1px solid #555;
+        }
+        
+        .color-name {
+            font-size: 9px;
+            color: #ccc;
+            font-weight: 500;
+        }
+        
+        .rainbow-preview {
+            background: linear-gradient(45deg, #ff69b4, #00d4ff, #32cd32, #ffd700);
+            animation: rainbow-shift 3s ease-in-out infinite;
+        }
+        
+        @keyframes rainbow-shift {
+            0%, 100% { background: linear-gradient(45deg, #ff69b4, #00d4ff, #32cd32, #ffd700); }
+            25% { background: linear-gradient(45deg, #00d4ff, #32cd32, #ffd700, #ff69b4); }
+            50% { background: linear-gradient(45deg, #32cd32, #ffd700, #ff69b4, #00d4ff); }
+            75% { background: linear-gradient(45deg, #ffd700, #ff69b4, #00d4ff, #32cd32); }
+        }
+        
+        .help-toggle {
+            background: transparent;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            min-width: 120px;
+        }
+        
+        .help-toggle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 215, 0, 0.2), 
+                rgba(255, 215, 0, 0.4),
+                rgba(255, 215, 0, 0.2),
+                transparent
+            );
+            transition: left 0.6s ease;
+            z-index: -1;
+        }
+
         .help-toggle:hover {
-            background: rgba(0, 212, 255, 0.1);
-            border-color: rgba(0, 212, 255, 0.3);
+            border-color: rgba(255, 215, 0, 0.8);
+            color: #FFD700;
             transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(0, 212, 255, 0.2);
+            box-shadow: 
+                0 6px 20px rgba(255, 215, 0, 0.4),
+                0 0 30px rgba(255, 215, 0, 0.2),
+                inset 0 1px 0 rgba(255, 215, 0, 0.3);
+            text-shadow: 
+                0 0 8px rgba(255, 215, 0, 0.8),
+                0 0 16px rgba(255, 215, 0, 0.4);
+        }
+
+        .help-toggle:hover::before {
+            left: 100%;
         }
         
         .help-toggle:active {
@@ -385,19 +2120,59 @@
         }
         
         .copy-btn {
-            background: #7b68ee;
-            color: white;
-            border: none;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            min-width: 100px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
         
+        .copy-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 215, 0, 0.2), 
+                rgba(255, 215, 0, 0.4),
+                rgba(255, 215, 0, 0.2),
+                transparent
+            );
+            transition: left 0.6s ease;
+            z-index: -1;
+        }
+
         .copy-btn:hover {
-            background: #6b58de;
-            transform: translateY(-1px);
+            border-color: rgba(255, 215, 0, 0.8);
+            color: #FFD700;
+            transform: translateY(-2px);
+            box-shadow: 
+                0 4px 16px rgba(255, 215, 0, 0.4),
+                0 0 24px rgba(255, 215, 0, 0.2),
+                inset 0 1px 0 rgba(255, 215, 0, 0.3);
+            text-shadow: 
+                0 0 6px rgba(255, 215, 0, 0.8),
+                0 0 12px rgba(255, 215, 0, 0.4);
+        }
+
+        .copy-btn:hover::before {
+            left: 100%;
         }
         
         .copy-btn.copied {
@@ -448,25 +2223,48 @@
     </style>
 </head>
 <body>
-    <!-- Help Toggle Button -->
-    <button id="help-toggle" class="help-toggle" aria-label="Open Markdown Help">
-        <span class="help-icon">📚</span>
-        <span class="help-text">Help</span>
-    </button>
+    <!-- Skip to content link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
     <div class="header">
         <div class="logo">MD Reader Pro</div>
-        <div class="subtitle">Professional Markdown Editor</div>
-    </div>
-    <div class="editor-container">
-        <div class="editor-pane">
-            <div class="pane-header">
-                📝 Markdown Editor
-                <span class="file-input-label">
-                    <label for="file-input" class="file-input-link">
-                        📁 Open File
-                    </label>
-                </span>
+        <div class="tabs">
+            <button class="tab tab-morph hover-lift magnetic active" data-tab="editor" aria-label="Switch to Editor mode" role="tab" aria-selected="true">Editor</button>
+            <button class="tab tab-morph hover-lift magnetic" data-tab="preview" aria-label="Switch to Preview mode" role="tab" aria-selected="false">Preview</button>
+            <button class="tab tab-morph hover-lift magnetic" data-tab="split" aria-label="Switch to Split View mode" role="tab" aria-selected="false">Split View</button>
+            <button class="tab tab-morph hover-lift magnetic" data-tab="annotation" aria-label="Switch to Annotation mode" role="tab" aria-selected="false">Annotation</button>
+            <button class="tab tab-morph hover-lift magnetic" data-tab="reader" aria-label="Switch to Reader mode" role="tab" aria-selected="false">Reader</button>
+        </div>
+        <div class="header-controls">
+            <div class="status-indicator" id="status-indicator">
+                <div class="status-dot"></div>
+                <span>Ready</span>
             </div>
+            <button id="command-toggle" class="toolbar-btn btn-interactive ripple magnetic" aria-label="Open Command Palette">
+                ⌘ Command
+            </button>
+            <label for="file-input" class="toolbar-btn btn-interactive ripple magnetic">
+                <input type="file" id="file-input" accept=".md,.txt,.markdown" style="display: none;">
+                📁 Open
+            </label>
+            <button id="help-toggle" class="toolbar-btn btn-interactive ripple magnetic" aria-label="Open Markdown Help">
+                📚 Help
+            </button>
+            <button id="settings-toggle" class="toolbar-btn btn-interactive ripple magnetic" aria-label="Open Settings">
+                ⚙️ Settings
+            </button>
+        </div>
+    </div>
+    <main id="main-content" class="content-area swipeable" role="main">
+        <div class="main-pane">
+            <div class="toolbar">
+                <button class="toolbar-btn">💾 Save</button>
+                <button class="toolbar-btn">📋 Copy</button>
+                <button class="toolbar-btn">🔍 Find</button>
+                <button class="toolbar-btn">⚙️ Settings</button>
+            </div>
+            <div class="editor-container" id="editor-container">
+        <div class="editor-pane">
             <textarea 
                 id="markdown-editor" 
                 class="editor" 
@@ -493,7 +2291,6 @@ console.log('Hello, Markdown!');
             </div>
         </div>
         <div class="preview-pane">
-            <div class="pane-header">👁️ Live Preview</div>
             <div id="markdown-preview" class="preview">
                 <h1>Welcome to MD Reader Pro</h1>
                 <p>Start typing in the editor to see your markdown rendered here in real-time!</p>
@@ -530,7 +2327,7 @@ console.log('Hello, Markdown!');</code></pre>
 ### Heading 3
 #### Heading 4
 ##### Heading 5
-###### Heading 6">Copy</button>
+###### Heading 6">Paste Example</button>
                 </div>
                 <div class="help-example-code"># Heading 1
 ## Heading 2
@@ -548,7 +2345,7 @@ console.log('Hello, Markdown!');</code></pre>
                     <button class="copy-btn" data-copy-text="**Bold text**
 *Italic text*
 ***Bold and italic***
-~~Strikethrough~~">Copy</button>
+~~Strikethrough~~">Paste Example</button>
                 </div>
                 <div class="help-example-code">**Bold text**
 *Italic text*
@@ -562,7 +2359,7 @@ console.log('Hello, Markdown!');</code></pre>
                 <div class="help-example-header">
                     <span>Inline code</span>
                     <button class="copy-btn" data-copy-text="Use `console.log()` for debugging.
-The `npm install` command installs packages.">Copy</button>
+The `npm install` command installs packages.">Paste Example</button>
                 </div>
                 <div class="help-example-code">Use `console.log()` for debugging.
 The `npm install` command installs packages.</div>
@@ -576,7 +2373,7 @@ function greet(name) {
 }
 
 greet(\"World\");
-```">Copy</button>
+```">Paste Example</button>
                 </div>
                 <div class="help-example-code">```javascript
 function greet(name) {
@@ -595,7 +2392,7 @@ greet("World");
 - Second item
   - Nested item
   - Another nested item
-- Third item">Copy</button>
+- Third item">Paste Example</button>
                 </div>
                 <div class="help-example-code">- First item
 - Second item
@@ -610,7 +2407,7 @@ greet("World");
 2. Second item
    1. Nested item
    2. Another nested item
-3. Third item">Copy</button>
+3. Third item">Paste Example</button>
                 </div>
                 <div class="help-example-code">1. First item
 2. Second item
@@ -623,7 +2420,7 @@ greet("World");
                     <span>Task lists</span>
                     <button class="copy-btn" data-copy-text="- [x] Completed task
 - [ ] Pending task
-- [ ] Another pending task">Copy</button>
+- [ ] Another pending task">Paste Example</button>
                 </div>
                 <div class="help-example-code">- [x] Completed task
 - [ ] Pending task
@@ -637,7 +2434,7 @@ greet("World");
                     <span>Links</span>
                     <button class="copy-btn" data-copy-text="[GitHub](https://github.com)
 [Google](https://google.com &quot;Google Search&quot;)
-https://example.com">Copy</button>
+https://example.com">Paste Example</button>
                 </div>
                 <div class="help-example-code">[GitHub](https://github.com)
 [Google](https://google.com "Google Search")
@@ -647,7 +2444,7 @@ https://example.com</div>
                 <div class="help-example-header">
                     <span>Images</span>
                     <button class="copy-btn" data-copy-text="![Alt text](https://picsum.photos/300/200)
-![Logo](logo.png &quot;Company Logo&quot;)">Copy</button>
+![Logo](logo.png &quot;Company Logo&quot;)">Paste Example</button>
                 </div>
                 <div class="help-example-code">![Alt text](https://picsum.photos/300/200)
 ![Logo](logo.png "Company Logo")</div>
@@ -664,7 +2461,7 @@ https://example.com</div>
 
 > > This is a nested blockquote.
 > 
-> Back to the first level.">Copy</button>
+> Back to the first level.">Paste Example</button>
                 </div>
                 <div class="help-example-code">> This is a blockquote.
 >
@@ -683,7 +2480,7 @@ https://example.com</div>
 |------------|:------:|---------:|
 | Headings   | [x]     |     High |
 | Lists      | [x]     |   Medium |
-| Tables     | [x]     |      Low |">Copy</button>
+| Tables     | [x]     |      Low |">Paste Example</button>
                 </div>
                 <div class="help-example-code">| Feature    | Status | Priority |
 |------------|:------:|---------:|
@@ -705,7 +2502,7 @@ Below the line
 
 ***
 
-Another section">Copy</button>
+Another section">Paste Example</button>
                 </div>
                 <div class="help-example-code">Above the line
 ---
@@ -745,7 +2542,7 @@ def hello_world():
 
 ---
 
-*Happy documenting!*">Copy</button>
+*Happy documenting!*">Paste Example</button>
                 </div>
                 <div class="help-example-code"># Project Documentation
 ## Overview
@@ -769,7 +2566,1633 @@ def hello_world():
 *Happy documenting!* 🚀</div>
             </div>
         </div>
+        </div>
+        </div>
     </div>
     <script src="bundle.js"></script>
+    <script>
+        // Tab functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab');
+            const editorContainer = document.getElementById('editor-container');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class and aria-selected from all tabs
+                    tabs.forEach(t => {
+                        t.classList.remove('active');
+                        t.setAttribute('aria-selected', 'false');
+                    });
+                    // Add active class and aria-selected to clicked tab
+                    this.classList.add('active');
+                    this.setAttribute('aria-selected', 'true');
+                    
+                    const tabType = this.getAttribute('data-tab');
+                    
+                    // Update editor container based on tab
+                    if (tabType === 'editor') {
+                        editorContainer.style.display = 'flex';
+                        editorContainer.innerHTML = `
+                            <div class="editor-pane" style="flex: 1;">
+                                <div class="editor-container">
+                                    <div class="editor-header">
+                                        <div class="editor-stats">
+                                            <div class="stat-item">
+                                                <span>📝</span>
+                                                <span class="stat-value" id="word-count">0</span>
+                                                <span>words</span>
+                                            </div>
+                                            <div class="stat-item">
+                                                <span>📖</span>
+                                                <span class="stat-value" id="reading-time">0</span>
+                                                <span>min read</span>
+                                            </div>
+                                            <div class="stat-item">
+                                                <span>📄</span>
+                                                <span class="stat-value" id="line-count">1</span>
+                                                <span>lines</span>
+                                            </div>
+                                        </div>
+                                        <div class="editor-controls">
+                                            <button class="editor-btn" id="find-btn" title="Find (Ctrl+F)">🔍 Find</button>
+                                            <button class="editor-btn" id="replace-btn" title="Replace (Ctrl+H)">🔄 Replace</button>
+                                            <button class="editor-btn" id="shortcuts-btn" title="Keyboard Shortcuts">⌨️ Shortcuts</button>
+                                            <div class="export-options" id="export-options">
+                                                <div class="export-option" data-format="pdf">
+                                                    <span class="export-option-icon">📄</span>
+                                                    <span>Export PDF</span>
+                                                </div>
+                                                <div class="export-option" data-format="html">
+                                                    <span class="export-option-icon">🌐</span>
+                                                    <span>Export HTML</span>
+                                                </div>
+                                                <div class="export-option" data-format="txt">
+                                                    <span class="export-option-icon">📝</span>
+                                                    <span>Export Text</span>
+                                                </div>
+                                            </div>
+                                            <button class="editor-btn" id="export-btn" title="Export Options">📤 Export</button>
+                                        </div>
+                                    </div>
+                                    <div style="position: relative;">
+                                        <textarea id="markdown-editor" class="editor" placeholder="# Welcome to MD Reader Pro
+Start typing your markdown here...
+
+## Features
+- **Bold text** and *italic text*
+- `Code snippets` and ```code blocks```
+- [Links](https://example.com) and ![Images](image.jpg)
+- > Blockquotes
+- - Lists
+- 1. Numbered lists
+
+## Keyboard Shortcuts
+- **Ctrl+B** - Bold text
+- **Ctrl+I** - Italic text
+- **Ctrl+K** - Insert link
+- **Ctrl+Shift+K** - Code block
+- **Ctrl+/** - Toggle comment
+- **Ctrl+F** - Find text
+- **Ctrl+H** - Find and replace
+- **Ctrl+S** - Save (coming soon)
+- **Ctrl+Z** - Undo
+- **Ctrl+Y** - Redo
+
+Happy writing! 🚀"></textarea>
+                                        <div class="autocomplete-dropdown" id="autocomplete-dropdown"></div>
+                                        <div class="reading-stats" id="reading-stats">
+                                            <div class="reading-stat">
+                                                <span>📊</span>
+                                                <span class="reading-stat-value" id="char-count">0</span>
+                                                <span>characters</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (tabType === 'preview') {
+                        editorContainer.style.display = 'flex';
+                        editorContainer.innerHTML = `
+                            <div class="preview-pane" style="flex: 1;">
+                                <div id="markdown-preview" class="preview">
+                                    <h1>Welcome to MD Reader Pro</h1>
+                                    <p>Start typing in the editor to see your markdown rendered here in real-time!</p>
+                                </div>
+                            </div>
+                        `;
+                    } else if (tabType === 'split') {
+                        editorContainer.style.display = 'flex';
+                        editorContainer.innerHTML = `
+                            <div class="editor-pane" style="flex: 1;">
+                                <textarea id="markdown-editor" class="editor" placeholder="# Welcome to MD Reader Pro
+Start typing your markdown here..."></textarea>
+                            </div>
+                            <div class="preview-pane" style="flex: 1;">
+                                <div id="markdown-preview" class="preview">
+                                    <h1>Welcome to MD Reader Pro</h1>
+                                    <p>Start typing in the editor to see your markdown rendered here in real-time!</p>
+                                </div>
+                            </div>
+                        `;
+                    } else if (tabType === 'annotation') {
+                        editorContainer.style.display = 'flex';
+                        editorContainer.innerHTML = `
+                            <div class="editor-pane" style="flex: 1;">
+                                <div style="padding: 16px; background: #111; border-bottom: 1px solid #333;">
+                                    <h3 style="margin: 0 0 12px 0; color: #ffd700;">📝 Annotation Mode</h3>
+                                    <p style="margin: 0; color: #888; font-size: 14px;">Add comments, notes, and annotations to your markdown</p>
+                                </div>
+                                <textarea id="markdown-editor" class="editor" placeholder="# Welcome to MD Reader Pro
+Start typing your markdown here...
+
+<!-- Add your annotations here -->
+<!-- TODO: Add more features -->
+<!-- NOTE: This is a great idea! -->"></textarea>
+                            </div>
+                        `;
+                    } else if (tabType === 'reader') {
+                        editorContainer.style.display = 'flex';
+                        editorContainer.innerHTML = `
+                            <div class="preview-pane" style="flex: 1;">
+                                <div style="padding: 16px; background: #111; border-bottom: 1px solid #333;">
+                                    <h3 style="margin: 0 0 12px 0; color: #ffd700;">📖 Reader Mode</h3>
+                                    <p style="margin: 0; color: #888; font-size: 14px;">Distraction-free reading experience with enhanced typography</p>
+                                </div>
+                                <div id="markdown-preview" class="preview" style="padding: 24px; font-size: 16px; line-height: 1.8;">
+                                    <h1>Welcome to MD Reader Pro</h1>
+                                    <p>Start typing in the editor to see your markdown rendered here in real-time!</p>
+                                    <p>Reader mode provides an optimized reading experience with enhanced typography and spacing.</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Reinitialize the editor if it exists
+                    if (window.markdownEditor) {
+                        window.markdownEditor.init();
+                    }
+                    
+                    // Update status indicator
+                    updateStatus(tabType);
+                });
+            });
+            
+            // Status indicator functionality
+            function updateStatus(mode) {
+                const statusIndicator = document.getElementById('status-indicator');
+                const statusDot = statusIndicator.querySelector('.status-dot');
+                const statusText = statusIndicator.querySelector('span');
+                
+                const statuses = {
+                    'editor': { text: 'Editing', color: '#00ff00' },
+                    'preview': { text: 'Previewing', color: '#00d4ff' },
+                    'split': { text: 'Split View', color: '#ffd700' },
+                    'annotation': { text: 'Annotating', color: '#ff6b6b' },
+                    'reader': { text: 'Reading', color: '#4ecdc4' }
+                };
+                
+                const status = statuses[mode] || { text: 'Ready', color: '#00ff00' };
+                statusText.textContent = status.text;
+                statusDot.style.background = status.color;
+            }
+            
+            // Future-ready: Auto-save indicator
+            let autoSaveTimeout;
+            function showAutoSave() {
+                const statusIndicator = document.getElementById('status-indicator');
+                const statusText = statusIndicator.querySelector('span');
+                const originalText = statusText.textContent;
+                
+                statusText.textContent = 'Saving...';
+                statusIndicator.style.background = '#333';
+                
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(() => {
+                    statusText.textContent = originalText;
+                    statusIndicator.style.background = '#222';
+                }, 1000);
+            }
+            
+            // Future-ready: Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 's':
+                            e.preventDefault();
+                            showAutoSave();
+                            break;
+                        case '1':
+                            e.preventDefault();
+                            document.querySelector('[data-tab="editor"]').click();
+                            break;
+                        case '2':
+                            e.preventDefault();
+                            document.querySelector('[data-tab="preview"]').click();
+                            break;
+                        case '3':
+                            e.preventDefault();
+                            document.querySelector('[data-tab="split"]').click();
+                            break;
+                        case '4':
+                            e.preventDefault();
+                            document.querySelector('[data-tab="annotation"]').click();
+                            break;
+                        case '5':
+                            e.preventDefault();
+                            document.querySelector('[data-tab="reader"]').click();
+                            break;
+                    }
+                }
+            });
+            
+            // Initialize status
+            updateStatus('editor');
+        });
+    </script>
+    
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settings-panel">
+        <div class="color-picker">
+            <h3>🎨 Colors</h3>
+            <div class="color-grid">
+                <div class="color-option active" data-color="#00d4ff" data-glow="rgba(0, 212, 255, 0.4)">
+                    <div class="color-preview" style="background: #00d4ff;"></div>
+                    <div class="color-name">Finn</div>
+                </div>
+                <div class="color-option" data-color="#ffd700" data-glow="rgba(255, 215, 0, 0.4)">
+                    <div class="color-preview" style="background: #ffd700;"></div>
+                    <div class="color-name">Jake</div>
+                </div>
+                <div class="color-option" data-color="#ff69b4" data-glow="rgba(255, 105, 180, 0.4)">
+                    <div class="color-preview" style="background: #ff69b4;"></div>
+                    <div class="color-name">Bubblegum</div>
+                </div>
+                <div class="color-option" data-color="#8a2be2" data-glow="rgba(138, 43, 226, 0.4)">
+                    <div class="color-preview" style="background: #8a2be2;"></div>
+                    <div class="color-name">Marceline</div>
+                </div>
+                <div class="color-option" data-color="#00ffff" data-glow="rgba(0, 255, 255, 0.4)">
+                    <div class="color-preview" style="background: #00ffff;"></div>
+                    <div class="color-name">Ice King</div>
+                </div>
+                <div class="color-option" data-color="#9370db" data-glow="rgba(147, 112, 219, 0.4)">
+                    <div class="color-preview" style="background: #9370db;"></div>
+                    <div class="color-name">Lumpy</div>
+                </div>
+                <div class="color-option" data-color="#ff6347" data-glow="rgba(255, 99, 71, 0.4)">
+                    <div class="color-preview" style="background: #ff6347;"></div>
+                    <div class="color-name">Flame</div>
+                </div>
+                <div class="color-option" data-color="#32cd32" data-glow="rgba(50, 205, 50, 0.4)">
+                    <div class="color-preview" style="background: #32cd32;"></div>
+                    <div class="color-name">BMO</div>
+                </div>
+                <div class="color-option" data-color="#87ceeb" data-glow="rgba(135, 206, 235, 0.4)">
+                    <div class="color-preview" style="background: #87ceeb;"></div>
+                    <div class="color-name">Cotton</div>
+                </div>
+                <div class="color-option" data-color="rainbow" data-glow="rgba(255, 105, 180, 0.4)">
+                    <div class="color-preview rainbow-preview"></div>
+                    <div class="color-name">Rainbow</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Command Palette functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const commandToggle = document.getElementById('command-toggle');
+            const commandPalette = document.getElementById('command-palette');
+            const commandInput = document.getElementById('command-input');
+            const commandResults = document.getElementById('command-results');
+            const commandItems = document.querySelectorAll('.command-item');
+            let selectedIndex = 0;
+            
+            // Open command palette
+            commandToggle.addEventListener('click', () => {
+                commandPalette.classList.add('show');
+                setTimeout(() => commandInput.focus(), 100);
+            });
+            
+            // Close command palette
+            commandPalette.addEventListener('click', (e) => {
+                if (e.target === commandPalette) {
+                    commandPalette.classList.remove('show');
+                    commandInput.value = '';
+                    selectedIndex = 0;
+                    updateSelection();
+                }
+            });
+            
+            // Handle escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && commandPalette.classList.contains('show')) {
+                    commandPalette.classList.remove('show');
+                    commandInput.value = '';
+                    selectedIndex = 0;
+                    updateSelection();
+                }
+                
+                // Open command palette with Cmd+K or Ctrl+K
+                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    e.preventDefault();
+                    commandPalette.classList.add('show');
+                    setTimeout(() => commandInput.focus(), 100);
+                }
+            });
+            
+            // Filter commands
+            commandInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                commandItems.forEach((item, index) => {
+                    const text = item.querySelector('.command-text').textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                selectedIndex = 0;
+                updateSelection();
+            });
+            
+            // Handle keyboard navigation
+            commandInput.addEventListener('keydown', (e) => {
+                const visibleItems = Array.from(commandItems).filter(item => 
+                    item.style.display !== 'none'
+                );
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, visibleItems.length - 1);
+                    updateSelection();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateSelection();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedItem = visibleItems[selectedIndex];
+                    if (selectedItem) {
+                        executeCommand(selectedItem.getAttribute('data-command'));
+                        commandPalette.classList.remove('show');
+                        commandInput.value = '';
+                        selectedIndex = 0;
+                        updateSelection();
+                    }
+                }
+            });
+            
+            // Update selection highlighting
+            function updateSelection() {
+                const visibleItems = Array.from(commandItems).filter(item => 
+                    item.style.display !== 'none'
+                );
+                commandItems.forEach(item => item.classList.remove('selected'));
+                if (visibleItems[selectedIndex]) {
+                    visibleItems[selectedIndex].classList.add('selected');
+                }
+            }
+            
+            // Execute commands
+            function executeCommand(command) {
+                switch(command) {
+                    case 'new-file':
+                        document.querySelector('[data-tab="editor"]').click();
+                        const editor = document.getElementById('markdown-editor');
+                        if (editor) {
+                            editor.value = '';
+                            editor.focus();
+                        }
+                        break;
+                    case 'open-file':
+                        document.getElementById('file-input').click();
+                        break;
+                    case 'save-file':
+                        // Future: implement save functionality
+                        console.log('Save file command');
+                        break;
+                    case 'toggle-preview':
+                        document.querySelector('[data-tab="preview"]').click();
+                        break;
+                    case 'toggle-split':
+                        document.querySelector('[data-tab="split"]').click();
+                        break;
+                    case 'toggle-help':
+                        document.getElementById('help-toggle').click();
+                        break;
+                    case 'toggle-settings':
+                        document.getElementById('settings-toggle').click();
+                        break;
+                    case 'focus-editor':
+                        document.querySelector('[data-tab="editor"]').click();
+                        const editor2 = document.getElementById('markdown-editor');
+                        if (editor2) editor2.focus();
+                        break;
+                }
+            }
+        });
+        
+        // Settings functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const settingsToggle = document.getElementById('settings-toggle');
+            const settingsPanel = document.getElementById('settings-panel');
+            const colorOptions = document.querySelectorAll('.color-option');
+            
+            // Settings panel toggle
+            settingsToggle.addEventListener('click', () => {
+                settingsPanel.classList.toggle('show');
+            });
+            
+            // Close settings when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!settingsPanel.contains(e.target) && !settingsToggle.contains(e.target)) {
+                    settingsPanel.classList.remove('show');
+                }
+            });
+            
+            // Color selection
+            colorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    // Remove active class from all options
+                    colorOptions.forEach(opt => opt.classList.remove('active'));
+                    
+                    // Add active class to selected option
+                    option.classList.add('active');
+                    
+                    // Get color data
+                    const color = option.getAttribute('data-color');
+                    const glow = option.getAttribute('data-glow');
+                    
+                    // Apply color change
+                    if (color === 'rainbow') {
+                        // Special handling for rainbow
+                        document.documentElement.style.setProperty('--accent-color', '#ff69b4');
+                        document.documentElement.style.setProperty('--accent-glow', glow);
+                        
+                        // Add rainbow animation to active separators
+                        const activeSeparators = document.querySelectorAll('.tab.active:not(:last-child)::after');
+                        activeSeparators.forEach(sep => {
+                            sep.style.background = 'linear-gradient(45deg, #ff69b4, #00d4ff, #32cd32, #ffd700)';
+                            sep.style.animation = 'rainbow-shift 3s ease-in-out infinite';
+                        });
+                    } else {
+                        // Regular color
+                        document.documentElement.style.setProperty('--accent-color', color);
+                        document.documentElement.style.setProperty('--accent-glow', glow);
+                        
+                        // Remove rainbow animation
+                        const activeSeparators = document.querySelectorAll('.tab.active:not(:last-child)::after');
+                        activeSeparators.forEach(sep => {
+                            sep.style.background = color;
+                            sep.style.animation = 'none';
+                        });
+                    }
+                    
+                    // Save to localStorage
+                    localStorage.setItem('accent-color', color);
+                    localStorage.setItem('accent-glow', glow);
+                });
+            });
+            
+            // Load saved color on page load
+            const savedColor = localStorage.getItem('accent-color') || '#00d4ff';
+            const savedGlow = localStorage.getItem('accent-glow') || 'rgba(0, 212, 255, 0.4)';
+            
+            document.documentElement.style.setProperty('--accent-color', savedColor);
+            document.documentElement.style.setProperty('--accent-glow', savedGlow);
+            
+            // Set active color option
+            const activeOption = document.querySelector(`[data-color="${savedColor}"]`);
+            if (activeOption) {
+                colorOptions.forEach(opt => opt.classList.remove('active'));
+                activeOption.classList.add('active');
+            }
+        });
+        
+        // Phase 1: Essential 2025 Standards - Enhanced JavaScript
+        
+        // Toast notification system
+        class ToastManager {
+            constructor() {
+                this.container = this.createContainer();
+                this.toasts = new Map();
+            }
+            
+            createContainer() {
+                const container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                `;
+                document.body.appendChild(container);
+                return container;
+            }
+            
+            show(message, type = 'info', duration = 5000) {
+                const id = Date.now().toString();
+                const toast = this.createToast(id, message, type);
+                this.container.appendChild(toast);
+                this.toasts.set(id, toast);
+                
+                // Trigger animation
+                setTimeout(() => toast.classList.add('show'), 10);
+                
+                // Auto remove
+                if (duration > 0) {
+                    setTimeout(() => this.hide(id), duration);
+                }
+                
+                return id;
+            }
+            
+            createToast(id, message, type) {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `
+                    <div class="toast-content">
+                        <div class="toast-icon">${this.getIcon(type)}</div>
+                        <div class="toast-message">${message}</div>
+                        <button class="toast-close" onclick="toastManager.hide('${id}')" aria-label="Close notification">×</button>
+                    </div>
+                `;
+                return toast;
+            }
+            
+            getIcon(type) {
+                const icons = {
+                    success: '✅',
+                    error: '❌',
+                    warning: '⚠️',
+                    info: 'ℹ️'
+                };
+                return icons[type] || icons.info;
+            }
+            
+            hide(id) {
+                const toast = this.toasts.get(id);
+                if (toast) {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.parentNode.removeChild(toast);
+                        }
+                        this.toasts.delete(id);
+                    }, 300);
+                }
+            }
+        }
+        
+        // Initialize toast manager
+        const toastManager = new ToastManager();
+        
+        // Enhanced error handling
+        window.addEventListener('error', (event) => {
+            console.error('Application error:', event.error);
+            toastManager.show('An unexpected error occurred. Please try again.', 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            toastManager.show('An error occurred while processing your request.', 'error');
+        });
+        
+        // Loading state management
+        class LoadingManager {
+            constructor() {
+                this.loadingElements = new Set();
+            }
+            
+            show(element, message = 'Loading...') {
+                if (typeof element === 'string') {
+                    element = document.querySelector(element);
+                }
+                
+                if (element) {
+                    element.classList.add('loading');
+                    element.setAttribute('aria-busy', 'true');
+                    element.setAttribute('aria-label', message);
+                    this.loadingElements.add(element);
+                }
+            }
+            
+            hide(element) {
+                if (typeof element === 'string') {
+                    element = document.querySelector(element);
+                }
+                
+                if (element) {
+                    element.classList.remove('loading');
+                    element.removeAttribute('aria-busy');
+                    element.removeAttribute('aria-label');
+                    this.loadingElements.delete(element);
+                }
+            }
+            
+            hideAll() {
+                this.loadingElements.forEach(element => this.hide(element));
+            }
+        }
+        
+        const loadingManager = new LoadingManager();
+        
+        // Enhanced file handling with better error messages
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.match(/\.(md|txt|markdown)$/i)) {
+                toastManager.show('Please select a valid markdown file (.md, .txt, .markdown)', 'error');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                toastManager.show('File size too large. Please select a file smaller than 10MB.', 'error');
+                return;
+            }
+            
+            loadingManager.show('#editor-container', 'Loading file...');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                const editor = document.getElementById('markdown-editor');
+                if (editor) {
+                    editor.value = content;
+                    editor.dispatchEvent(new Event('input'));
+                    toastManager.show(`File "${file.name}" loaded successfully`, 'success');
+                }
+                loadingManager.hide('#editor-container');
+            };
+            
+            reader.onerror = () => {
+                toastManager.show('Failed to read file. Please try again.', 'error');
+                loadingManager.hide('#editor-container');
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // Enhanced keyboard navigation
+        function setupKeyboardNavigation() {
+            document.addEventListener('keydown', (e) => {
+                // Escape key handling
+                if (e.key === 'Escape') {
+                    // Close any open modals/panels
+                    const openPanels = document.querySelectorAll('.settings-panel.show, .help-bar.show, .command-palette.show');
+                    openPanels.forEach(panel => panel.classList.remove('show'));
+                }
+                
+                // Tab navigation enhancement
+                if (e.key === 'Tab') {
+                    const focusableElements = document.querySelectorAll(
+                        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                    );
+                    const firstElement = focusableElements[0];
+                    const lastElement = focusableElements[focusableElements.length - 1];
+                    
+                    if (e.shiftKey && document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
+                    } else if (!e.shiftKey && document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
+                }
+            });
+        }
+        
+        // Phase 2: Advanced Animations & Micro-interactions JavaScript
+        
+        // Scroll-triggered animations
+        class ScrollAnimations {
+            constructor() {
+                this.observer = new IntersectionObserver(
+                    (entries) => this.handleIntersection(entries),
+                    { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+                );
+                this.init();
+            }
+            
+            init() {
+                const elements = document.querySelectorAll('.scroll-reveal');
+                elements.forEach(el => this.observer.observe(el));
+            }
+            
+            handleIntersection(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                        this.observer.unobserve(entry.target);
+                    }
+                });
+            }
+        }
+        
+        // Touch gesture support
+        class TouchGestures {
+            constructor() {
+                this.startX = 0;
+                this.startY = 0;
+                this.currentX = 0;
+                this.currentY = 0;
+                this.isDragging = false;
+                this.init();
+            }
+            
+            init() {
+                const swipeableElements = document.querySelectorAll('.swipeable');
+                swipeableElements.forEach(el => {
+                    el.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
+                    el.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: true });
+                    el.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: true });
+                });
+            }
+            
+            handleTouchStart(e) {
+                this.startX = e.touches[0].clientX;
+                this.startY = e.touches[0].clientY;
+                this.isDragging = true;
+            }
+            
+            handleTouchMove(e) {
+                if (!this.isDragging) return;
+                
+                this.currentX = e.touches[0].clientX;
+                this.currentY = e.touches[0].clientY;
+            }
+            
+            handleTouchEnd(e) {
+                if (!this.isDragging) return;
+                
+                const deltaX = this.currentX - this.startX;
+                const deltaY = this.currentY - this.startY;
+                const threshold = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
+                    if (deltaX > 0) {
+                        this.handleSwipeRight(e.target);
+                    } else {
+                        this.handleSwipeLeft(e.target);
+                    }
+                }
+                
+                this.isDragging = false;
+            }
+            
+            handleSwipeLeft(element) {
+                element.classList.add('swipe-left');
+                setTimeout(() => element.classList.remove('swipe-left'), 300);
+                
+                // Switch to next tab
+                const tabs = document.querySelectorAll('.tab');
+                const currentTab = document.querySelector('.tab.active');
+                const currentIndex = Array.from(tabs).indexOf(currentTab);
+                const nextIndex = (currentIndex + 1) % tabs.length;
+                tabs[nextIndex].click();
+            }
+            
+            handleSwipeRight(element) {
+                element.classList.add('swipe-right');
+                setTimeout(() => element.classList.remove('swipe-right'), 300);
+                
+                // Switch to previous tab
+                const tabs = document.querySelectorAll('.tab');
+                const currentTab = document.querySelector('.tab.active');
+                const currentIndex = Array.from(tabs).indexOf(currentTab);
+                const prevIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1;
+                tabs[prevIndex].click();
+            }
+        }
+        
+        // Magnetic effect for interactive elements
+        class MagneticEffect {
+            constructor() {
+                this.magneticElements = document.querySelectorAll('.magnetic');
+                this.init();
+            }
+            
+            init() {
+                this.magneticElements.forEach(el => {
+                    el.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                    el.addEventListener('mouseleave', (e) => this.handleMouseLeave(e));
+                });
+            }
+            
+            handleMouseMove(e) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                
+                const distance = Math.sqrt(x * x + y * y);
+                const maxDistance = 50;
+                
+                if (distance < maxDistance) {
+                    const strength = (maxDistance - distance) / maxDistance;
+                    const moveX = x * strength * 0.1;
+                    const moveY = y * strength * 0.1;
+                    
+                    e.currentTarget.style.transform = `translate(${moveX}px, ${moveY}px) scale(1.05)`;
+                }
+            }
+            
+            handleMouseLeave(e) {
+                e.currentTarget.style.transform = '';
+            }
+        }
+        
+        // Stagger animations for lists
+        class StaggerAnimations {
+            constructor() {
+                this.init();
+            }
+            
+            init() {
+                const lists = document.querySelectorAll('.command-palette-results, .help-section');
+                lists.forEach(list => {
+                    const items = list.querySelectorAll('.command-item, .help-example');
+                    items.forEach((item, index) => {
+                        item.classList.add('stagger-item');
+                        item.style.animationDelay = `${index * 0.1}s`;
+                    });
+                });
+            }
+        }
+        
+        // Page transition manager
+        class PageTransitionManager {
+            constructor() {
+                this.currentPage = null;
+                this.init();
+            }
+            
+            init() {
+                // Add transition classes to content areas
+                const contentAreas = document.querySelectorAll('.editor-container, .preview-pane');
+                contentAreas.forEach(area => {
+                    area.classList.add('page-transition');
+                });
+            }
+            
+            transitionTo(element, callback) {
+                if (this.currentPage) {
+                    this.currentPage.classList.add('exit');
+                }
+                
+                setTimeout(() => {
+                    if (this.currentPage) {
+                        this.currentPage.classList.remove('exit');
+                    }
+                    
+                    element.classList.add('enter');
+                    this.currentPage = element;
+                    
+                    if (callback) callback();
+                }, 200);
+            }
+        }
+        
+        // Performance monitoring
+        class PerformanceMonitor {
+            constructor() {
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 60;
+                this.init();
+            }
+            
+            init() {
+                this.measureFPS();
+                this.optimizeAnimations();
+            }
+            
+            measureFPS() {
+                const measure = (currentTime) => {
+                    this.frameCount++;
+                    
+                    if (currentTime - this.lastTime >= 1000) {
+                        this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                        this.frameCount = 0;
+                        this.lastTime = currentTime;
+                        
+                        // Adjust animations based on performance
+                        if (this.fps < 30) {
+                            this.reduceAnimations();
+                        } else if (this.fps > 50) {
+                            this.enableAnimations();
+                        }
+                    }
+                    
+                    requestAnimationFrame(measure);
+                };
+                
+                requestAnimationFrame(measure);
+            }
+            
+            reduceAnimations() {
+                document.body.classList.add('reduce-motion');
+                console.log('Reducing animations for better performance');
+            }
+            
+            enableAnimations() {
+                document.body.classList.remove('reduce-motion');
+            }
+            
+            optimizeAnimations() {
+                // Add GPU acceleration to animated elements
+                const animatedElements = document.querySelectorAll('.tab, .toolbar-btn, .status-indicator');
+                animatedElements.forEach(el => {
+                    el.classList.add('gpu-accelerated');
+                });
+            }
+        }
+        
+        // Phase 3: Enhanced Editor Features & Productivity Tools JavaScript
+        
+        // Word count and reading time calculator
+        class TextAnalyzer {
+            constructor() {
+                this.editor = null;
+                this.wordCountEl = null;
+                this.readingTimeEl = null;
+                this.lineCountEl = null;
+                this.charCountEl = null;
+                this.init();
+            }
+            
+            init() {
+                // Listen for editor updates
+                document.addEventListener('input', (e) => {
+                    if (e.target.id === 'markdown-editor') {
+                        this.updateStats(e.target.value);
+                    }
+                });
+            }
+            
+            updateStats(text) {
+                const words = this.countWords(text);
+                const characters = text.length;
+                const lines = text.split('\n').length;
+                const readingTime = Math.ceil(words / 200); // Average reading speed: 200 words per minute
+                
+                // Update UI elements
+                const wordCountEl = document.getElementById('word-count');
+                const readingTimeEl = document.getElementById('reading-time');
+                const lineCountEl = document.getElementById('line-count');
+                const charCountEl = document.getElementById('char-count');
+                
+                if (wordCountEl) wordCountEl.textContent = words;
+                if (readingTimeEl) readingTimeEl.textContent = readingTime;
+                if (lineCountEl) lineCountEl.textContent = lines;
+                if (charCountEl) charCountEl.textContent = characters;
+            }
+            
+            countWords(text) {
+                return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+            }
+        }
+        
+        // Find and replace functionality
+        class FindReplaceManager {
+            constructor() {
+                this.modal = null;
+                this.findInput = null;
+                this.replaceInput = null;
+                this.editor = null;
+                this.currentMatch = -1;
+                this.matches = [];
+                this.init();
+            }
+            
+            init() {
+                this.modal = document.getElementById('find-replace-modal');
+                this.findInput = document.getElementById('find-input');
+                this.replaceInput = document.getElementById('replace-input');
+                
+                // Event listeners
+                document.getElementById('find-btn')?.addEventListener('click', () => this.openModal('find'));
+                document.getElementById('replace-btn')?.addEventListener('click', () => this.openModal('replace'));
+                document.getElementById('find-replace-close')?.addEventListener('click', () => this.closeModal());
+                document.getElementById('find-next')?.addEventListener('click', () => this.findNext());
+                document.getElementById('find-prev')?.addEventListener('click', () => this.findPrev());
+                document.getElementById('replace-current')?.addEventListener('click', () => this.replaceCurrent());
+                document.getElementById('replace-all')?.addEventListener('click', () => this.replaceAll());
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 'f') {
+                        e.preventDefault();
+                        this.openModal('find');
+                    } else if (e.ctrlKey && e.key === 'h') {
+                        e.preventDefault();
+                        this.openModal('replace');
+                    }
+                });
+            }
+            
+            openModal(mode) {
+                this.modal.classList.add('show');
+                this.findInput.focus();
+                if (mode === 'replace') {
+                    this.replaceInput.focus();
+                }
+            }
+            
+            closeModal() {
+                this.modal.classList.remove('show');
+                this.clearHighlights();
+            }
+            
+            findNext() {
+                const searchText = this.findInput.value;
+                if (!searchText) return;
+                
+                this.editor = document.getElementById('markdown-editor');
+                if (!this.editor) return;
+                
+                const text = this.editor.value;
+                const startPos = this.editor.selectionStart;
+                const searchStart = this.currentMatch >= 0 ? this.currentMatch + 1 : startPos;
+                const foundPos = text.indexOf(searchText, searchStart);
+                
+                if (foundPos !== -1) {
+                    this.editor.setSelectionRange(foundPos, foundPos + searchText.length);
+                    this.editor.focus();
+                    this.currentMatch = foundPos;
+                } else if (searchStart > 0) {
+                    // Wrap around to beginning
+                    const wrappedPos = text.indexOf(searchText, 0);
+                    if (wrappedPos !== -1) {
+                        this.editor.setSelectionRange(wrappedPos, wrappedPos + searchText.length);
+                        this.editor.focus();
+                        this.currentMatch = wrappedPos;
+                    }
+                }
+            }
+            
+            findPrev() {
+                const searchText = this.findInput.value;
+                if (!searchText) return;
+                
+                this.editor = document.getElementById('markdown-editor');
+                if (!this.editor) return;
+                
+                const text = this.editor.value;
+                const startPos = this.editor.selectionStart;
+                const searchEnd = this.currentMatch >= 0 ? this.currentMatch : startPos;
+                const foundPos = text.lastIndexOf(searchText, searchEnd - 1);
+                
+                if (foundPos !== -1) {
+                    this.editor.setSelectionRange(foundPos, foundPos + searchText.length);
+                    this.editor.focus();
+                    this.currentMatch = foundPos;
+                } else if (searchEnd < text.length) {
+                    // Wrap around to end
+                    const wrappedPos = text.lastIndexOf(searchText, text.length);
+                    if (wrappedPos !== -1) {
+                        this.editor.setSelectionRange(wrappedPos, wrappedPos + searchText.length);
+                        this.editor.focus();
+                        this.currentMatch = wrappedPos;
+                    }
+                }
+            }
+            
+            replaceCurrent() {
+                const searchText = this.findInput.value;
+                const replaceText = this.replaceInput.value;
+                if (!searchText) return;
+                
+                this.editor = document.getElementById('markdown-editor');
+                if (!this.editor) return;
+                
+                const selectedText = this.editor.value.substring(this.editor.selectionStart, this.editor.selectionEnd);
+                if (selectedText === searchText) {
+                    this.editor.setRangeText(replaceText, this.editor.selectionStart, this.editor.selectionEnd);
+                    this.editor.focus();
+                }
+            }
+            
+            replaceAll() {
+                const searchText = this.findInput.value;
+                const replaceText = this.replaceInput.value;
+                if (!searchText) return;
+                
+                this.editor = document.getElementById('markdown-editor');
+                if (!this.editor) return;
+                
+                const text = this.editor.value;
+                const newText = text.replace(new RegExp(searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replaceText);
+                this.editor.value = newText;
+                this.editor.focus();
+                
+                toastManager.show(`Replaced all occurrences of "${searchText}"`, 'success');
+            }
+            
+            clearHighlights() {
+                // Clear any search highlights
+                this.currentMatch = -1;
+                this.matches = [];
+            }
+        }
+        
+        // Auto-complete functionality
+        class AutoCompleteManager {
+            constructor() {
+                this.dropdown = null;
+                this.editor = null;
+                this.snippets = this.getMarkdownSnippets();
+                this.init();
+            }
+            
+            init() {
+                this.dropdown = document.getElementById('autocomplete-dropdown');
+                this.editor = document.getElementById('markdown-editor');
+                
+                if (this.editor) {
+                    this.editor.addEventListener('input', (e) => this.handleInput(e));
+                    this.editor.addEventListener('keydown', (e) => this.handleKeydown(e));
+                }
+            }
+            
+            getMarkdownSnippets() {
+                return [
+                    { trigger: '# ', snippet: '# Heading 1', description: 'Heading 1' },
+                    { trigger: '## ', snippet: '## Heading 2', description: 'Heading 2' },
+                    { trigger: '### ', snippet: '### Heading 3', description: 'Heading 3' },
+                    { trigger: '**', snippet: '**bold text**', description: 'Bold text' },
+                    { trigger: '*', snippet: '*italic text*', description: 'Italic text' },
+                    { trigger: '`', snippet: '`code`', description: 'Inline code' },
+                    { trigger: '```', snippet: '```\ncode block\n```', description: 'Code block' },
+                    { trigger: '- ', snippet: '- List item', description: 'Bullet list' },
+                    { trigger: '1. ', snippet: '1. Numbered item', description: 'Numbered list' },
+                    { trigger: '> ', snippet: '> Blockquote', description: 'Blockquote' },
+                    { trigger: '[', snippet: '[Link text](url)', description: 'Link' },
+                    { trigger: '![', snippet: '![Alt text](image-url)', description: 'Image' },
+                    { trigger: '---', snippet: '---', description: 'Horizontal rule' },
+                    { trigger: '|', snippet: '| Column 1 | Column 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |', description: 'Table' }
+                ];
+            }
+            
+            handleInput(e) {
+                const cursorPos = e.target.selectionStart;
+                const text = e.target.value;
+                const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+                const currentLine = text.substring(lineStart, cursorPos);
+                
+                const matches = this.snippets.filter(snippet => 
+                    snippet.trigger.startsWith(currentLine) && snippet.trigger !== currentLine
+                );
+                
+                if (matches.length > 0) {
+                    this.showDropdown(matches, e.target, cursorPos);
+                } else {
+                    this.hideDropdown();
+                }
+            }
+            
+            handleKeydown(e) {
+                if (this.dropdown.style.display === 'block') {
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        this.selectNext();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        this.selectPrev();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.insertSelected();
+                    } else if (e.key === 'Escape') {
+                        this.hideDropdown();
+                    }
+                }
+            }
+            
+            showDropdown(matches, editor, cursorPos) {
+                this.dropdown.innerHTML = '';
+                this.selectedIndex = 0;
+                
+                matches.forEach((match, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'autocomplete-item';
+                    if (index === 0) item.classList.add('selected');
+                    
+                    item.innerHTML = `
+                        <div>${match.description}</div>
+                        <div class="autocomplete-snippet">${match.snippet}</div>
+                    `;
+                    
+                    item.addEventListener('click', () => this.insertSnippet(match, editor, cursorPos));
+                    this.dropdown.appendChild(item);
+                });
+                
+                this.dropdown.style.display = 'block';
+                this.matches = matches;
+            }
+            
+            hideDropdown() {
+                this.dropdown.style.display = 'none';
+            }
+            
+            selectNext() {
+                const items = this.dropdown.querySelectorAll('.autocomplete-item');
+                if (this.selectedIndex < items.length - 1) {
+                    items[this.selectedIndex].classList.remove('selected');
+                    this.selectedIndex++;
+                    items[this.selectedIndex].classList.add('selected');
+                }
+            }
+            
+            selectPrev() {
+                const items = this.dropdown.querySelectorAll('.autocomplete-item');
+                if (this.selectedIndex > 0) {
+                    items[this.selectedIndex].classList.remove('selected');
+                    this.selectedIndex--;
+                    items[this.selectedIndex].classList.add('selected');
+                }
+            }
+            
+            insertSelected() {
+                if (this.matches && this.matches[this.selectedIndex]) {
+                    this.insertSnippet(this.matches[this.selectedIndex], this.editor, this.editor.selectionStart);
+                }
+            }
+            
+            insertSnippet(snippet, editor, cursorPos) {
+                const text = editor.value;
+                const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+                const newText = text.substring(0, lineStart) + snippet.snippet + text.substring(cursorPos);
+                editor.value = newText;
+                editor.focus();
+                this.hideDropdown();
+            }
+        }
+        
+        // Export functionality
+        class ExportManager {
+            constructor() {
+                this.init();
+            }
+            
+            init() {
+                const exportBtn = document.getElementById('export-btn');
+                const exportOptions = document.getElementById('export-options');
+                
+                exportBtn?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    exportOptions.classList.toggle('show');
+                });
+                
+                // Close export options when clicking outside
+                document.addEventListener('click', () => {
+                    exportOptions?.classList.remove('show');
+                });
+                
+                // Export option handlers
+                document.querySelectorAll('.export-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        const format = e.currentTarget.dataset.format;
+                        this.exportContent(format);
+                        exportOptions.classList.remove('show');
+                    });
+                });
+            }
+            
+            exportContent(format) {
+                const editor = document.getElementById('markdown-editor');
+                const content = editor?.value || '';
+                
+                if (!content.trim()) {
+                    toastManager.show('No content to export', 'warning');
+                    return;
+                }
+                
+                switch (format) {
+                    case 'pdf':
+                        this.exportPDF(content);
+                        break;
+                    case 'html':
+                        this.exportHTML(content);
+                        break;
+                    case 'txt':
+                        this.exportText(content);
+                        break;
+                }
+            }
+            
+            exportPDF(content) {
+                // For now, show a message about PDF export
+                toastManager.show('PDF export coming soon! For now, you can copy the content and paste it into a PDF generator.', 'info', 5000);
+            }
+            
+            exportHTML(content) {
+                // Convert markdown to HTML and download
+                const htmlContent = this.markdownToHTML(content);
+                this.downloadFile(htmlContent, 'document.html', 'text/html');
+                toastManager.show('HTML file exported successfully!', 'success');
+            }
+            
+            exportText(content) {
+                this.downloadFile(content, 'document.txt', 'text/plain');
+                toastManager.show('Text file exported successfully!', 'success');
+            }
+            
+            markdownToHTML(markdown) {
+                // Simple markdown to HTML conversion
+                return markdown
+                    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+                    .replace(/\*(.*)\*/gim, '<em>$1</em>')
+                    .replace(/`(.*)`/gim, '<code>$1</code>')
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
+                    .replace(/\n/gim, '<br>');
+            }
+            
+            downloadFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+        
+        // Keyboard shortcuts manager
+        class KeyboardShortcutsManager {
+            constructor() {
+                this.init();
+            }
+            
+            init() {
+                const shortcutsBtn = document.getElementById('shortcuts-btn');
+                const shortcutsModal = document.getElementById('shortcuts-modal');
+                const shortcutsClose = document.getElementById('shortcuts-close');
+                
+                shortcutsBtn?.addEventListener('click', () => {
+                    shortcutsModal.classList.add('show');
+                });
+                
+                shortcutsClose?.addEventListener('click', () => {
+                    shortcutsModal.classList.remove('show');
+                });
+                
+                // Close modal when clicking outside
+                shortcutsModal?.addEventListener('click', (e) => {
+                    if (e.target === shortcutsModal) {
+                        shortcutsModal.classList.remove('show');
+                    }
+                });
+                
+                // Keyboard shortcut to open shortcuts modal
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.shiftKey && e.key === '?') {
+                        e.preventDefault();
+                        shortcutsModal.classList.add('show');
+                    }
+                });
+            }
+        }
+        
+        // Initialize enhanced features
+        document.addEventListener('DOMContentLoaded', () => {
+            setupKeyboardNavigation();
+            
+            // Enhanced file input handling
+            const fileInput = document.getElementById('file-input');
+            if (fileInput) {
+                fileInput.addEventListener('change', handleFileUpload);
+            }
+            
+            // Initialize Phase 2 features
+            new ScrollAnimations();
+            new TouchGestures();
+            new MagneticEffect();
+            new StaggerAnimations();
+            new PageTransitionManager();
+            new PerformanceMonitor();
+            
+            // Initialize Phase 3 features
+            new TextAnalyzer();
+            new FindReplaceManager();
+            new AutoCompleteManager();
+            new ExportManager();
+            new KeyboardShortcutsManager();
+            
+            // Add smooth scrolling
+            document.documentElement.style.scrollBehavior = 'smooth';
+            
+            // Show welcome message with animation
+            setTimeout(() => {
+                toastManager.show('Welcome to MD Reader Pro! Press Cmd+K for commands.', 'info', 3000);
+            }, 1000);
+            
+            // Add page transition effect on load
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) {
+                mainContent.classList.add('page-transition', 'enter');
+            }
+        });
+    </script>
+    
+    <!-- Find and Replace Modal -->
+    <div class="find-replace-modal" id="find-replace-modal">
+        <div class="find-replace-content">
+            <div class="find-replace-header">
+                <div class="find-replace-title">Find and Replace</div>
+                <button class="find-replace-close" id="find-replace-close">×</button>
+            </div>
+            <div class="find-replace-inputs">
+                <div class="find-replace-group">
+                    <label class="find-replace-label" for="find-input">Find</label>
+                    <input type="text" class="find-replace-input" id="find-input" placeholder="Enter text to find...">
+                </div>
+                <div class="find-replace-group">
+                    <label class="find-replace-label" for="replace-input">Replace with</label>
+                    <input type="text" class="find-replace-input" id="replace-input" placeholder="Enter replacement text...">
+                </div>
+            </div>
+            <div class="find-replace-options">
+                <div class="find-replace-option">
+                    <input type="checkbox" id="case-sensitive">
+                    <label for="case-sensitive">Case sensitive</label>
+                </div>
+                <div class="find-replace-option">
+                    <input type="checkbox" id="whole-word">
+                    <label for="whole-word">Whole word</label>
+                </div>
+                <div class="find-replace-option">
+                    <input type="checkbox" id="regex-mode">
+                    <label for="regex-mode">Regex</label>
+                </div>
+            </div>
+            <div class="find-replace-actions">
+                <button class="find-replace-btn" id="find-prev">↑ Previous</button>
+                <button class="find-replace-btn" id="find-next">↓ Next</button>
+                <button class="find-replace-btn" id="replace-current">Replace</button>
+                <button class="find-replace-btn primary" id="replace-all">Replace All</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="shortcuts-modal" id="shortcuts-modal">
+        <div class="shortcuts-content">
+            <div class="shortcuts-header">
+                <div class="shortcuts-title">Keyboard Shortcuts</div>
+                <button class="shortcuts-close" id="shortcuts-close">×</button>
+            </div>
+            <div class="shortcuts-body">
+                <div class="shortcuts-section">
+                    <div class="shortcuts-section-title">General</div>
+                    <div class="shortcuts-list">
+                        <div class="shortcut-description">Open Command Palette</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">K</span>
+                        </div>
+                        <div class="shortcut-description">Find Text</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">F</span>
+                        </div>
+                        <div class="shortcut-description">Find and Replace</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">H</span>
+                        </div>
+                        <div class="shortcut-description">Keyboard Shortcuts</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">Shift</span>
+                            <span class="shortcut-key">?</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="shortcuts-section">
+                    <div class="shortcuts-section-title">Text Formatting</div>
+                    <div class="shortcuts-list">
+                        <div class="shortcut-description">Bold Text</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">B</span>
+                        </div>
+                        <div class="shortcut-description">Italic Text</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">I</span>
+                        </div>
+                        <div class="shortcut-description">Insert Link</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">K</span>
+                        </div>
+                        <div class="shortcut-description">Code Block</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">Shift</span>
+                            <span class="shortcut-key">K</span>
+                        </div>
+                        <div class="shortcut-description">Toggle Comment</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">/</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="shortcuts-section">
+                    <div class="shortcuts-section-title">Navigation</div>
+                    <div class="shortcuts-list">
+                        <div class="shortcut-description">Switch to Editor</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">1</span>
+                        </div>
+                        <div class="shortcut-description">Switch to Preview</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">2</span>
+                        </div>
+                        <div class="shortcut-description">Switch to Split View</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">3</span>
+                        </div>
+                        <div class="shortcut-description">Switch to Annotation</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">4</span>
+                        </div>
+                        <div class="shortcut-description">Switch to Reader</div>
+                        <div class="shortcut-keys">
+                            <span class="shortcut-key">Ctrl</span>
+                            <span class="shortcut-key">5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Command Palette -->
+    <div class="command-palette" id="command-palette">
+        <div class="command-palette-content">
+            <input type="text" class="command-palette-input" placeholder="Type a command or search..." id="command-input">
+            <div class="command-palette-results" id="command-results">
+                <div class="command-item" data-command="new-file">
+                    <div class="command-icon">📄</div>
+                    <div class="command-text">New File</div>
+                    <div class="command-shortcut">Ctrl+N</div>
+                </div>
+                <div class="command-item" data-command="open-file">
+                    <div class="command-icon">📁</div>
+                    <div class="command-text">Open File</div>
+                    <div class="command-shortcut">Ctrl+O</div>
+                </div>
+                <div class="command-item" data-command="save-file">
+                    <div class="command-icon">💾</div>
+                    <div class="command-text">Save File</div>
+                    <div class="command-shortcut">Ctrl+S</div>
+                </div>
+                <div class="command-item" data-command="toggle-preview">
+                    <div class="command-icon">👁️</div>
+                    <div class="command-text">Toggle Preview</div>
+                    <div class="command-shortcut">Ctrl+2</div>
+                </div>
+                <div class="command-item" data-command="toggle-split">
+                    <div class="command-icon">📊</div>
+                    <div class="command-text">Toggle Split View</div>
+                    <div class="command-shortcut">Ctrl+3</div>
+                </div>
+                <div class="command-item" data-command="toggle-help">
+                    <div class="command-icon">📚</div>
+                    <div class="command-text">Toggle Help</div>
+                    <div class="command-shortcut">F1</div>
+                </div>
+                <div class="command-item" data-command="toggle-settings">
+                    <div class="command-icon">⚙️</div>
+                    <div class="command-text">Toggle Settings</div>
+                    <div class="command-shortcut">Ctrl+,</div>
+                </div>
+                <div class="command-item" data-command="focus-editor">
+                    <div class="command-icon">✏️</div>
+                    <div class="command-text">Focus Editor</div>
+                    <div class="command-shortcut">Ctrl+1</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

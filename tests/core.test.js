@@ -14,7 +14,7 @@ describe('Markdown Editor Core Features', () => {
 
   describe('Application Initialization', () => {
     test('should initialize with correct default values', () => {
-      expect(editor.version).toBe('3.0.0');
+      expect(editor.version).toBe('3.3.0');
       expect(editor.editor).toBeInstanceOf(HTMLTextAreaElement); // DOM elements now available
       expect(editor.preview).toBeInstanceOf(HTMLDivElement);
     });

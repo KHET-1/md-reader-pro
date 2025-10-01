@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adventure Time Color Palette - MD Reader Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .color-section {
+            background: #111;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+        }
+
+        .color-title {
+            color: #00d4ff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-description {
+            color: #888;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        .tabs-container {
+            display: flex;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            position: relative;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0;
+            flex: 1;
+        }
+
+        .tab:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: #333;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: #fff;
+            background: #222;
+        }
+
+        .tab.active {
+            color: #fff;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .tab:active {
+            transform: translateY(1px);
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Adventure Time Color Palettes */
+        
+        /* 1. Finn Blue */
+        .finn-blue .tab.active:not(:last-child)::after {
+            background: #00d4ff;
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+        }
+
+        /* 2. Jake Yellow */
+        .jake-yellow .tab.active:not(:last-child)::after {
+            background: #ffd700;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+        }
+
+        /* 3. Princess Bubblegum Pink */
+        .bubblegum-pink .tab.active:not(:last-child)::after {
+            background: #ff69b4;
+            box-shadow: 0 0 8px rgba(255, 105, 180, 0.4);
+        }
+
+        /* 4. Marceline Purple */
+        .marceline-purple .tab.active:not(:last-child)::after {
+            background: #8a2be2;
+            box-shadow: 0 0 8px rgba(138, 43, 226, 0.4);
+        }
+
+        /* 5. Ice King Cyan */
+        .ice-king-cyan .tab.active:not(:last-child)::after {
+            background: #00ffff;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+        }
+
+        /* 6. Lumpy Space Purple */
+        .lumpy-purple .tab.active:not(:last-child)::after {
+            background: #9370db;
+            box-shadow: 0 0 8px rgba(147, 112, 219, 0.4);
+        }
+
+        /* 7. Flame Princess Orange */
+        .flame-orange .tab.active:not(:last-child)::after {
+            background: #ff6347;
+            box-shadow: 0 0 8px rgba(255, 99, 71, 0.4);
+        }
+
+        /* 8. BMO Green */
+        .bmo-green .tab.active:not(:last-child)::after {
+            background: #32cd32;
+            box-shadow: 0 0 8px rgba(50, 205, 50, 0.4);
+        }
+
+        /* 9. Cotton Candy Blue */
+        .cotton-candy .tab.active:not(:last-child)::after {
+            background: #87ceeb;
+            box-shadow: 0 0 8px rgba(135, 206, 235, 0.4);
+        }
+
+        /* 10. Adventure Time Rainbow */
+        .rainbow .tab.active:not(:last-child)::after {
+            background: linear-gradient(45deg, #ff69b4, #00d4ff, #32cd32, #ffd700);
+            box-shadow: 0 0 8px rgba(255, 105, 180, 0.4);
+        }
+
+        .color-info {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .recommendation {
+            background: linear-gradient(135deg, #1a1a1a, #0f0f0f);
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .recommendation h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .recommendation p {
+            color: #ccc;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌈 Adventure Time Color Palette</h1>
+        
+        <!-- Finn Blue -->
+        <div class="color-section finn-blue">
+            <h2 class="color-title">1. Finn Blue (Current)</h2>
+            <p class="color-description">Classic Adventure Time blue - clean, vibrant, and professional.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #00d4ff (Finn Blue)<br>
+                Glow: rgba(0, 212, 255, 0.4)
+            </div>
+        </div>
+
+        <!-- Jake Yellow -->
+        <div class="color-section jake-yellow">
+            <h2 class="color-title">2. Jake Yellow</h2>
+            <p class="color-description">Jake's signature yellow - warm and friendly.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #ffd700 (Jake Yellow)<br>
+                Glow: rgba(255, 215, 0, 0.4)
+            </div>
+        </div>
+
+        <!-- Princess Bubblegum Pink -->
+        <div class="color-section bubblegum-pink">
+            <h2 class="color-title">3. Princess Bubblegum Pink</h2>
+            <p class="color-description">Bubblegum's signature pink - playful and energetic.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #ff69b4 (Bubblegum Pink)<br>
+                Glow: rgba(255, 105, 180, 0.4)
+            </div>
+        </div>
+
+        <!-- Marceline Purple -->
+        <div class="color-section marceline-purple">
+            <h2 class="color-title">4. Marceline Purple</h2>
+            <p class="color-description">Marceline's dark purple - mysterious and cool.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #8a2be2 (Marceline Purple)<br>
+                Glow: rgba(138, 43, 226, 0.4)
+            </div>
+        </div>
+
+        <!-- Ice King Cyan -->
+        <div class="color-section ice-king-cyan">
+            <h2 class="color-title">5. Ice King Cyan</h2>
+            <p class="color-description">Ice King's bright cyan - electric and vibrant.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #00ffff (Ice King Cyan)<br>
+                Glow: rgba(0, 255, 255, 0.4)
+            </div>
+        </div>
+
+        <!-- Lumpy Space Purple -->
+        <div class="color-section lumpy-purple">
+            <h2 class="color-title">6. Lumpy Space Purple</h2>
+            <p class="color-description">LSP's medium purple - balanced and sophisticated.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #9370db (Lumpy Space Purple)<br>
+                Glow: rgba(147, 112, 219, 0.4)
+            </div>
+        </div>
+
+        <!-- Flame Princess Orange -->
+        <div class="color-section flame-orange">
+            <h2 class="color-title">7. Flame Princess Orange</h2>
+            <p class="color-description">Flame Princess's fiery orange - warm and energetic.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #ff6347 (Flame Princess Orange)<br>
+                Glow: rgba(255, 99, 71, 0.4)
+            </div>
+        </div>
+
+        <!-- BMO Green -->
+        <div class="color-section bmo-green">
+            <h2 class="color-title">8. BMO Green</h2>
+            <p class="color-description">BMO's signature green - fresh and digital.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #32cd32 (BMO Green)<br>
+                Glow: rgba(50, 205, 50, 0.4)
+            </div>
+        </div>
+
+        <!-- Cotton Candy Blue -->
+        <div class="color-section cotton-candy">
+            <h2 class="color-title">9. Cotton Candy Blue</h2>
+            <p class="color-description">Soft, dreamy blue - gentle and pleasant.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Color: #87ceeb (Cotton Candy Blue)<br>
+                Glow: rgba(135, 206, 235, 0.4)
+            </div>
+        </div>
+
+        <!-- Adventure Time Rainbow -->
+        <div class="color-section rainbow">
+            <h2 class="color-title">10. Adventure Time Rainbow</h2>
+            <p class="color-description">All the colors! A gradient that cycles through Adventure Time's palette.</p>
+            <div class="tabs-container">
+                <button class="tab active">Editor</button>
+                <button class="tab">Preview</button>
+                <button class="tab">Split View</button>
+                <button class="tab">Annotation</button>
+                <button class="tab">Reader</button>
+            </div>
+            <div class="color-info">
+                Gradient: #ff69b4 → #00d4ff → #32cd32 → #ffd700<br>
+                Glow: rgba(255, 105, 180, 0.4)
+            </div>
+        </div>
+
+        <div class="recommendation">
+            <h3>🎯 My Recommendations</h3>
+            <p><strong>Finn Blue (#00d4ff)</strong> - Currently implemented, clean and professional<br>
+            <strong>Cotton Candy Blue (#87ceeb)</strong> - Soft and pleasant, no "pee" issues<br>
+            <strong>BMO Green (#32cd32)</strong> - Fresh and digital, great contrast<br>
+            <strong>Ice King Cyan (#00ffff)</strong> - Electric and vibrant, very Adventure Time</p>
+        </div>
+    </div>
+
+    <script>
+        // Add click functionality to all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs in the same container
+                const container = this.closest('.tabs-container');
+                container.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

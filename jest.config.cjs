@@ -15,6 +15,9 @@ module.exports = {
   transform: {
     '^.+\\.js$': 'babel-jest'
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(marked|dompurify)/)', // Transform marked and dompurify
+  ],
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/**/*.min.js',

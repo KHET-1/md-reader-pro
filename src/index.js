@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript.js';
 import 'prismjs/components/prism-python.js';
@@ -9,7 +10,7 @@ import 'prismjs/components/prism-markdown.js';
 
 class MarkdownEditor {
     constructor() {
-        this.version = '3.0.0';
+        this.version = '3.3.0';
         this.editor = null;
         this.preview = null;
         this.fileInput = null;
@@ -81,13 +82,12 @@ class MarkdownEditor {
         }
         
         // Configure marked options with syntax highlighting
+        // Note: sanitize and mangle options removed (deprecated in marked v5+)
         marked.setOptions({
             breaks: true,
             gfm: true,
             headerIds: false,
-            sanitize: false,
-            mangle: false, // Disable deprecated mangle option
-            async: false, // Ensure synchronous parsing
+            async: false,
             highlight: function(code, lang) {
                 if (lang && Prism.languages[lang]) {
                     return Prism.highlight(code, Prism.languages[lang], lang);
@@ -143,8 +143,19 @@ class MarkdownEditor {
         
         try {
             // Parse markdown to HTML
-            const html = marked.parse(markdownText);
-            this.preview.innerHTML = html;
+            const rawHtml = marked.parse(markdownText);
+            
+            // Sanitize HTML to prevent XSS attacks
+            const cleanHtml = DOMPurify.sanitize(rawHtml, {
+                ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 
+                              'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 
+                              'strong', 'em', 'img', 'table', 'thead', 'tbody', 
+                              'tr', 'th', 'td', 'br', 'hr', 'del', 'input', 'span'],
+                ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'type', 
+                              'checked', 'disabled', 'id']
+            });
+            
+            this.preview.innerHTML = cleanHtml;
         } catch (error) {
             console.error('Markdown parsing error:', error);
             // Safely escape error message to prevent XSS
@@ -372,8 +383,27 @@ a.click();
     copyToEditor(example) {
         if (!this.editor) return;
 
-        // Clear current content and add the example
-        this.editor.value = example;
+        // First, copy to clipboard
+        this.copyToClipboard(example);
+
+        // Get current cursor position
+        const cursorPos = this.editor.selectionStart;
+        const currentValue = this.editor.value;
+        
+        // Insert the example at cursor position with proper spacing
+        const beforeCursor = currentValue.substring(0, cursorPos);
+        const afterCursor = currentValue.substring(cursorPos);
+        
+        // Add spacing if needed
+        const spacing = (beforeCursor && !beforeCursor.endsWith('\n') && !beforeCursor.endsWith(' ')) ? '\n\n' : '';
+        const newValue = beforeCursor + spacing + example + (afterCursor ? '\n\n' + afterCursor : '');
+        
+        // Set the new value
+        this.editor.value = newValue;
+        
+        // Position cursor after the inserted content
+        const newCursorPos = cursorPos + spacing.length + example.length + (afterCursor ? 2 : 0);
+        this.editor.setSelectionRange(newCursorPos, newCursorPos);
 
         // Update the preview
         this.updatePreview();
@@ -384,7 +414,58 @@ a.click();
         // Show success feedback
         this.showCopyFeedback();
 
-        console.log('📋 Example copied to editor');
+        console.log('📋 Example copied to clipboard and editor');
+    }
+
+    async copyToClipboard(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            console.log('✅ Text copied to clipboard');
+            return true;
+        } catch (err) {
+            console.error('❌ Clipboard API failed:', err);
+            // Show user-friendly error message
+            this.showClipboardError(text);
+            return false;
+        }
+    }
+
+    showClipboardError(text) {
+        // Create error notification
+        const errorToast = document.createElement('div');
+        errorToast.textContent = '⚠️ Clipboard access denied. Text is selected - press Ctrl+C to copy.';
+        errorToast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 420px;
+            background: #ff6b6b;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+        
+        document.body.appendChild(errorToast);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            errorToast.style.opacity = '0';
+            errorToast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => errorToast.remove(), 300);
+        }, 5000);
+        
+        // As fallback, select the editor content so user can copy manually
+        if (this.editor) {
+            const currentValue = this.editor.value;
+            const start = currentValue.indexOf(text);
+            if (start !== -1) {
+                this.editor.setSelectionRange(start, start + text.length);
+                this.editor.focus();
+            }
+        }
     }
 
     showCopyFeedback() {

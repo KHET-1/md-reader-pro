@@ -1,6 +1,6 @@
 {
   "name": "md-reader-pro",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "type": "module",
   "description": "AI-powered markdown reader with local processing and complete privacy protection",
   "scripts": {
@@ -39,6 +39,10 @@
     "test:e2e:production": "npx playwright test tests/e2e/production-coverage-simple.spec.js",
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:comprehensive": "npx playwright test tests/e2e/comprehensive-e2e.spec.js",
+    "test:e2e:performance": "npx playwright test tests/e2e/performance-e2e.spec.js",
+    "test:e2e:all": "npx playwright test tests/e2e/ --reporter=html",
+    "test:e2e:run": "node scripts/run-e2e-tests.js",
     "test:server": "node test-server.cjs",
     "production:validate": "npm run build && npm run production:checklist",
     "production:checklist": "echo 'Manual production validation checklist - see PRODUCTION_TESTING_STRATEGY.md'",
@@ -58,8 +62,8 @@
   },
   "homepage": "https://khet-1.github.io/md-reader-pro",
   "dependencies": {
-    "dompurify": "^3.0.9",
-    "marked": "^5.1.2",
+    "dompurify": "^3.2.7",
+    "marked": "^16.3.0",
     "prismjs": "^1.30.0"
   },
   "devDependencies": {
@@ -79,7 +83,7 @@
     "mini-css-extract-plugin": "^2.7.0",
     "semantic-release": "^22.0.0",
     "style-loader": "^3.3.0",
-    "webpack": "^5.88.0",
+    "webpack": "^5.102.0",
     "webpack-bundle-analyzer": "^4.9.0",
     "webpack-cli": "^6.0.1",
     "webpack-dev-server": "^5.2.2"
