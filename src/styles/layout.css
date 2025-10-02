@@ -1,0 +1,55 @@
+/* Layout styles extracted */
+.content-area {
+  height: calc(100vh - 58px);
+  display: flex;
+  flex-direction: column;
+}
+
+.main-pane { flex: 1; display: flex; flex-direction: column; }
+
+.toolbar { padding: 8px 16px; background: #111; border-bottom: 1px solid #333; display: flex; gap: 8px; align-items: center; }
+
+.editor-container { position: relative; background: var(--bg-primary); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-lg); }
+
+.editor-pane, .preview-pane { flex: 1; display: flex; flex-direction: column; }
+
+.pane-header { padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-weight: 600; font-size: 0.9rem; }
+
+.editor {
+  flex: 1;
+  background: var(--bg-primary);
+  border: none;
+  color: var(--text-primary);
+  padding: 24px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: none;
+  outline: none;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  transition: all var(--transition-normal);
+}
+.editor:focus { background: var(--bg-primary); box-shadow: inset 0 0 0 1px var(--accent-color); }
+.editor::placeholder { color: var(--text-muted); font-style: italic; }
+.editor::-webkit-scrollbar { width: 6px; }
+.editor::-webkit-scrollbar-track { background: transparent; }
+.editor::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+.editor::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+.preview {
+  flex: 1; padding: 24px; background: var(--bg-primary); overflow-y: auto; border-left: 1px solid var(--border-color);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; line-height: 1.7; color: var(--text-primary);
+}
+.preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 { color: var(--text-primary); font-weight: 600; margin-top: 1.5em; margin-bottom: 0.5em; line-height: 1.3; }
+.preview h1 { font-size: 2em; border-bottom: 2px solid var(--accent-color); padding-bottom: 0.3em; }
+.preview h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
+.preview code { background: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: var(--radius-sm); font-family: 'SF Mono','Monaco','Cascadia Code','Roboto Mono',Consolas,'Courier New',monospace; font-size: 0.9em; }
+.preview pre { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1em; overflow-x: auto; margin: 1em 0; }
+.preview pre code { background: none; padding: 0; border-radius: 0; }
+.preview blockquote { border-left: 4px solid var(--accent-color); margin: 1em 0; padding-left: 1em; color: var(--text-secondary); font-style: italic; }
+.preview table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.preview th, .preview td { border: 1px solid var(--border-color); padding: 0.5em; text-align: left; }
+.preview th { background: var(--bg-tertiary); font-weight: 600; }

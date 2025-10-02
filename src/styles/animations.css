@@ -1,0 +1,45 @@
+/* Animations and keyframes extracted */
+.status-indicator { animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-2px); } }
+
+.loading::after { animation: loading-shimmer 1.5s infinite; }
+@keyframes loading-shimmer { 0% { left: -100%; } 100% { left: 100%; } }
+
+.fade-in { animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.spinner { animation: spin 1s ease-in-out infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.slide-in-left { animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.scale-in { animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.swipe-left { animation: swipeLeft 0.3s ease-out; }
+.swipe-right { animation: swipeRight 0.3s ease-out; }
+@keyframes swipeLeft { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes swipeRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
+
+.stagger-item { opacity: 0; transform: translateY(20px); animation: staggerIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.stagger-item:nth-child(1) { animation-delay: 0.1s; }
+.stagger-item:nth-child(2) { animation-delay: 0.2s; }
+.stagger-item:nth-child(3) { animation-delay: 0.3s; }
+.stagger-item:nth-child(4) { animation-delay: 0.4s; }
+.stagger-item:nth-child(5) { animation-delay: 0.5s; }
+@keyframes staggerIn { to { opacity: 1; transform: translateY(0); } }
+
+.skeleton { animation: skeleton-loading 1.5s infinite; }
+@keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.rainbow-preview { animation: rainbow-shift 3s ease-in-out infinite; }
+@keyframes rainbow-shift {
+  0%, 100% { background: linear-gradient(45deg, #ff69b4, #00d4ff, #32cd32, #ffd700); }
+  25% { background: linear-gradient(45deg, #00d4ff, #32cd32, #ffd700, #ff69b4); }
+  50% { background: linear-gradient(45deg, #32cd32, #ffd700, #ff69b4, #00d4ff); }
+  75% { background: linear-gradient(45deg, #ffd700, #ff69b4, #00d4ff, #32cd32); }
+}

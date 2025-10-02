@@ -39,7 +39,8 @@ module.exports = {
     }
   },
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '\\.(css)$': '<rootDir>/tests/__mocks__/styleMock.js'
   },
   testTimeout: 15000,
   maxWorkers: 1, // Run tests serially for consistent performance measurements
