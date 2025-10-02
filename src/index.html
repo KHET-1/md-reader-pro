@@ -3120,10 +3120,15 @@ Start typing your markdown here...
                 toast.innerHTML = `
                     <div class="toast-content">
                         <div class="toast-icon">${this.getIcon(type)}</div>
-                        <div class="toast-message">${message}</div>
+                        <div class="toast-message"></div>
                         <button class="toast-close" onclick="toastManager.hide('${id}')" aria-label="Close notification">×</button>
                     </div>
                 `;
+                // Set the message textContent to avoid interpreting as HTML
+                const messageDiv = toast.querySelector('.toast-message');
+                if (messageDiv) {
+                    messageDiv.textContent = message;
+                }
                 return toast;
             }
             
