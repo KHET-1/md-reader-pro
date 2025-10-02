@@ -18,7 +18,8 @@ export default [
         Blob: 'readonly',
         URL: 'readonly',
         alert: 'readonly',
-        Event: 'readonly'
+        Event: 'readonly',
+        navigator: 'readonly'
       }
     },
     rules: {

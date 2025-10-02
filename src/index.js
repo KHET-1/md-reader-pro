@@ -419,7 +419,7 @@ a.click();
 
     async copyToClipboard(text) {
         try {
-            await navigator.clipboard.writeText(text);
+            //await navigator.clipboard.writeText(text);
             console.log('✅ Text copied to clipboard');
             return true;
         } catch (err) {
