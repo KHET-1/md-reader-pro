@@ -26,10 +26,10 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository (Quality Gates)
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 📦 Setup Node.js (Quality Gates)
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '20'
         cache: 'npm'
@@ -67,10 +67,10 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository (Deploy)
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 📦 Setup Node.js (Deploy)
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '20'
         cache: 'npm'
@@ -122,10 +122,10 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository (Monitor)
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 📦 Setup Node.js (Monitor)
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '20'
         cache: 'npm'
