@@ -108,7 +108,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Ch- name: Run PR benchmarks
+  run: |
+    npm run test:benchmarks > pr-benchmarks.log 2>&1
+    if [ ! -s pr-benchmarks.log ]; then
+      echo "pr-benchmarks.log was not created or is empty!"
+      exit 1
+    fieckout code
       uses: actions/checkout@v5
 
     - name: Setup Node.js with memory monitoring
