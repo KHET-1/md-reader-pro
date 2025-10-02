@@ -1,6 +1,6 @@
 
 module.exports = {
-    ...require('./jest.config.js'),
+    ...require('./jest.config.cjs'),
     reporters: [
         'default',
         ['jest-slow-test-reporter', { threshold: 1000, onlyShowSlowest: 10 }]
