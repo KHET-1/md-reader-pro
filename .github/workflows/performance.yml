@@ -218,13 +218,15 @@ jobs:
         rm -rf logs/benchmark-*.log || true
         mkdir -p logs
         echo "✅ Old logs cleaned"
-
+        
     - name: Run PR benchmarks
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-pr.log
       run: |
         touch pr-benchmarks.log
         npm run test:benchmarks > pr-benchmarks.log 2>&1 || true
+          [ -f pr-benchmarks.log ] || touch pr-benchmarks.log
+        
         if [ ! -s pr-benchmarks.log ]; then
           echo "pr-benchmarks.log was not created or is empty!" > pr-benchmarks.log
           exit 1
