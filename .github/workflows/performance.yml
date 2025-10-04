@@ -36,8 +36,13 @@ jobs:
     - name: Run performance tests
       run: npm run test:performance
 
-    - name: Run benchmark tests
-      run: npm run test:benchmarks
+    - name: Run benchmarks and save log
+      run: |
+        npm run test:benchmarks > pr-benchmarks.log 2>&1
+        if [ ! -s pr-benchmarks.log ]; then
+          echo "pr-benchmarks.log was not created or is empty!"
+          exit 1
+        fi
 
     - name: Run full performance monitoring
       run: npm run performance:monitor
@@ -123,13 +128,12 @@ jobs:
     - name: Run memory leak detection
       run: |
         echo "Running memory leak detection..."
-        # Run with garbage collection exposed
         node --expose-gc --max-old-space-size=512 ./node_modules/.bin/jest tests/benchmarks.test.js --verbose --runInBand
 
     - name: Check memory usage
       run: |
         echo "Checking for memory leaks in test output..."
-        # This would be enhanced with actual memory leak detection logic
+        # TODO: Implement actual memory leak detection logic
         echo "Memory leak detection completed."
 
   performance-comparison:
