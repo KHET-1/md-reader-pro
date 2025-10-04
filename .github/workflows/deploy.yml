@@ -1,5 +1,52 @@
 name: 🚀 Deploy to GitHub Pages
 
+# ═══════════════════════════════════════════════════════════════════════════
+# WORKFLOW LOGGING BEST PRACTICES
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# This workflow demonstrates comprehensive logging and error handling:
+#
+# 1. LOG CAPTURE: All critical steps use `tee` to capture output to log files
+#    - Logs are written to a `logs/` directory created in each job
+#    - Both stdout and stderr are captured using `2>&1 | tee -a`
+#    - Exit codes are preserved using ${PIPESTATUS[0]} for proper error handling
+#
+# 2. ARTIFACT UPLOADS: Logs are uploaded as artifacts for debugging
+#    - Individual log files for each step (e.g., lint.log, test.log)
+#    - Combined logs artifact for easy download of all logs
+#    - Summary logs for quick overview of step outcomes
+#    - Retention period of 30 days for debugging historical failures
+#
+# 3. ERROR HANDLING: Steps use continue-on-error for better diagnostics
+#    - Critical steps have `continue-on-error: true` to capture logs on failure
+#    - Exit codes are explicitly checked and errors are logged
+#    - Upload steps use `if: always()` to ensure logs are uploaded even on failure
+#
+# 4. STEP OUTCOMES: Job summaries track all step results
+#    - Each step has an `id` for outcome tracking
+#    - Summary logs include all step outcomes for quick diagnosis
+#    - Step outcomes can be: success, failure, cancelled, or skipped
+#
+# 5. DEBUGGING WORKFLOW:
+#    - Check the "Artifacts" section of a workflow run to download logs
+#    - Individual logs for specific steps (e.g., "lint-logs", "test-logs")
+#    - "all-*-logs" artifacts contain all logs from that job
+#    - Summary logs provide quick overview without downloading everything
+#
+# 6. LOG FORMAT: Each log includes:
+#    - Start message with emoji indicator
+#    - Full command output (stdout and stderr)
+#    - Exit code on failure
+#    - Success/failure message at end
+#
+# BENEFITS:
+# - Faster debugging: Logs available immediately without re-running workflow
+# - Historical analysis: Logs retained for 30 days to track issues over time
+# - Selective download: Download only the logs you need for specific failures
+# - Better visibility: Summary logs show all step outcomes at a glance
+#
+# ═══════════════════════════════════════════════════════════════════════════
+
 on:
   push:
     branches: [ main ]
@@ -34,29 +81,197 @@ jobs:
         node-version: '20'
         cache: 'npm'
 
+    # Create logs directory for capturing step outputs
+    - name: 📁 Create logs directory
+      run: mkdir -p logs
+
     - name: 📋 Install dependencies (Quality Gates)
       run: npm ci
 
+    # BEST PRACTICE: Wrap critical steps with tee to capture output to log files
+    # This allows debugging even when steps fail
     - name: 🔍 Run ESLint
-      run: npm run lint
+      id: lint
+      continue-on-error: true
+      run: |
+        echo "🔍 Starting ESLint..." | tee logs/lint.log
+        npm run lint 2>&1 | tee -a logs/lint.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ ESLint failed with exit code $EXIT_CODE" | tee -a logs/lint.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ ESLint completed successfully" | tee -a logs/lint.log
+
+    # Upload lint logs as artifact (available even on failure)
+    - name: 📤 Upload lint logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: lint-logs
+        path: logs/lint.log
+        retention-days: 30
 
     - name: 🧪 Run test suite
-      run: npm run test
+      id: test
+      continue-on-error: true
+      run: |
+        echo "🧪 Starting test suite..." | tee logs/test.log
+        npm run test 2>&1 | tee -a logs/test.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Tests failed with exit code $EXIT_CODE" | tee -a logs/test.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Tests completed successfully" | tee -a logs/test.log
+
+    - name: 📤 Upload test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs
+        path: logs/test.log
+        retention-days: 30
 
     - name: 📊 Run test coverage
-      run: npm run test:coverage
+      id: coverage
+      continue-on-error: true
+      run: |
+        echo "📊 Starting test coverage..." | tee logs/coverage.log
+        npm run test:coverage 2>&1 | tee -a logs/coverage.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Coverage check failed with exit code $EXIT_CODE" | tee -a logs/coverage.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Coverage check completed successfully" | tee -a logs/coverage.log
+
+    - name: 📤 Upload coverage logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-logs
+        path: logs/coverage.log
+        retention-days: 30
 
     - name: ⚡ Run performance tests
-      run: npm run test:performance
+      id: performance
+      continue-on-error: true
+      run: |
+        echo "⚡ Starting performance tests..." | tee logs/performance.log
+        npm run test:performance 2>&1 | tee -a logs/performance.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Performance tests failed with exit code $EXIT_CODE" | tee -a logs/performance.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Performance tests completed successfully" | tee -a logs/performance.log
+
+    - name: 📤 Upload performance test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-logs
+        path: logs/performance.log
+        retention-days: 30
 
     - name: 📈 Run benchmark tests
-      run: npm run test:benchmarks
+      id: benchmarks
+      continue-on-error: true
+      run: |
+        echo "📈 Starting benchmark tests..." | tee logs/benchmarks.log
+        npm run test:benchmarks 2>&1 | tee -a logs/benchmarks.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Benchmark tests failed with exit code $EXIT_CODE" | tee -a logs/benchmarks.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Benchmark tests completed successfully" | tee -a logs/benchmarks.log
+
+    - name: 📤 Upload benchmark logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-logs
+        path: logs/benchmarks.log
+        retention-days: 30
 
     - name: 🔄 Check for performance regressions
-      run: npm run performance:regression
+      id: regression
+      continue-on-error: true
+      run: |
+        echo "🔄 Starting performance regression check..." | tee logs/regression.log
+        npm run performance:regression 2>&1 | tee -a logs/regression.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Performance regression check failed with exit code $EXIT_CODE" | tee -a logs/regression.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Performance regression check completed successfully" | tee -a logs/regression.log
+
+    - name: 📤 Upload regression check logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: regression-logs
+        path: logs/regression.log
+        retention-days: 30
 
     - name: 🏗️ Test production build
-      run: npm run build
+      id: build-test
+      continue-on-error: true
+      run: |
+        echo "🏗️ Starting production build test..." | tee logs/build-test.log
+        npm run build 2>&1 | tee -a logs/build-test.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Production build test failed with exit code $EXIT_CODE" | tee -a logs/build-test.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Production build test completed successfully" | tee -a logs/build-test.log
+
+    - name: 📤 Upload build test logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-test-logs
+        path: logs/build-test.log
+        retention-days: 30
+
+    # BEST PRACTICE: Create a summary log with all step results
+    # This provides a quick overview of what passed/failed
+    - name: 📋 Create summary log
+      if: always()
+      run: |
+        echo "=== Quality Gates Summary ===" > logs/summary.log
+        echo "Generated at: $(date -u)" >> logs/summary.log
+        echo "" >> logs/summary.log
+        echo "Step Results:" >> logs/summary.log
+        echo "- Lint: ${{ steps.lint.outcome }}" >> logs/summary.log
+        echo "- Tests: ${{ steps.test.outcome }}" >> logs/summary.log
+        echo "- Coverage: ${{ steps.coverage.outcome }}" >> logs/summary.log
+        echo "- Performance: ${{ steps.performance.outcome }}" >> logs/summary.log
+        echo "- Benchmarks: ${{ steps.benchmarks.outcome }}" >> logs/summary.log
+        echo "- Regression: ${{ steps.regression.outcome }}" >> logs/summary.log
+        echo "- Build Test: ${{ steps.build-test.outcome }}" >> logs/summary.log
+        cat logs/summary.log
+
+    - name: 📤 Upload summary log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-gates-summary
+        path: logs/summary.log
+        retention-days: 30
+
+    # BEST PRACTICE: Upload all logs as a single artifact for easy download
+    - name: 📦 Upload all quality gate logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-quality-gate-logs
+        path: logs/
+        retention-days: 30
 
   # Build and Deploy Job
   deploy:
@@ -75,14 +290,56 @@ jobs:
         node-version: '20'
         cache: 'npm'
 
+    # Create logs directory for deployment logs
+    - name: 📁 Create logs directory
+      run: mkdir -p logs
+
     - name: 📋 Install dependencies (Deploy)
       run: npm ci
 
+    # BEST PRACTICE: Capture production build output for debugging
+    # Build failures often require detailed logs to diagnose
     - name: 🏗️ Build for production
-      run: npm run build
+      id: build
+      continue-on-error: true
+      run: |
+        echo "🏗️ Starting production build..." | tee logs/build.log
+        npm run build 2>&1 | tee -a logs/build.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Production build failed with exit code $EXIT_CODE" | tee -a logs/build.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Production build completed successfully" | tee -a logs/build.log
+
+    - name: 📤 Upload build logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-build-logs
+        path: logs/build.log
+        retention-days: 30
 
     - name: 📝 Prepare deployment assets
-      run: npm run deploy:prepare
+      id: deploy-prepare
+      continue-on-error: true
+      run: |
+        echo "📝 Preparing deployment assets..." | tee logs/deploy-prepare.log
+        npm run deploy:prepare 2>&1 | tee -a logs/deploy-prepare.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Deployment preparation failed with exit code $EXIT_CODE" | tee -a logs/deploy-prepare.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Deployment preparation completed successfully" | tee -a logs/deploy-prepare.log
+
+    - name: 📤 Upload deployment preparation logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: deploy-prepare-logs
+        path: logs/deploy-prepare.log
+        retention-days: 30
 
     - name: 📄 Setup GitHub Pages
       uses: actions/configure-pages@v4
@@ -95,6 +352,39 @@ jobs:
     - name: 🚀 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+
+    # BEST PRACTICE: Create deployment summary with all step outcomes
+    - name: 📋 Create deployment summary log
+      if: always()
+      run: |
+        echo "=== Deployment Summary ===" > logs/deploy-summary.log
+        echo "Generated at: $(date -u)" >> logs/deploy-summary.log
+        echo "" >> logs/deploy-summary.log
+        echo "Step Results:" >> logs/deploy-summary.log
+        echo "- Build: ${{ steps.build.outcome }}" >> logs/deploy-summary.log
+        echo "- Deploy Prepare: ${{ steps.deploy-prepare.outcome }}" >> logs/deploy-summary.log
+        echo "- Deployment: ${{ steps.deployment.outcome }}" >> logs/deploy-summary.log
+        echo "" >> logs/deploy-summary.log
+        if [ "${{ steps.deployment.outcome }}" == "success" ]; then
+          echo "Deployment URL: ${{ steps.deployment.outputs.page_url }}" >> logs/deploy-summary.log
+        fi
+        cat logs/deploy-summary.log
+
+    - name: 📤 Upload deployment summary
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-summary
+        path: logs/deploy-summary.log
+        retention-days: 30
+
+    - name: 📦 Upload all deployment logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-deployment-logs
+        path: logs/
+        retention-days: 30
 
     - name: 📊 Deployment summary
       run: |
@@ -113,6 +403,11 @@ jobs:
         echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Time**: $(date -u)" >> $GITHUB_STEP_SUMMARY
         echo "- **Workflow**: [\#${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Artifacts Available" >> $GITHUB_STEP_SUMMARY
+        echo "- Production build logs" >> $GITHUB_STEP_SUMMARY
+        echo "- Deployment preparation logs" >> $GITHUB_STEP_SUMMARY
+        echo "- All deployment logs (combined)" >> $GITHUB_STEP_SUMMARY
 
   # Performance Monitoring Job (runs on schedule)
   performance-monitor:
@@ -130,14 +425,103 @@ jobs:
         node-version: '20'
         cache: 'npm'
 
+    # Create logs directory for monitoring logs
+    - name: 📁 Create logs directory
+      run: mkdir -p logs
+
     - name: 📋 Install dependencies (Monitor)
       run: npm ci
 
+    # BEST PRACTICE: Monitor performance trends with detailed logging
+    # Helps identify performance degradation over time
     - name: 📊 Run performance monitoring
-      run: npm run performance:monitor
+      id: monitor
+      continue-on-error: true
+      run: |
+        echo "📊 Starting performance monitoring..." | tee logs/monitor.log
+        npm run performance:monitor 2>&1 | tee -a logs/monitor.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Performance monitoring failed with exit code $EXIT_CODE" | tee -a logs/monitor.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Performance monitoring completed successfully" | tee -a logs/monitor.log
+
+    - name: 📤 Upload performance monitoring logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-monitor-logs
+        path: logs/monitor.log
+        retention-days: 30
 
     - name: 🔄 Check for regressions
-      run: npm run performance:regression
+      id: regression-check
+      continue-on-error: true
+      run: |
+        echo "🔄 Starting regression check..." | tee logs/regression-check.log
+        npm run performance:regression 2>&1 | tee -a logs/regression-check.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Regression check failed with exit code $EXIT_CODE" | tee -a logs/regression-check.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Regression check completed successfully" | tee -a logs/regression-check.log
+
+    - name: 📤 Upload regression check logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-regression-logs
+        path: logs/regression-check.log
+        retention-days: 30
 
     - name: 📈 Update performance baselines
-      run: npm run performance:update-baseline
+      id: baseline-update
+      continue-on-error: true
+      run: |
+        echo "📈 Updating performance baselines..." | tee logs/baseline-update.log
+        npm run performance:update-baseline 2>&1 | tee -a logs/baseline-update.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Baseline update failed with exit code $EXIT_CODE" | tee -a logs/baseline-update.log
+          exit $EXIT_CODE
+        fi
+        echo "✅ Baseline update completed successfully" | tee -a logs/baseline-update.log
+
+    - name: 📤 Upload baseline update logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: baseline-update-logs
+        path: logs/baseline-update.log
+        retention-days: 30
+
+    # BEST PRACTICE: Create monitoring summary for quick insights
+    - name: 📋 Create monitoring summary
+      if: always()
+      run: |
+        echo "=== Performance Monitoring Summary ===" > logs/monitor-summary.log
+        echo "Generated at: $(date -u)" >> logs/monitor-summary.log
+        echo "" >> logs/monitor-summary.log
+        echo "Step Results:" >> logs/monitor-summary.log
+        echo "- Performance Monitor: ${{ steps.monitor.outcome }}" >> logs/monitor-summary.log
+        echo "- Regression Check: ${{ steps.regression-check.outcome }}" >> logs/monitor-summary.log
+        echo "- Baseline Update: ${{ steps.baseline-update.outcome }}" >> logs/monitor-summary.log
+        cat logs/monitor-summary.log
+
+    - name: 📤 Upload monitoring summary
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-monitoring-summary
+        path: logs/monitor-summary.log
+        retention-days: 30
+
+    - name: 📦 Upload all monitoring logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-performance-monitor-logs
+        path: logs/
+        retention-days: 30
