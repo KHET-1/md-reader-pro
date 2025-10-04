@@ -231,7 +231,7 @@ npm run build
 1. Check GitHub Pages settings in repository
 2. Verify workflow completed successfully
 3. Check if custom domain DNS is configured correctly
-4. Review deployment logs in Actions tab
+4. Review deployment logs in Actions tab (see [Workflow Logging Guide](docs/WORKFLOW_LOGGING_GUIDE.md))
 
 #### **Performance Issues**
 ```bash
@@ -247,6 +247,8 @@ npm run performance:update-baseline
 
 ### **Support Resources**
 - **GitHub Actions Logs**: Detailed deployment information
+  - See [Workflow Logging Guide](docs/WORKFLOW_LOGGING_GUIDE.md) for how to access and use logs
+  - See [Quick Reference](docs/WORKFLOW_LOGGING_QUICK_REF.md) for artifact descriptions
 - **Status Page**: Real-time deployment status
 - **Repository Issues**: Report bugs and request features
 - **Documentation**: Complete guides in project documentation
