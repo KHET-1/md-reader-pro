@@ -142,11 +142,14 @@ jobs:
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-regression.log
       run: |
+        touch logs/benchmark-regression.log
         echo "Running performance regression detection..."
-        npm run test:benchmarks 2>&1 | tee benchmark-results.log
-
+        npm run test:benchmarks > logs/benchmark-regression.log 2>&1 || true
+        if [ ! -s logs/benchmark-regression.log ]; then
+          echo "logs/benchmark-regression.log was not created or is empty!" > logs/benchmark-regression.log
+        fi
         # Check for performance regressions (basic implementation)
-        if grep -q "Slow test detected" benchmark-results.log; then
+        if grep -q "Slow test detected" logs/benchmark-regression.log; then
           echo "⚠️ Performance regression detected!"
           echo "See benchmark results for details."
           exit 1
@@ -226,7 +229,7 @@ jobs:
         rm -rf logs/benchmark-*.log || true
         mkdir -p logs
         echo "✅ Old logs cleaned"
-
+        
     - name: Run PR benchmarks
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-pr.log
@@ -252,10 +255,10 @@ jobs:
       if: always()
       run: |
         echo "📄 PR benchmark log:"
-        if [ -f logs/benchmark-pr.log ]; then
-          cat logs/benchmark-pr.log
+        if [ -f pr-benchmarks.log ]; then
+          head -100 pr-benchmarks.log
         else
-          echo "⚠️  logs/benchmark-pr.log not found"
+          echo "⚠️  pr-benchmarks.log not found"
         fi
 
     - name: Checkout main branch
@@ -298,10 +301,10 @@ jobs:
       if: always()
       run: |
         echo "📄 Main benchmark log:"
-        if [ -f logs/benchmark-main.log ]; then
-          cat logs/benchmark-main.log
+        if [ -f main-benchmarks.log ]; then
+          head -100 main-benchmarks.log
         else
-          echo "⚠️  logs/benchmark-main.log not found"
+          echo "⚠️  main-benchmarks.log not found"
         fi
 
     - name: Compare performance
