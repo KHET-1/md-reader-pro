@@ -30,6 +30,13 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Clean old benchmark logs
+      run: |
+        echo "🧹 Cleaning old benchmark logs..."
+        rm -rf logs/benchmark-*.log || true
+        mkdir -p logs
+        echo "✅ Old logs cleaned"
+
     - name: Run basic tests first
       run: npm test
 
@@ -37,10 +44,40 @@ jobs:
       run: npm run test:performance
 
     - name: Run benchmarks and save log
+      env:
+        BENCHMARK_LOG_FILE: logs/benchmark-results.log
       run: |
+        echo "🏃 Running benchmarks..."
         npm run test:benchmarks > pr-benchmarks.log 2>&1
         if [ ! -s pr-benchmarks.log ]; then
           echo "pr-benchmarks.log was not created or is empty!" > pr-benchmarks.log
+        fi
+        echo "✅ Benchmarks completed"
+
+    - name: Debug - List benchmark files
+      if: always()
+      run: |
+        echo "📂 Listing logs directory:"
+        ls -lh logs/ || echo "logs directory not found"
+        echo ""
+        echo "📂 Listing current directory:"
+        ls -lh *.log || echo "No log files in current directory"
+
+    - name: Debug - Show benchmark log contents
+      if: always()
+      run: |
+        echo "📄 Benchmark results log:"
+        if [ -f logs/benchmark-results.log ]; then
+          cat logs/benchmark-results.log
+        else
+          echo "⚠️  logs/benchmark-results.log not found"
+        fi
+        echo ""
+        echo "📄 PR benchmarks log:"
+        if [ -f pr-benchmarks.log ]; then
+          head -100 pr-benchmarks.log
+        else
+          echo "⚠️  pr-benchmarks.log not found"
         fi
 
     - name: Run full performance monitoring
@@ -82,7 +119,16 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Clean old benchmark logs
+      run: |
+        echo "🧹 Cleaning old benchmark logs..."
+        rm -rf logs/benchmark-*.log || true
+        mkdir -p logs
+        echo "✅ Old logs cleaned"
+
     - name: Run regression detection
+      env:
+        BENCHMARK_LOG_FILE: logs/benchmark-regression.log
       run: |
         echo "Running performance regression detection..."
         npm run test:benchmarks 2>&1 | tee benchmark-results.log
@@ -94,6 +140,16 @@ jobs:
           exit 1
         else
           echo "✅ No performance regressions detected."
+        fi
+
+    - name: Debug - Show regression log
+      if: always()
+      run: |
+        echo "📄 Regression benchmark log:"
+        if [ -f logs/benchmark-regression.log ]; then
+          cat logs/benchmark-regression.log
+        else
+          echo "⚠️  logs/benchmark-regression.log not found"
         fi
 
     - name: Comment PR with results
@@ -152,12 +208,31 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Clean old benchmark logs
+      run: |
+        echo "🧹 Cleaning old benchmark logs..."
+        rm -rf logs/benchmark-*.log || true
+        mkdir -p logs
+        echo "✅ Old logs cleaned"
+
     - name: Run PR benchmarks
+      env:
+        BENCHMARK_LOG_FILE: logs/benchmark-pr.log
       run: |
         npm run test:benchmarks > pr-benchmarks.log 2>&1
         if [ ! -s pr-benchmarks.log ]; then
           echo "pr-benchmarks.log was not created or is empty!"
           exit 1
+        fi
+
+    - name: Debug - Show PR benchmark log
+      if: always()
+      run: |
+        echo "📄 PR benchmark log:"
+        if [ -f logs/benchmark-pr.log ]; then
+          cat logs/benchmark-pr.log
+        else
+          echo "⚠️  logs/benchmark-pr.log not found"
         fi
 
     - name: Checkout main branch
@@ -168,12 +243,31 @@ jobs:
     - name: Install dependencies (main)
       run: npm ci
 
+    - name: Clean old benchmark logs (main)
+      run: |
+        echo "🧹 Cleaning old benchmark logs..."
+        rm -rf logs/benchmark-*.log || true
+        mkdir -p logs
+        echo "✅ Old logs cleaned"
+
     - name: Run main benchmarks
+      env:
+        BENCHMARK_LOG_FILE: logs/benchmark-main.log
       run: |
         npm run test:benchmarks > main-benchmarks.log 2>&1
         if [ ! -s main-benchmarks.log ]; then
           echo "main-benchmarks.log was not created or is empty!"
           exit 1
+        fi
+
+    - name: Debug - Show main benchmark log
+      if: always()
+      run: |
+        echo "📄 Main benchmark log:"
+        if [ -f logs/benchmark-main.log ]; then
+          cat logs/benchmark-main.log
+        else
+          echo "⚠️  logs/benchmark-main.log not found"
         fi
 
     - name: Compare performance
