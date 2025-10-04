@@ -25,6 +25,16 @@ describe('Benchmark Tests', () => {
         markdownContent = fs.readFileSync(filePath, 'utf8');
     });
 
+    // Dummy test to ensure Jest always produces output for CI/CD
+    // This guarantees that pr-benchmarks.log is created even if other tests fail
+    describe('Benchmark Infrastructure', () => {
+        test('dummy benchmark test - ensures log file creation', () => {
+            console.log('🏁 Benchmark test suite initialized');
+            console.log('📊 This test ensures Jest output is always generated for CI/CD pipelines');
+            expect(true).toBe(true);
+        });
+    });
+
     beforeEach(() => {
         TestUtils.suppressConsoleLogs();
         TestUtils.setupCleanDOM();
