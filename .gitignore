@@ -28,6 +28,7 @@ coverage/
 # Logs
 logs/
 *.log
+!pr-benchmarks.log
 
 # Runtime data
 pids/

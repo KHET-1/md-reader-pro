@@ -1,0 +1,2 @@
+# This file is created to prevent workflow failures when the file does not exist.
+# It will be populated with benchmark results during CI/CD performance comparison jobs.
