@@ -47,6 +47,7 @@ jobs:
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-results.log
       run: |
+        touch pr-benchmarks.log
         echo "🏃 Running benchmarks..."
         npm run test:benchmarks > pr-benchmarks.log 2>&1
         if [ ! -s pr-benchmarks.log ]; then
