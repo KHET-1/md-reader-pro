@@ -52,7 +52,6 @@ function ping(port) {
 async function waitForReady(port, deadline, statusLog) {
   process.stdout.write(`Waiting for http://localhost:${port} to serve index.html ...`);
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop
     const ok = await ping(port);
     if (ok) {
       console.log(`\nREADY on port ${port}`);
