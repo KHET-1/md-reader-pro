@@ -17,7 +17,7 @@ import './styles/utilities.css';
 
 class MarkdownEditor {
     constructor() {
-        this.version = '3.3.0';
+        this.version = '3.4.0';
         this.editor = null;
         this.preview = null;
         this.fileInput = null;
