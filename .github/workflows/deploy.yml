@@ -355,6 +355,17 @@ jobs:
     - name: 🚀 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: ℹ️ GitHub Pages Setup Help
+      if: failure() && steps.deployment.outcome == 'failure'
+      run: |
+        echo "::error title=GitHub Pages Deployment Failed::Please ensure GitHub Pages is enabled in repository settings"
+        echo "::notice title=Setup Instructions::1. Go to https://github.com/${{ github.repository }}/settings/pages"
+        echo "::notice::2. Under 'Build and deployment' → 'Source', select 'GitHub Actions'"
+        echo "::notice::3. Click 'Save' and re-run this workflow"
+        echo "::notice::For detailed instructions, see DEPLOYMENT.md in the repository"
 
     # BEST PRACTICE: Create deployment summary with all step outcomes
     - name: 📋 Create deployment summary log
