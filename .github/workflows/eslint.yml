@@ -8,6 +8,9 @@ on:
   schedule:
   - cron: '16 11 * * *' # Runs every day at 11:16 UTC
 
+permissions:
+  contents: read
+
 jobs:
   eslint:
     name: Run ESLint scanning
