@@ -9,6 +9,7 @@ This guide provides complete instructions for deploying MD Reader Pro to GitHub 
 ### 🎯 **Automated Deployment Pipeline**
 - **Quality Gates**: All tests, linting, and performance checks must pass
 - **Branch Protection**: Only deploys from `main` branch
+- **Flexible Triggers**: Deploy automatically on push or manually via GitHub Actions UI
 - **Zero-Downtime**: Seamless deployments with rollback capability
 - **Performance Monitoring**: Automated performance regression detection
 - **Status Tracking**: Deployment status page and comprehensive logging
@@ -50,12 +51,22 @@ npm run deploy:validate
    - Select the quality gate checks
 
 ### Step 3: Deploy
+
+**Option A: Automatic Deployment (Push to Main)**
 ```bash
 # Commit and push to main branch
 git add .
 git commit -m "🚀 Enable GitHub Pages deployment"
 git push origin main
 ```
+
+**Option B: Manual Deployment Trigger**
+1. Go to your repository on GitHub
+2. Click on the **Actions** tab
+3. Select the **🚀 Deploy to GitHub Pages** workflow
+4. Click **Run workflow** dropdown
+5. Ensure **main** branch is selected
+6. Click **Run workflow** button
 
 The deployment will automatically start and your application will be available at:
 **https://your-username.github.io/md-reader-pro/**
@@ -76,7 +87,7 @@ The deployment will automatically start and your application will be available a
 ### 🔄 **Deployment Process**
 ```mermaid
 graph TD
-    A[Push to main] --> B[Quality Gates]
+    A[Push to main OR Manual Trigger] --> B[Quality Gates]
     B --> C{All Tests Pass?}
     C -->|Yes| D[Build Production]
     C -->|No| E[Deployment Blocked]
