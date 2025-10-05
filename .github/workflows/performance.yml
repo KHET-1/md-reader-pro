@@ -269,15 +269,24 @@ jobs:
         echo "" >> comparison.md
         echo "#### Main Branch Results:" >> comparison.md
         echo "\`\`\`" >> comparison.md
-        cat main-benchmarks.log >> comparison.md
+        if [ -f main-benchmarks.log ]; then
+          cat main-benchmarks.log >> comparison.md || echo "Error reading main-benchmarks.log" >> comparison.md
+        else
+          echo "main-benchmarks.log not found - benchmark tests may have failed" >> comparison.md
+        fi
         echo "\`\`\`" >> comparison.md
         echo "" >> comparison.md
         echo "#### PR Branch Results:" >> comparison.md
         echo "\`\`\`" >> comparison.md
-        cat pr-benchmarks.log >> comparison.md
+        if [ -f pr-benchmarks.log ]; then
+          cat pr-benchmarks.log >> comparison.md || echo "Error reading pr-benchmarks.log" >> comparison.md
+        else
+          echo "pr-benchmarks.log not found - benchmark tests may have failed" >> comparison.md
+        fi
         echo "\`\`\`" >> comparison.md
 
     - name: Upload comparison
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: performance-comparison
