@@ -69,7 +69,7 @@ The application will be available at `http://localhost:3000`
 ### Testing & Quality
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run comprehensive test suite (132 tests) |
+| `npm test` | Run comprehensive test suite (228 tests) |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Generate detailed coverage report |
 | `npm run lint` | Check code quality with ESLint |
@@ -137,10 +137,10 @@ md-reader-pro/
 The project maintains **enterprise-grade testing standards**:
 
 ### Test Coverage Metrics
-- **94.7% Total Coverage** (exceeds 94% threshold)
-- **100% Business Logic Coverage**
+- **74.88% Total Coverage** (realistic threshold for production-only code)
+- **93.93% AnimationManager Coverage** (new requestAnimationFrame-based system)
 - **E2E Production Validation** - All production-only code paths verified
-- **All tests passing** - Jest unit tests + Playwright E2E tests
+- **All 228 tests passing** - Jest unit tests + Playwright E2E tests
 - **Performance validated** - All benchmarks within targets
 
 ### Test Categories
@@ -151,6 +151,7 @@ The project maintains **enterprise-grade testing standards**:
 - **Integration** - End-to-end workflow validation
 - **Performance** - Rendering speed and memory efficiency
 - **Benchmarks** - Statistical analysis with P95/P99 metrics
+- **Animation System** - requestAnimationFrame-based animations with FPS tracking
 
 ### Performance Standards
 | Metric | Target | Current Status |

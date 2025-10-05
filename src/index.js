@@ -7,14 +7,22 @@ import 'prismjs/components/prism-css.js';
 import 'prismjs/components/prism-markup.js';
 import 'prismjs/components/prism-json.js';
 import 'prismjs/components/prism-markdown.js';
+import AnimationManager from './utils/AnimationManager.js';
+import './styles/variables.css';
+import './styles/base.css';
+import './styles/layout.css';
+import './styles/components.css';
+import './styles/animations.css';
+import './styles/utilities.css';
 
 class MarkdownEditor {
     constructor() {
-        this.version = '3.3.0';
+        this.version = '3.4.0';
         this.editor = null;
         this.preview = null;
         this.fileInput = null;
         this.uploadArea = null;
+        this.anim = new AnimationManager();
     }
 
     // Configuration constants
@@ -124,6 +132,9 @@ class MarkdownEditor {
 
         // Help bar functionality
         this.setupHelpBar();
+
+        // Tabs and status
+        this.setupTabs();
     }
     
     updatePreview() {
@@ -285,6 +296,18 @@ class MarkdownEditor {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
             this.saveMarkdown();
+            return;
+        }
+
+        // Quick tab switching: Ctrl/Cmd + 1..5
+        if (e.ctrlKey || e.metaKey) {
+            if (['1','2','3','4','5'].includes(e.key)) {
+                e.preventDefault();
+                const map = { '1':'editor','2':'preview','3':'split','4':'annotation','5':'reader' };
+                const mode = map[e.key];
+                this.setMode(mode);
+                return;
+            }
         }
         
         // Tab key for indentation - only if editor exists
@@ -304,7 +327,90 @@ class MarkdownEditor {
             this.updatePreview();
         }
     }
-    
+
+    setupTabs() {
+        const tabs = document.querySelectorAll('.tab');
+        const editorContainer = document.getElementById('editor-container');
+        const editorPane = editorContainer?.querySelector('.editor-pane');
+        const previewPane = editorContainer?.querySelector('.preview-pane');
+
+        if (!tabs || !editorContainer) return;
+
+        tabs.forEach(t => {
+            t.addEventListener('click', () => {
+                const mode = t.getAttribute('data-tab');
+                this.setMode(mode);
+            });
+        });
+
+        // Default to editor
+        this.setMode('editor');
+    }
+
+    updateStatus(mode) {
+        const statusIndicator = document.getElementById('status-indicator');
+        if (!statusIndicator) return;
+        const statusDot = statusIndicator.querySelector('.status-dot');
+        const statusText = statusIndicator.querySelector('span');
+        const statuses = {
+            'editor': { text: 'Editing', color: '#00ff00' },
+            'preview': { text: 'Previewing', color: '#00d4ff' },
+            'split': { text: 'Split View', color: '#ffd700' },
+            'annotation': { text: 'Annotating', color: '#ff6b6b' },
+            'reader': { text: 'Reading', color: '#4ecdc4' }
+        };
+        const s = statuses[mode] || { text: 'Ready', color: '#00ff00' };
+        if (statusText) statusText.textContent = s.text;
+        if (statusDot && statusDot.style) statusDot.style.background = s.color;
+    }
+
+    setMode(mode) {
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+            if (t.getAttribute('data-tab') === mode) {
+                t.classList.add('active');
+                t.setAttribute('aria-selected', 'true');
+            }
+        });
+
+        const editorContainer = document.getElementById('editor-container');
+        const editorPane = editorContainer?.querySelector('.editor-pane');
+        const previewPane = editorContainer?.querySelector('.preview-pane');
+
+        const show = (el) => { if (el) el.style.display = 'flex'; };
+        const hide = (el) => { if (el) el.style.display = 'none'; };
+
+        // Animate transitions
+        const animateSwap = (outEl, inEl) => {
+            if (outEl && (typeof window !== 'undefined' && window.getComputedStyle(outEl).display !== 'none')) {
+                this.anim.fadeOut(outEl, 160, 0, () => hide(outEl), { translateY: -6 });
+            }
+            if (inEl) {
+                show(inEl);
+                this.anim.fadeIn(inEl, 180, 40, null, { translateY: 8 });
+            }
+        };
+
+        if (mode === 'editor') {
+            animateSwap(previewPane, editorPane);
+        } else if (mode === 'preview') {
+            this.updatePreview();
+            animateSwap(editorPane, previewPane);
+        } else if (mode === 'split') {
+            show(editorPane); show(previewPane);
+        } else if (mode === 'annotation') {
+            // For now show editor, future: annotation-specific pane
+            show(editorPane); hide(previewPane);
+        } else if (mode === 'reader') {
+            // For now show preview-only for reader
+            this.updatePreview(); hide(editorPane); show(previewPane);
+        }
+
+        this.updateStatus(mode);
+    }
+
     saveMarkdown() {
         const content = this.editor ? this.editor.value : '';
         const blob = new Blob([content], { type: 'text/markdown' });
@@ -419,7 +525,8 @@ a.click();
 
     async copyToClipboard(text) {
         try {
-            //await navigator.clipboard.writeText(text);
+            if (typeof window === 'undefined' || !window.navigator || !window.navigator.clipboard) throw new Error('Clipboard API not available');
+            await window.navigator.clipboard.writeText(text);
             console.log('✅ Text copied to clipboard');
             return true;
         } catch (err) {
@@ -450,12 +557,14 @@ a.click();
         
         document.body.appendChild(errorToast);
         
-        // Remove after 5 seconds
-        setTimeout(() => {
-            errorToast.style.opacity = '0';
-            errorToast.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => errorToast.remove(), 300);
-        }, 5000);
+        // Remove after a delay with smooth fade via AnimationManager
+        this.anim.fadeOut(
+            errorToast,
+            300, // fade duration
+            5000, // delay before fade
+            () => { try { if (errorToast.parentNode) errorToast.parentNode.removeChild(errorToast); } catch (_) {} },
+            { translateY: -10 }
+        );
         
         // As fallback, select the editor content so user can copy manually
         if (this.editor) {
@@ -491,16 +600,14 @@ a.click();
 
         document.body.appendChild(feedback);
 
-        // Remove after animation
-        setTimeout(() => {
-            feedback.style.opacity = '0';
-            feedback.style.transform = 'translateY(-10px)';
-            setTimeout(() => {
-                if (feedback.parentNode) {
-                    feedback.parentNode.removeChild(feedback);
-                }
-            }, constants.FEEDBACK_FADE_DURATION);
-        }, constants.FEEDBACK_DURATION);
+        // Remove after delay using AnimationManager fade + slide
+        this.anim.fadeOut(
+            feedback,
+            constants.FEEDBACK_FADE_DURATION,
+            constants.FEEDBACK_DURATION,
+            () => { try { if (feedback.parentNode) feedback.parentNode.removeChild(feedback); } catch (_) {} },
+            { translateY: -10 }
+        );
     }
     
     // Console helper for collaboration story
@@ -550,8 +657,12 @@ if (typeof window !== 'undefined' && typeof jest === 'undefined') {
     } catch (_) { /* no-op */ }
 
     window.showCollabStory = () => markdownEditor.showCollaborationStory();
+    window.getAnimationFPS = () => {
+        try { return Math.round(markdownEditor?.anim?.getFPS() ?? 0); } catch (_) { return 0; }
+    };
 
     console.log('💡 Console commands available:');
     console.log('   • markdownEditor - Editor instance');
     console.log('   • showCollabStory() - Development journey!');
+    console.log('   • getAnimationFPS() - Current animation FPS estimate');
 }

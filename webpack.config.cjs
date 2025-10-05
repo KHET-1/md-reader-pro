@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
@@ -11,6 +12,9 @@ module.exports = (env, argv) => {
     new HtmlWebpackPlugin({
       template: './src/index.html',
       minify: false // Disable HTML minification to avoid issues with inline JavaScript
+    }),
+    new MiniCssExtractPlugin({
+      filename: isProduction ? 'styles.[contenthash].css' : 'styles.css'
     })
   ];
 
@@ -32,6 +36,17 @@ module.exports = (env, argv) => {
     mode: argv.mode || 'development',
     // Source maps for debugging
     devtool: isProduction ? 'source-map' : 'eval-source-map',
+    module: {
+      rules: [
+        {
+          test: /\.css$/i,
+          use: [
+            isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
+            'css-loader'
+          ]
+        }
+      ]
+    },
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js',

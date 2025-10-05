@@ -1,0 +1,14 @@
+/* Utilities extracted */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.focus-trap { outline: none; }
+.skip-link { position: absolute; top: -40px; left: 6px; background: var(--accent-color); color: var(--bg-primary); padding: 8px; text-decoration: none; border-radius: var(--radius-sm); z-index: 1000; transition: top var(--transition-fast); }
+.skip-link:focus { top: 6px; }
+
+.gpu-accelerated { transform: translateZ(0); will-change: transform, opacity; }
+.smooth-scroll { scroll-behavior: smooth; }
+
+/* Subtitle and file input helpers */
+.subtitle { color: #888; font-size: 0.9rem; }
+.file-input-label { float: right; font-size: 0.8rem; color: #666; }
+.file-input-link { cursor: pointer; color: #00d4ff; }
+.upload-hint { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }

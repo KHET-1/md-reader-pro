@@ -1,8 +1,8 @@
 {
   "name": "md-reader-pro",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "type": "module",
-  "description": "AI-powered markdown reader with local processing and complete privacy protection",
+  "description": "Enterprise-grade markdown editor with advanced animations and comprehensive testing",
   "scripts": {
     "dev": "webpack serve --config webpack.config.cjs --mode development",
     "dev:server": "webpack serve --config webpack.config.cjs --mode development",
