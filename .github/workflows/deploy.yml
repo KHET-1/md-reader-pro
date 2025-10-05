@@ -254,7 +254,7 @@ jobs:
         echo "- Benchmarks: ${{ steps.benchmarks.outcome }}" >> logs/summary.log
         echo "- Regression: ${{ steps.regression.outcome }}" >> logs/summary.log
         echo "- Build Test: ${{ steps.build-test.outcome }}" >> logs/summary.log
-        cat logs/summary.log
+        cat logs/summary.log || echo "Error reading logs/summary.log"
 
     - name: 📤 Upload summary log
       if: always()
@@ -371,7 +371,7 @@ jobs:
         if [ "${{ steps.deployment.outcome }}" == "success" ]; then
           echo "Deployment URL: ${{ steps.deployment.outputs.page_url }}" >> logs/deploy-summary.log
         fi
-        cat logs/deploy-summary.log
+        cat logs/deploy-summary.log || echo "Error reading logs/deploy-summary.log"
 
     - name: 📤 Upload deployment summary
       if: always()
@@ -511,7 +511,7 @@ jobs:
         echo "- Performance Monitor: ${{ steps.monitor.outcome }}" >> logs/monitor-summary.log
         echo "- Regression Check: ${{ steps.regression-check.outcome }}" >> logs/monitor-summary.log
         echo "- Baseline Update: ${{ steps.baseline-update.outcome }}" >> logs/monitor-summary.log
-        cat logs/monitor-summary.log
+        cat logs/monitor-summary.log || echo "Error reading logs/monitor-summary.log"
 
     - name: 📤 Upload monitoring summary
       if: always()
