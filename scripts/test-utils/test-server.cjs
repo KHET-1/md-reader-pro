@@ -2,9 +2,16 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const escape = require('escape-html');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3100;
+
+// Set up rate limiter: max 100 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+});
 
 // Find the actual bundle file
 const distDir = path.join(__dirname, 'dist');
@@ -34,6 +41,9 @@ app.get('/test-missing-dom.html', (req, res) => {
 </html>`;
   res.send(html);
 });
+
+// Apply rate limiter before fallback route to index.html
+app.use(limiter);
 
 // Serve the dist directory for static files
 app.use(express.static(distDir));
