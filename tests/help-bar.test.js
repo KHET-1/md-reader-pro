@@ -157,7 +157,7 @@ console.log("Hello World");
             window.copyToEditor(exampleMarkdown);
 
             // Check feedback exists initially
-            let hasFeedback = Array.from(document.querySelectorAll('div'))
+            const hasFeedback = Array.from(document.querySelectorAll('div'))
                 .some(div => div.textContent === '✅ Example copied!');
             expect(hasFeedback).toBe(true);
 

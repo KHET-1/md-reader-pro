@@ -54,6 +54,15 @@ export default [
         URL: 'readonly',
         Event: 'readonly',
         CustomEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        HTMLTextAreaElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        navigator: 'readonly',
+        location: 'readonly',
+        // Node.js globals (for test setup files)
+        process: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
         // Jest globals
         jest: 'readonly',
         describe: 'readonly',
@@ -71,6 +80,47 @@ export default [
       'prefer-const': 'error',
       'no-undef': 'error'
     },
-    files: ['tests/**/*.js']
+    files: ['tests/**/*.js'],
+    ignores: ['tests/e2e/**/*.js']
+  },
+  {
+    // E2E test files configuration with Playwright, Node.js, and browser globals
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        // Node.js globals (for test runner environment)
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        require: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        // Browser globals (for page.evaluate() contexts)
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        performance: 'readonly',
+        Event: 'readonly',
+        CustomEvent: 'readonly',
+        FileReader: 'readonly',
+        File: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly'
+      }
+    },
+    rules: {
+      'no-console': 'off',
+      'prefer-const': 'error',
+      'no-undef': 'error'
+    },
+    files: ['tests/e2e/**/*.js']
   }
 ];
