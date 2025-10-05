@@ -1,3 +1,4 @@
+/* global navigator */
 import { TestUtils, setupTestEnvironment } from './test-utils.js';
 // MD Reader Pro - Accessibility and UX Tests
 import MarkdownEditor from '../src/index.js';
