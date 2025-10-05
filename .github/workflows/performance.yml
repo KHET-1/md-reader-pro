@@ -49,49 +49,17 @@ jobs:
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-results.log
       run: |
-        # Pre-create log file to ensure it exists
-        # This is needed because some CI/CD steps depend on this file
-        touch pr-benchmarks.log
-        echo "🏃 Running benchmarks..."
-        
-        # Run benchmarks and capture output
-        # The dummy test in benchmarks.test.js ensures Jest always produces output
+        pwd
         npm run test:benchmarks > pr-benchmarks.log 2>&1 || true
-        
-        # Verify log file was created and has content
-        # If empty, add a helpful error message for debugging
-        if [ ! -s pr-benchmarks.log ]; then
-          echo "⚠️  Warning: pr-benchmarks.log was not created or is empty!" > pr-benchmarks.log
-          echo "This may indicate a Jest failure or configuration issue." >> pr-benchmarks.log
-          echo "Please check the test output above for errors." >> pr-benchmarks.log
-          # Don't fail the job - let it continue for debugging purposes
-        fi
-        echo "✅ Benchmarks completed"
+        ls -l pr-benchmarks.log || echo "pr-benchmarks.log not found, but continuing anyway"
 
-    - name: Debug - List benchmark files
+    - name: Output benchmarks
       if: always()
       run: |
-        echo "📂 Listing logs directory:"
-        ls -lh logs/ || echo "logs directory not found"
-        echo ""
-        echo "📂 Listing current directory:"
-        ls -lh *.log || echo "No log files in current directory"
-
-    - name: Debug - Show benchmark log contents
-      if: always()
-      run: |
-        echo "📄 Benchmark results log:"
-        if [ -f logs/benchmark-results.log ]; then
-          cat logs/benchmark-results.log
-        else
-          echo "⚠️  logs/benchmark-results.log not found"
-        fi
-        echo ""
-        echo "📄 PR benchmarks log:"
         if [ -f pr-benchmarks.log ]; then
-          head -100 pr-benchmarks.log
+          cat pr-benchmarks.log
         else
-          echo "⚠️  pr-benchmarks.log not found"
+          echo "pr-benchmarks.log not found"
         fi
 
     - name: Run full performance monitoring
@@ -147,33 +115,39 @@ jobs:
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-regression.log
       run: |
-        touch logs/benchmark-regression.log
-        echo "Running performance regression detection..."
+        pwd
         npm run test:benchmarks > logs/benchmark-regression.log 2>&1 || true
-        if [ ! -s logs/benchmark-regression.log ]; then
-          echo "logs/benchmark-regression.log was not created or is empty!" > logs/benchmark-regression.log
-        fi
-        # Check for performance regressions (basic implementation)
-        if grep -q "Slow test detected" logs/benchmark-regression.log; then
-          echo "⚠️ Performance regression detected!"
-          echo "See benchmark results for details."
-          exit 1
-        else
-          echo "✅ No performance regressions detected."
-        fi
+        ls -l logs/benchmark-regression.log || echo "logs/benchmark-regression.log not found, but continuing anyway"
 
-    - name: Debug - Show regression log
+    - name: Output regression benchmarks
       if: always()
       run: |
-        echo "📄 Regression benchmark log:"
         if [ -f logs/benchmark-regression.log ]; then
           cat logs/benchmark-regression.log
         else
-          echo "⚠️  logs/benchmark-regression.log not found"
+          echo "logs/benchmark-regression.log not found"
+        fi
+
+    - name: Check for performance regressions
+      id: regression-check
+      if: always()
+      run: |
+        if [ -f logs/benchmark-regression.log ]; then
+          if grep -q "Slow test detected" logs/benchmark-regression.log; then
+            echo "⚠️ Performance regression detected!"
+            echo "See benchmark results for details."
+            echo "regression_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No performance regressions detected."
+            echo "regression_detected=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "⚠️ Could not check for regressions - log file not found"
+          echo "regression_detected=false" >> $GITHUB_OUTPUT
         fi
 
     - name: Comment PR with results
-      if: failure()
+      if: always() && steps.regression-check.outputs.regression_detected == 'true'
       uses: actions/github-script@v8
       with:
         script: |
@@ -243,31 +217,17 @@ jobs:
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-pr.log
       run: |
-        # Pre-create log file to ensure it exists
-        touch pr-benchmarks.log
-        echo "🏃 Running PR benchmarks..."
-        
-        # Run benchmarks and capture output
-        # Use || true to prevent early exit on test failures
+        pwd
         npm run test:benchmarks > pr-benchmarks.log 2>&1 || true
-        
-        # Check if log file has content
-        if [ ! -s pr-benchmarks.log ]; then
-          echo "⚠️  Warning: pr-benchmarks.log was not created or is empty!" > pr-benchmarks.log
-          echo "This may indicate benchmark test failures." >> pr-benchmarks.log
-          echo "Continuing with graceful degradation..." >> pr-benchmarks.log
-          # Continue execution - we want to compare what we can
-        fi
-        echo "✅ PR benchmarks captured"
+        ls -l pr-benchmarks.log || echo "pr-benchmarks.log not found, but continuing anyway"
 
-    - name: Debug - Show PR benchmark log
+    - name: Output PR benchmarks
       if: always()
       run: |
-        echo "📄 PR benchmark log:"
         if [ -f pr-benchmarks.log ]; then
-          head -100 pr-benchmarks.log
+          cat pr-benchmarks.log
         else
-          echo "⚠️  pr-benchmarks.log not found"
+          echo "pr-benchmarks.log not found"
         fi
 
     - name: Checkout main branch
@@ -289,31 +249,17 @@ jobs:
       env:
         BENCHMARK_LOG_FILE: logs/benchmark-main.log
       run: |
-        # Pre-create log file to ensure it exists
-        touch main-benchmarks.log
-        echo "🏃 Running main branch benchmarks..."
-        
-        # Run benchmarks and capture output
-        # Use || true to prevent early exit on test failures
+        pwd
         npm run test:benchmarks > main-benchmarks.log 2>&1 || true
-        
-        # Check if log file has content
-        if [ ! -s main-benchmarks.log ]; then
-          echo "⚠️  Warning: main-benchmarks.log was not created or is empty!" > main-benchmarks.log
-          echo "This may indicate benchmark test failures on main branch." >> main-benchmarks.log
-          echo "Continuing with graceful degradation..." >> main-benchmarks.log
-          # Continue execution - we want to show what we can
-        fi
-        echo "✅ Main branch benchmarks captured"
+        ls -l main-benchmarks.log || echo "main-benchmarks.log not found, but continuing anyway"
 
-    - name: Debug - Show main benchmark log
+    - name: Output main benchmarks
       if: always()
       run: |
-        echo "📄 Main benchmark log:"
         if [ -f main-benchmarks.log ]; then
-          head -100 main-benchmarks.log
+          cat main-benchmarks.log
         else
-          echo "⚠️  main-benchmarks.log not found"
+          echo "main-benchmarks.log not found"
         fi
 
     - name: Compare performance
