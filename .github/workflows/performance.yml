@@ -54,6 +54,7 @@ jobs:
       run: |
         pwd
         npm run test:benchmarks > pr-benchmarks.log 2>&1 || true
+        [ -f pr-benchmarks.log ] || touch pr-benchmarks.log
         ls -l pr-benchmarks.log || echo "pr-benchmarks.log not found, but continuing anyway"
 
     - name: Output benchmarks
@@ -120,6 +121,7 @@ jobs:
       run: |
         pwd
         npm run test:benchmarks > logs/benchmark-regression.log 2>&1 || true
+        [ -f logs/benchmark-regression.log ] || touch logs/benchmark-regression.log
         ls -l logs/benchmark-regression.log || echo "logs/benchmark-regression.log not found, but continuing anyway"
 
     - name: Output regression benchmarks
@@ -222,6 +224,7 @@ jobs:
       run: |
         pwd
         npm run test:benchmarks > pr-benchmarks.log 2>&1 || true
+        [ -f pr-benchmarks.log ] || touch pr-benchmarks.log
         ls -l pr-benchmarks.log || echo "pr-benchmarks.log not found, but continuing anyway"
 
     - name: Output PR benchmarks
@@ -254,6 +257,7 @@ jobs:
       run: |
         pwd
         npm run test:benchmarks > main-benchmarks.log 2>&1 || true
+        [ -f main-benchmarks.log ] || touch main-benchmarks.log
         ls -l main-benchmarks.log || echo "main-benchmarks.log not found, but continuing anyway"
 
     - name: Output main benchmarks
