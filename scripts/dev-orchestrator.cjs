@@ -26,7 +26,10 @@ function now() {
 
 function ensureLogsDir() {
   const logsDir = path.resolve(__dirname, '..', 'logs');
-  try { if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir); } catch (_) {}
+  try { 
+    // mkdirSync with recursive:true is idempotent and more efficient
+    fs.mkdirSync(logsDir, { recursive: true }); 
+  } catch (_) {}
   return logsDir;
 }
 

@@ -13,9 +13,9 @@ const __dirname = path.dirname(__filename);
 function ensureLogsDir() {
   const logsDir = path.resolve(__dirname, 'logs');
   try {
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
+    // mkdirSync with recursive:true is idempotent and more efficient
+    // than checking existence first
+    fs.mkdirSync(logsDir, { recursive: true });
   } catch (error) {
     console.error(`Error creating logs directory: ${error.message}`);
   }
@@ -32,11 +32,10 @@ function writeToLogFile(results, logFilePath) {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${results}\n`;
     
-    // Ensure parent directory exists
+    // Ensure parent directory exists using recursive option
+    // This is more efficient than checking with existsSync first
     const logDir = path.dirname(logFilePath);
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
+    fs.mkdirSync(logDir, { recursive: true });
     
     // Append to log file
     fs.appendFileSync(logFilePath, logEntry, 'utf8');
