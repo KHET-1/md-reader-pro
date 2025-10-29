@@ -346,6 +346,18 @@ jobs:
 
     - name: 📄 Setup GitHub Pages
       uses: actions/configure-pages@v4
+      with:
+        enablement: true
+
+    - name: 🔎 Verify build output
+      run: |
+        echo "🔎 Checking for ./dist" | tee -a logs/deploy-prepare.log || true
+        if [ ! -d "./dist" ]; then
+          echo "❌ ./dist not found. Ensure the production build produced ./dist (webpack output path)." | tee -a logs/deploy-prepare.log >&2
+          echo "Contents of repo root:" | tee -a logs/deploy-prepare.log
+          ls -la || true
+          exit 1
+        fi
 
     - name: 📤 Upload Pages artifact
       uses: actions/upload-pages-artifact@v3
