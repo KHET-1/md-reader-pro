@@ -15,6 +15,16 @@ console.log('🚀 Preparing MD Reader Pro for GitHub Pages deployment...');
 const distPath = path.join(__dirname, '..', 'dist');
 const packagePath = path.join(__dirname, '..', 'package.json');
 
+try {
+  if (!fs.existsSync(distPath)) {
+    fs.mkdirSync(distPath, { recursive: true });
+    console.log(`ℹ️ Created missing dist directory at ${distPath}`);
+  }
+} catch (err) {
+  console.error('❌ Failed to ensure dist directory exists:', err);
+  throw err;
+}
+
 // Read package.json for version info
 const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
