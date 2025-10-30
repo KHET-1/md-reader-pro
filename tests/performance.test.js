@@ -175,6 +175,42 @@ describe('Performance Testing Suite', () => {
 
             expect(duration).toBeLessThan(70); // Adjusted for test environment stability
         });
+
+        test('should debounce input events to reduce update frequency', async () => {
+            let updateCount = 0;
+            const originalUpdate = editor.updatePreview.bind(editor);
+            
+            // Track how many times updatePreview is actually called
+            editor.updatePreview = function() {
+                updateCount++;
+                return originalUpdate.apply(this, arguments);
+            };
+
+            const startTime = performance.now();
+
+            // Simulate rapid typing (10 keystrokes in quick succession)
+            for (let i = 0; i < 10; i++) {
+                editor.editor.value = `Test ${i}`;
+                // Call debouncedUpdatePreview directly to simulate input event
+                editor.debouncedUpdatePreview();
+            }
+
+            // Wait for debounce to settle
+            await TestUtils.waitFor(350); // Wait longer than DEBOUNCE_DELAY (300ms)
+
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+
+            // With debouncing, updatePreview should only be called once
+            // (after the final debounce timeout expires)
+            expect(updateCount).toBeLessThanOrEqual(1);
+            
+            // The final value should be rendered
+            expect(editor.preview.textContent).toContain('Test 9');
+
+            // Restore original method
+            editor.updatePreview = originalUpdate;
+        });
     });
 
     describe('DOM Performance', () => {

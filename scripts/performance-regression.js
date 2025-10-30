@@ -19,15 +19,14 @@ class PerformanceRegression {
     }
 
     loadBaseline() {
-        if (!fs.existsSync(this.baselineFile)) {
-            console.log('📊 No baseline found. Creating initial baseline...');
-            return null;
-        }
-
         try {
             const data = fs.readFileSync(this.baselineFile, 'utf8');
             return JSON.parse(data);
         } catch (error) {
+            if (error.code === 'ENOENT') {
+                console.log('📊 No baseline found. Creating initial baseline...');
+                return null;
+            }
             console.error('❌ Error loading baseline:', error.message);
             return null;
         }
