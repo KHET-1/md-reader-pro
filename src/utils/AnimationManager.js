@@ -10,8 +10,24 @@ export default class AnimationManager {
       lastFPS: 60
     };
     this._tick = this._tick.bind(this);
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined') {
-      window.requestAnimationFrame(this._tick);
+    this._rafId = null;
+    this._isRunning = false;
+  }
+
+  _startLoop() {
+    if (!this._isRunning && typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined') {
+      this._isRunning = true;
+      this._rafId = window.requestAnimationFrame(this._tick);
+    }
+  }
+
+  _stopLoop() {
+    if (this._isRunning && typeof window !== 'undefined' && typeof window.cancelAnimationFrame !== 'undefined') {
+      this._isRunning = false;
+      if (this._rafId !== null) {
+        window.cancelAnimationFrame(this._rafId);
+        this._rafId = null;
+      }
     }
   }
 
@@ -48,9 +64,13 @@ export default class AnimationManager {
       }
     }
 
-    // Continue loop
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined') {
-      window.requestAnimationFrame(this._tick);
+    // Continue loop only if there are active animations
+    if (this.animations.size > 0) {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined') {
+        this._rafId = window.requestAnimationFrame(this._tick);
+      }
+    } else {
+      this._stopLoop();
     }
   }
 
@@ -66,6 +86,7 @@ export default class AnimationManager {
       canceled: false
     };
     this.animations.add(anim);
+    this._startLoop(); // Ensure loop is running when animation is added
     return anim;
   }
 

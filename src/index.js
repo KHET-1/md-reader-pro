@@ -23,6 +23,16 @@ class MarkdownEditor {
         this.fileInput = null;
         this.uploadArea = null;
         this.anim = new AnimationManager();
+        this.debounceTimer = null;
+        // Cache DOMPurify config for better performance
+        this.sanitizeConfig = {
+            ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 
+                          'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 
+                          'strong', 'em', 'img', 'table', 'thead', 'tbody', 
+                          'tr', 'th', 'td', 'br', 'hr', 'del', 'input', 'span'],
+            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'type', 
+                          'checked', 'disabled', 'id']
+        };
     }
 
     // Configuration constants
@@ -114,8 +124,8 @@ class MarkdownEditor {
     }
     
     setupEventListeners() {
-        // Real-time markdown preview
-        this.editor.addEventListener('input', () => this.updatePreview());
+        // Real-time markdown preview with debouncing for better performance
+        this.editor.addEventListener('input', () => this.debouncedUpdatePreview());
 
         // File upload handling
         if (this.fileInput) {
@@ -135,6 +145,19 @@ class MarkdownEditor {
 
         // Tabs and status
         this.setupTabs();
+    }
+
+    debouncedUpdatePreview() {
+        // Clear any existing timer
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
+        
+        // Set new timer to update preview after delay
+        this.debounceTimer = setTimeout(() => {
+            this.updatePreview();
+            this.debounceTimer = null;
+        }, MarkdownEditor.CONSTANTS.DEBOUNCE_DELAY);
     }
     
     updatePreview() {
@@ -156,15 +179,8 @@ class MarkdownEditor {
             // Parse markdown to HTML
             const rawHtml = marked.parse(markdownText);
             
-            // Sanitize HTML to prevent XSS attacks
-            const cleanHtml = DOMPurify.sanitize(rawHtml, {
-                ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 
-                              'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 
-                              'strong', 'em', 'img', 'table', 'thead', 'tbody', 
-                              'tr', 'th', 'td', 'br', 'hr', 'del', 'input', 'span'],
-                ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'type', 
-                              'checked', 'disabled', 'id']
-            });
+            // Sanitize HTML to prevent XSS attacks using cached config
+            const cleanHtml = DOMPurify.sanitize(rawHtml, this.sanitizeConfig);
             
             this.preview.innerHTML = cleanHtml;
         } catch (error) {
@@ -432,13 +448,15 @@ a.click();
         const helpBar = document.querySelector('.help-bar');
 
         if (helpToggle && helpBar) {
+            // Cache DOM references for better performance
+            const helpIcon = helpToggle.querySelector('.help-icon');
+            const helpText = helpToggle.querySelector('.help-text');
+
             helpToggle.addEventListener('click', () => {
                 helpBar.classList.toggle('show');
 
                 // Update button text/icon
                 const isVisible = helpBar.classList.contains('show');
-                const helpIcon = helpToggle.querySelector('.help-icon');
-                const helpText = helpToggle.querySelector('.help-text');
                 
                 if (isVisible) {
                     if (helpIcon) helpIcon.textContent = '✕';
@@ -455,8 +473,6 @@ a.click();
             document.addEventListener('click', (e) => {
                 if (!helpBar.contains(e.target) && !helpToggle.contains(e.target)) {
                     helpBar.classList.remove('show');
-                    const helpIcon = helpToggle.querySelector('.help-icon');
-                    const helpText = helpToggle.querySelector('.help-text');
                     if (helpIcon) helpIcon.textContent = '📚';
                     if (helpText) helpText.textContent = 'Help';
                     helpToggle.setAttribute('aria-label', 'Open Markdown Help');
