@@ -20,6 +20,8 @@ permissions:
 jobs:
   create-fix-pull-requests:
     runs-on: ubuntu-latest
+    # Only run if JFrog credentials are configured
+    if: vars.JF_URL != '' || secrets.JF_URL != ''
     steps:
       - uses: actions/checkout@v5
 
