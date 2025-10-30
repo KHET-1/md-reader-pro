@@ -23,7 +23,7 @@ jobs:
     # Only run if JFrog credentials are configured
     # This prevents workflow failures when JF_URL and JF_ACCESS_TOKEN secrets are not set
     # To enable this workflow, configure JF_URL and JF_ACCESS_TOKEN in repository secrets
-    if: vars.JF_URL != '' || secrets.JF_URL != ''
+    if: secrets.JF_URL != '' && secrets.JF_ACCESS_TOKEN != ''
     steps:
       - uses: actions/checkout@v5
 
