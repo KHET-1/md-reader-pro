@@ -30,6 +30,10 @@ If you discover a security vulnerability, **please do not open a public issue**.
 ## Automated Security
 
 - We use [Dependabot](https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically) to monitor for dependency vulnerabilities.
+- **Frogbot (Optional)**: When JFrog credentials are configured, we use [Frogbot](https://docs.jfrog-applications.jfrog.io/jfrog-applications/frogbot) for advanced vulnerability scanning via JFrog Xray. This is an optional enhancement and requires:
+  - `JF_URL` secret: Your JFrog platform URL
+  - `JF_ACCESS_TOKEN` secret: JFrog access token with Xray read permissions
+  - The workflow will skip automatically if these credentials are not configured
 - Security updates are prioritized and released as soon as possible.
 
 ---
