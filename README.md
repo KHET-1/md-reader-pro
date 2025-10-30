@@ -203,6 +203,20 @@ Detailed performance testing framework documentation is available in [`PERFORMAN
 - **CI/CD Integration** - GitHub Actions performance pipeline
 - **Optimization Guidelines** - Best practices for maintaining performance
 
+### Planning & Innovation
+
+**[`IDEAS.md`](./IDEAS.md)** - Innovation hub for brainstorming and idea capture:
+- **Idea Categories** - Organized by impact and feasibility
+- **Community Ideas** - User-submitted feature requests
+- **Quick Capture** - Rapid idea documentation
+- **Future Vision** - Long-term product direction
+
+**[`BACKLOG.md`](./BACKLOG.md)** - Prioritized product backlog:
+- **Prioritized Features** - Ready-to-implement features (P0-P3)
+- **Effort Estimates** - Development time estimates
+- **Technical Specs** - Detailed acceptance criteria
+- **Status Tracking** - Progress monitoring
+
 ## 🚀 Deployment
 
 ### **GitHub Pages Deployment**
@@ -276,11 +290,18 @@ Before contributing, ensure:
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes with tests
-4. Ensure quality gates pass
-5. Submit a pull request
+We welcome contributions! Here's how to get started:
+
+1. **Check existing work**: Review [BACKLOG.md](./BACKLOG.md) for planned features
+2. **Share ideas**: Add to [IDEAS.md](./IDEAS.md) or open a feature request issue
+3. **Fork & develop**: 
+   - Fork the repository
+   - Create a feature branch (`git checkout -b feature/amazing-feature`)
+   - Make your changes with tests
+   - Ensure quality gates pass
+4. **Submit PR**: Submit a pull request with clear description
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
