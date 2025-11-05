@@ -2850,42 +2850,8 @@ def hello_world():
         
         const loadingManager = new LoadingManager();
         
-        // Enhanced file handling with better error messages
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            if (!file.name.match(/\.(md|txt|markdown)$/i)) {
-                toastManager.show('Please select a valid markdown file (.md, .txt, .markdown)', 'error');
-                return;
-            }
-            
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit
-                toastManager.show('File size too large. Please select a file smaller than 10MB.', 'error');
-                return;
-            }
-            
-            loadingManager.show('#editor-container', 'Loading file...');
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target.result;
-                const editor = document.getElementById('markdown-editor');
-                if (editor) {
-                    editor.value = content;
-                    editor.dispatchEvent(new Event('input'));
-                    toastManager.show(`File "${file.name}" loaded successfully`, 'success');
-                }
-                loadingManager.hide('#editor-container');
-            };
-            
-            reader.onerror = () => {
-                toastManager.show('Failed to read file. Please try again.', 'error');
-                loadingManager.hide('#editor-container');
-            };
-            
-            reader.readAsText(file);
-        }
+        // Note: File upload handling is done in src/index.js via MarkdownEditor.loadFile()
+        // This avoids duplicate event listeners and maintains proper encapsulation
         
         // Enhanced keyboard navigation
         function setupKeyboardNavigation() {
@@ -3616,11 +3582,8 @@ def hello_world():
         document.addEventListener('DOMContentLoaded', () => {
             setupKeyboardNavigation();
             
-            // Enhanced file input handling
-            const fileInput = document.getElementById('file-input');
-            if (fileInput) {
-                fileInput.addEventListener('change', handleFileUpload);
-            }
+            // Note: File upload is handled by MarkdownEditor class in src/index.js
+            // No need to attach another event listener here to avoid conflicts
             
             // Initialize Phase 2 features
             new ScrollAnimations();
