@@ -136,18 +136,24 @@ console.log("Hello World");
     });
 
     describe('Copy Feedback System', () => {
-        test('should show copy feedback when copying example', () => {
+        test('should show copy feedback when copying example', async () => {
             const exampleMarkdown = '# Test';
 
-            // Call copyToEditor which should trigger showCopyFeedback
+            // Call copyToEditor which should trigger the notification
             window.copyToEditor(exampleMarkdown);
+            
+            // Wait for async clipboard operation to complete
+            await TestUtils.waitFor(100);
 
-            // Check that feedback element was created
-            const feedbackElement = document.querySelector('div');
-            const hasFeedback = Array.from(document.querySelectorAll('div'))
-                .some(div => div.textContent === '✅ Example copied!');
-
-            expect(hasFeedback).toBe(true);
+            // Check that notification was created (it uses the notification system now)
+            // It could be either success (if clipboard API works) or warning (if it doesn't)
+            const notification = document.querySelector('.notification');
+            expect(notification).toBeTruthy();
+            
+            // Check for message (either success or warning about clipboard)
+            const hasNotification = Array.from(document.querySelectorAll('.notification'))
+                .some(div => div.textContent.includes('Example') || div.textContent.includes('clipboard'));
+            expect(hasNotification).toBe(true);
         });
 
         test('should remove copy feedback after timeout', async () => {
@@ -155,19 +161,22 @@ console.log("Hello World");
 
             // Call copyToEditor
             window.copyToEditor(exampleMarkdown);
+            
+            // Wait for async clipboard operation to complete
+            await TestUtils.waitFor(100);
 
-            // Check feedback exists initially
-            const hasFeedback = Array.from(document.querySelectorAll('div'))
-                .some(div => div.textContent === '✅ Example copied!');
-            expect(hasFeedback).toBe(true);
+            // Check notification exists initially
+            const hasNotification = Array.from(document.querySelectorAll('.notification'))
+                .some(div => div.textContent.includes('Example') || div.textContent.includes('clipboard'));
+            expect(hasNotification).toBe(true);
 
-            // Wait for timeout + animation (2000ms timeout + 300ms animation)
-            await TestUtils.waitFor(2400);
+            // Wait for timeout + animation (5000ms for warning + 300ms animation)
+            await TestUtils.waitFor(5400);
 
-            // Check that feedback is removed after timeout
-            const stillHasFeedback = Array.from(document.querySelectorAll('div'))
-                .some(div => div.textContent === '✅ Example copied!');
-            expect(stillHasFeedback).toBe(false);
+            // Check that notification is removed after timeout
+            const stillHasNotification = Array.from(document.querySelectorAll('.notification'))
+                .some(div => div.textContent.includes('Example') || div.textContent.includes('clipboard'));
+            expect(stillHasNotification).toBe(false);
         });
     });
 

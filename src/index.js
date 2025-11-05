@@ -8,6 +8,7 @@ import 'prismjs/components/prism-markup.js';
 import 'prismjs/components/prism-json.js';
 import 'prismjs/components/prism-markdown.js';
 import AnimationManager from './utils/AnimationManager.js';
+import NotificationManager from './utils/NotificationManager.js';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/layout.css';
@@ -23,6 +24,7 @@ class MarkdownEditor {
         this.fileInput = null;
         this.uploadArea = null;
         this.anim = new AnimationManager();
+        this.notify = new NotificationManager();
         this.debounceTimer = null;
         // Cache DOMPurify config for better performance
         this.sanitizeConfig = {
@@ -215,6 +217,54 @@ class MarkdownEditor {
             return;
         }
 
+        // Validate file size
+        const constants = MarkdownEditor.CONSTANTS;
+        if (file.size > constants.MAX_FILE_SIZE) {
+            this.notify.error(`File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is ${constants.MAX_FILE_SIZE / 1024 / 1024}MB.`, {
+                actions: [
+                    {
+                        label: 'Choose Another File',
+                        primary: true,
+                        onClick: () => {
+                            if (this.fileInput) {
+                                this.fileInput.click();
+                            }
+                        }
+                    }
+                ]
+            });
+            return;
+        }
+
+        // Validate file extension
+        const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+        if (!constants.SUPPORTED_EXTENSIONS.includes(ext)) {
+            this.notify.warning(`Unsupported file type: ${ext}. Supported types: ${constants.SUPPORTED_EXTENSIONS.join(', ')}`, {
+                actions: [
+                    {
+                        label: 'Load Anyway',
+                        primary: true,
+                        onClick: () => {
+                            this.readFile(file);
+                        }
+                    },
+                    {
+                        label: 'Choose Another',
+                        onClick: () => {
+                            if (this.fileInput) {
+                                this.fileInput.click();
+                            }
+                        }
+                    }
+                ]
+            });
+            return;
+        }
+
+        this.readFile(file);
+    }
+
+    readFile(file) {
         const reader = new FileReader();
 
         const cleanup = () => {
@@ -247,6 +297,12 @@ class MarkdownEditor {
                 this.editor.value = content || '';
             }
             this.updatePreview();
+            
+            // Show success notification
+            this.notify.success(`Successfully loaded: ${file.name}`, {
+                duration: NotificationManager.CONSTANTS.DURATION.SHORT
+            });
+            
             // Only log in browser environments (Playwright/Jest doesn't define `jest`)
             if (typeof jest === 'undefined') {
                 console.log(`📄 Loaded file: ${file.name}`);
@@ -256,7 +312,23 @@ class MarkdownEditor {
 
         reader.onerror = (e) => {
             console.error('File reading error:', e);
-            alert('Error reading file. Please try again.');
+            this.notify.error('Failed to read file. Please try again.', {
+                actions: [
+                    {
+                        label: 'Try Again',
+                        primary: true,
+                        onClick: () => {
+                            if (this.fileInput) {
+                                this.fileInput.click();
+                            }
+                        }
+                    },
+                    {
+                        label: 'Dismiss',
+                        onClick: () => {}
+                    }
+                ]
+            });
             cleanup();
         };
 
@@ -429,6 +501,24 @@ class MarkdownEditor {
 
     saveMarkdown() {
         const content = this.editor ? this.editor.value : '';
+        
+        if (!content.trim()) {
+            this.notify.warning('Document is empty. Nothing to save.', {
+                actions: [
+                    {
+                        label: 'Start Writing',
+                        primary: true,
+                        onClick: () => {
+                            if (this.editor) {
+                                this.editor.focus();
+                            }
+                        }
+                    }
+                ]
+            });
+            return;
+        }
+        
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
 
@@ -436,10 +526,14 @@ class MarkdownEditor {
         a.href = url;
         a.download = 'document.md';
         document.body.appendChild(a);
-a.click();
+        a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
+        this.notify.success('Document saved successfully!', {
+            duration: NotificationManager.CONSTANTS.DURATION.SHORT
+        });
+        
         console.log('💾 Markdown saved');
     }
 
@@ -505,9 +599,6 @@ a.click();
     copyToEditor(example) {
         if (!this.editor) return;
 
-        // First, copy to clipboard
-        this.copyToClipboard(example);
-
         // Get current cursor position
         const cursorPos = this.editor.selectionStart;
         const currentValue = this.editor.value;
@@ -533,8 +624,8 @@ a.click();
         // Focus the editor
         this.editor.focus();
 
-        // Show success feedback
-        this.showCopyFeedback();
+        // Try to copy to clipboard
+        this.copyToClipboard(example);
 
         console.log('📋 Example copied to clipboard and editor');
     }
@@ -543,87 +634,41 @@ a.click();
         try {
             if (typeof window === 'undefined' || !window.navigator || !window.navigator.clipboard) throw new Error('Clipboard API not available');
             await window.navigator.clipboard.writeText(text);
+            
+            // Show success notification
+            this.notify.success('Example copied to editor and clipboard!', {
+                duration: NotificationManager.CONSTANTS.DURATION.SHORT
+            });
+            
             console.log('✅ Text copied to clipboard');
             return true;
         } catch (err) {
             console.error('❌ Clipboard API failed:', err);
-            // Show user-friendly error message
-            this.showClipboardError(text);
+            
+            // Show notification with manual copy instructions
+            this.notify.warning('Example added to editor. Press Ctrl+C to copy manually.', {
+                duration: NotificationManager.CONSTANTS.DURATION.MEDIUM,
+                actions: [
+                    {
+                        label: 'Got it',
+                        primary: true,
+                        onClick: () => {}
+                    }
+                ]
+            });
+            
+            // Select the text in the editor so user can copy manually
+            if (this.editor) {
+                const currentValue = this.editor.value;
+                const start = currentValue.indexOf(text);
+                if (start !== -1) {
+                    this.editor.setSelectionRange(start, start + text.length);
+                    this.editor.focus();
+                }
+            }
+            
             return false;
         }
-    }
-
-    showClipboardError(text) {
-        // Create error notification
-        const errorToast = document.createElement('div');
-        errorToast.textContent = '⚠️ Clipboard access denied. Text is selected - press Ctrl+C to copy.';
-        errorToast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 420px;
-            background: #ff6b6b;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 1001;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        `;
-        
-        document.body.appendChild(errorToast);
-        
-        // Remove after a delay with smooth fade via AnimationManager
-        this.anim.fadeOut(
-            errorToast,
-            300, // fade duration
-            5000, // delay before fade
-            () => { try { if (errorToast.parentNode) errorToast.parentNode.removeChild(errorToast); } catch (_) {} },
-            { translateY: -10 }
-        );
-        
-        // As fallback, select the editor content so user can copy manually
-        if (this.editor) {
-            const currentValue = this.editor.value;
-            const start = currentValue.indexOf(text);
-            if (start !== -1) {
-                this.editor.setSelectionRange(start, start + text.length);
-                this.editor.focus();
-            }
-        }
-    }
-
-    showCopyFeedback() {
-        const constants = MarkdownEditor.CONSTANTS;
-
-        // Create temporary feedback element
-        const feedback = document.createElement('div');
-        feedback.textContent = '✅ Example copied!';
-        feedback.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: ${constants.HELP_BAR_WIDTH + 20}px;
-            background: #4caf50;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 1001;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            transition: all ${constants.HELP_BAR_TRANSITION_DURATION}ms ease;
-        `;
-
-        document.body.appendChild(feedback);
-
-        // Remove after delay using AnimationManager fade + slide
-        this.anim.fadeOut(
-            feedback,
-            constants.FEEDBACK_FADE_DURATION,
-            constants.FEEDBACK_DURATION,
-            () => { try { if (feedback.parentNode) feedback.parentNode.removeChild(feedback); } catch (_) {} },
-            { translateY: -10 }
-        );
     }
     
     // Console helper for collaboration story
