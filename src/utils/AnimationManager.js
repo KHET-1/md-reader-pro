@@ -184,14 +184,10 @@ export default class AnimationManager {
     return this.metrics.lastFPS;
   }
 
-  // Helper: Check if getComputedStyle is available
-  _hasComputedStyle() {
-    return typeof window !== 'undefined' && typeof window.getComputedStyle !== 'undefined';
-  }
-
   _getOpacity(el) {
     try {
-      const cs = this._hasComputedStyle() ? window.getComputedStyle(el) : null;
+      const hasComputedStyle = typeof window !== 'undefined' && typeof window.getComputedStyle !== 'undefined';
+      const cs = hasComputedStyle ? window.getComputedStyle(el) : null;
       const op = cs && cs.opacity != null ? parseFloat(cs.opacity) : 1;
       return isNaN(op) ? 1 : op;
     } catch (_) {

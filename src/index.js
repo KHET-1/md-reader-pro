@@ -91,7 +91,7 @@ class MarkdownEditor {
         if (!this.cachedElements[key]) {
             this.cachedElements[key] = id ? 
                 document.getElementById(id) : 
-                document.querySelector(selector);
+                (selector ? document.querySelector(selector) : null);
         }
         return this.cachedElements[key];
     }
@@ -162,16 +162,12 @@ class MarkdownEditor {
             if (e && e.target && typeof e.target.result !== 'undefined') {
                 return e.target.result;
             }
-            // Direct reader access
-            if (typeof reader.result !== 'undefined' && reader.result !== null) {
+            // Direct reader access (when event object is not available)
+            if (reader && typeof reader.result !== 'undefined' && reader.result !== null) {
                 return reader.result;
             }
-            // Mocked environment fallback
-            if (this && typeof this.result !== 'undefined' && this.result !== null) {
-                return this.result;
-            }
         } catch (_) {
-            // Best-effort; return empty string
+            // Best-effort; return empty string on error
         }
         return '';
     }
@@ -363,16 +359,24 @@ class MarkdownEditor {
         // Only setup if uploadArea exists
         if (!this.uploadArea) return;
         
-        const preventDefaults = this.preventDefaults;
         const uploadArea = this.uploadArea;
         
         // Prevent default drag behaviors and setup all event handlers
         const dragEventHandlers = {
-            'dragenter': [preventDefaults, () => uploadArea.classList.add('drag-over')],
-            'dragover': [preventDefaults, () => uploadArea.classList.add('drag-over')],
-            'dragleave': [preventDefaults, () => uploadArea.classList.remove('drag-over')],
+            'dragenter': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.add('drag-over')
+            ],
+            'dragover': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.add('drag-over')
+            ],
+            'dragleave': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.remove('drag-over')
+            ],
             'drop': [
-                preventDefaults,
+                (e) => this.preventDefaults(e),
                 () => uploadArea.classList.remove('drag-over'),
                 (e) => {
                     const files = e.dataTransfer.files;
@@ -389,7 +393,7 @@ class MarkdownEditor {
                 uploadArea.addEventListener(eventName, handler, false);
             });
             // Also prevent defaults on body
-            document.body.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, (e) => this.preventDefaults(e), false);
         });
     }
     
