@@ -12,13 +12,13 @@ When opening a markdown file using the file input, users experienced:
 ### The Problem
 The application had **duplicate event handlers** attached to the file input element:
 
-1. **First Handler** in `src/index.js` (line 132):
+1. **First Handler** in `src/index.js` within `MarkdownEditor.setupEventListeners()`:
    ```javascript
    this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
    ```
    This calls `handleFileSelect()` which then calls `loadFile(file)`.
 
-2. **Second Handler** in `src/index.html` (line 3622):
+2. **Second Handler** in `src/index.html` within the DOMContentLoaded event:
    ```javascript
    fileInput.addEventListener('change', handleFileUpload);
    ```
