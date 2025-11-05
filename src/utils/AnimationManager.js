@@ -5,7 +5,7 @@ export default class AnimationManager {
   constructor() {
     this.animations = new Set();
     this.metrics = {
-      lastFrameTime: typeof performance !== 'undefined' ? performance.now() : 0,
+      lastFrameTime: this._getPerformanceNow(),
       samples: [],
       lastFPS: 60
     };
@@ -14,15 +14,41 @@ export default class AnimationManager {
     this._isRunning = false;
   }
 
+  // Helper: Check if requestAnimationFrame is available
+  _hasRAF() {
+    return typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined';
+  }
+
+  // Helper: Check if cancelAnimationFrame is available
+  _hasCAF() {
+    return typeof window !== 'undefined' && typeof window.cancelAnimationFrame !== 'undefined';
+  }
+
+  // Helper: Get current performance time
+  _getPerformanceNow() {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+  }
+
+  // Helper: Safely set element style property
+  _setStyle(element, property, value) {
+    try {
+      if (element && element.style) {
+        element.style[property] = value;
+      }
+    } catch (_) {
+      // Ignore style setting errors
+    }
+  }
+
   _startLoop() {
-    if (!this._isRunning && typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined') {
+    if (!this._isRunning && this._hasRAF()) {
       this._isRunning = true;
       this._rafId = window.requestAnimationFrame(this._tick);
     }
   }
 
   _stopLoop() {
-    if (this._isRunning && typeof window !== 'undefined' && typeof window.cancelAnimationFrame !== 'undefined') {
+    if (this._isRunning && this._hasCAF()) {
       this._isRunning = false;
       if (this._rafId !== null) {
         window.cancelAnimationFrame(this._rafId);
@@ -66,7 +92,7 @@ export default class AnimationManager {
 
     // Continue loop only if there are active animations
     if (this.animations.size > 0) {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame !== 'undefined') {
+      if (this._hasRAF()) {
         this._rafId = window.requestAnimationFrame(this._tick);
       }
     } else {
@@ -76,7 +102,7 @@ export default class AnimationManager {
 
   // Generic animation scheduler
   animate(element, duration = 300, delay = 0, updater = () => {}, onComplete = () => {}) {
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const now = this._getPerformanceNow();
     const anim = {
       element,
       start: now + Math.max(delay, 0),
@@ -97,23 +123,19 @@ export default class AnimationManager {
     const translateY = typeof options.translateY === 'number' ? options.translateY : 0;
 
     // Ensure we control opacity/transform via style
-    try {
-      if (element.style) {
-        element.style.willChange = 'opacity, transform';
-      }
-    } catch (_) { /* no-op */ }
+    this._setStyle(element, 'willChange', 'opacity, transform');
 
     const updater = (t) => {
       const opacity = startOpacity * (1 - t);
-      try { if (element && element.style) element.style.opacity = String(opacity); } catch (_) { /* no-op */ }
+      this._setStyle(element, 'opacity', String(opacity));
       if (translateY !== 0) {
         const y = translateY * t;
-        try { if (element && element.style) element.style.transform = `translateY(${y}px)`; } catch (_) { /* no-op */ }
+        this._setStyle(element, 'transform', `translateY(${y}px)`);
       }
     };
 
     const complete = () => {
-      try { if (element && element.style) element.style.willChange = ''; } catch (_) { /* no-op */ }
+      this._setStyle(element, 'willChange', '');
       if (typeof onComplete === 'function') {
         try { onComplete(); } catch (_) { /* no-op */ }
       }
@@ -128,27 +150,25 @@ export default class AnimationManager {
     const endOpacity = 1;
     const translateY = typeof options.translateY === 'number' ? options.translateY : 0;
 
-    try {
-      if (element.style) {
-        element.style.opacity = '0';
-        element.style.willChange = 'opacity, transform';
-        if (translateY !== 0) element.style.transform = `translateY(${translateY}px)`;
-      }
-    } catch (_) {}
+    this._setStyle(element, 'opacity', '0');
+    this._setStyle(element, 'willChange', 'opacity, transform');
+    if (translateY !== 0) {
+      this._setStyle(element, 'transform', `translateY(${translateY}px)`);
+    }
 
     const updater = (t) => {
       const opacity = endOpacity * t;
-      try { if (element && element.style) element.style.opacity = String(opacity); } catch (_) {}
+      this._setStyle(element, 'opacity', String(opacity));
       if (translateY !== 0) {
         const y = translateY * (1 - t);
-        try { if (element && element.style) element.style.transform = `translateY(${y}px)`; } catch (_) {}
+        this._setStyle(element, 'transform', `translateY(${y}px)`);
       }
     };
 
     const complete = () => {
-      try { if (element && element.style) element.style.willChange = ''; } catch (_) {}
+      this._setStyle(element, 'willChange', '');
       if (typeof onComplete === 'function') {
-        try { onComplete(); } catch (_) {}
+        try { onComplete(); } catch (_) { /* no-op */ }
       }
     };
 
@@ -164,9 +184,14 @@ export default class AnimationManager {
     return this.metrics.lastFPS;
   }
 
+  // Helper: Check if getComputedStyle is available
+  _hasComputedStyle() {
+    return typeof window !== 'undefined' && typeof window.getComputedStyle !== 'undefined';
+  }
+
   _getOpacity(el) {
     try {
-      const cs = (typeof window !== 'undefined' && typeof window.getComputedStyle !== 'undefined') ? window.getComputedStyle(el) : null;
+      const cs = this._hasComputedStyle() ? window.getComputedStyle(el) : null;
       const op = cs && cs.opacity != null ? parseFloat(cs.opacity) : 1;
       return isNaN(op) ? 1 : op;
     } catch (_) {
