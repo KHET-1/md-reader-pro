@@ -26,6 +26,8 @@ class MarkdownEditor {
         this.anim = new AnimationManager();
         this.notify = new NotificationManager();
         this.debounceTimer = null;
+        // Cache DOM element references to avoid repeated queries
+        this.cachedElements = {};
         // Cache DOMPurify config for better performance
         this.sanitizeConfig = {
             ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 
@@ -69,10 +71,112 @@ class MarkdownEditor {
             }
         };
     }
+
+    // Helper: Check if in browser environment
+    isBrowser() {
+        return typeof window !== 'undefined';
+    }
+
+    // Helper: Check if in test environment
+    isTestEnvironment() {
+        return typeof jest !== 'undefined';
+    }
+
+    // Helper: Validate required editor elements
+    hasRequiredElements() {
+        return this.editor && this.preview;
+    }
+
+    // Helper: Get cached DOM element
+    getCachedElement(id, selector) {
+        const key = id || selector;
+        if (!this.cachedElements[key]) {
+            this.cachedElements[key] = id ? 
+                document.getElementById(id) : 
+                (selector ? document.querySelector(selector) : null);
+        }
+        return this.cachedElements[key];
+    }
+
+    // Helper: Remove DOM element safely
+    removeDOMElement(element) {
+        try {
+            if (element && element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        } catch (_) {
+            // Ignore errors during cleanup
+        }
+    }
+
+    // Helper: Create and show notification
+    showNotification(message, type = 'success', duration = null) {
+        const constants = MarkdownEditor.CONSTANTS;
+        const isError = type === 'error';
+        const feedbackDuration = duration || constants.FEEDBACK_DURATION;
+        
+        const notification = document.createElement('div');
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: ${isError ? '420px' : (constants.HELP_BAR_WIDTH + 20) + 'px'};
+            background: ${isError ? '#ff6b6b' : '#4caf50'};
+            color: white;
+            padding: ${isError ? '12px 20px' : '8px 16px'};
+            border-radius: ${isError ? '6px' : '4px'};
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            ${!isError ? `transition: all ${constants.HELP_BAR_TRANSITION_DURATION}ms ease;` : ''}
+        `;
+
+        document.body.appendChild(notification);
+
+        // Remove after delay using AnimationManager
+        this.anim.fadeOut(
+            notification,
+            constants.FEEDBACK_FADE_DURATION,
+            feedbackDuration,
+            () => this.removeDOMElement(notification),
+            { translateY: -10 }
+        );
+    }
+
+    // Helper: Update help bar UI state
+    updateHelpBarState(isVisible, helpIcon, helpText, helpToggle) {
+        if (isVisible) {
+            if (helpIcon) helpIcon.textContent = '✕';
+            if (helpText) helpText.textContent = 'Close';
+            if (helpToggle) helpToggle.setAttribute('aria-label', 'Close Markdown Help');
+        } else {
+            if (helpIcon) helpIcon.textContent = '📚';
+            if (helpText) helpText.textContent = 'Help';
+            if (helpToggle) helpToggle.setAttribute('aria-label', 'Open Markdown Help');
+        }
+    }
+
+    // Helper: Get FileReader result from event or reader object
+    getFileReaderResult(e, reader) {
+        try {
+            // Standard browser event
+            if (e && e.target && typeof e.target.result !== 'undefined') {
+                return e.target.result;
+            }
+            // Direct reader access (when event object is not available)
+            if (reader && typeof reader.result !== 'undefined' && reader.result !== null) {
+                return reader.result;
+            }
+        } catch (_) {
+            // Best-effort; return empty string on error
+        }
+        return '';
+    }
     
     init() {
         // Only initialize if we are in a browser environment
-        if (typeof window === 'undefined') return;
+        if (!this.isBrowser()) return;
 
         console.log(`✅ MD Reader Pro v${this.version} initialized`);
         console.log('📝 Professional markdown editor ready');
@@ -93,9 +197,9 @@ class MarkdownEditor {
         this.fileInput = document.getElementById('file-input');
         this.uploadArea = document.querySelector('.upload-area');
         
-        if (!this.editor || !this.preview) {
+        if (!this.hasRequiredElements()) {
             // Do not log error in test environment
-            if (typeof jest === 'undefined') {
+            if (!this.isTestEnvironment()) {
                 console.error('Required DOM elements not found');
             }
             return;
@@ -163,7 +267,7 @@ class MarkdownEditor {
     }
     
     updatePreview() {
-        if (!this.editor || !this.preview) return;
+        if (!this.hasRequiredElements()) return;
         
         const markdownText = this.editor.value;
         
@@ -275,36 +379,13 @@ class MarkdownEditor {
         };
 
         reader.onload = (e) => {
-            // Support multiple onload invocation styles used in tests and browsers
-            // 1) e.target.result (standard FileReader onload event)
-            // 2) this.result when tests call onload() without an event arg
-            // 3) reader.result as a fallback
-            let content = '';
-            try {
-                if (e && e.target && typeof e.target.result !== 'undefined') {
-                    content = e.target.result;
-                } else if (typeof reader.result !== 'undefined' && reader.result !== null) {
-                    content = reader.result;
-                } else if (this && typeof this.result !== 'undefined' && this.result !== null) {
-                    // In some mocked environments, `this` is the FileReader-like object
-                    content = this.result;
-                }
-            } catch (_) {
-                // Best-effort; leave content as empty string
-            }
-
+            const content = this.getFileReaderResult(e, reader);
             if (this.editor) {
                 this.editor.value = content || '';
             }
             this.updatePreview();
-            
-            // Show success notification
-            this.notify.success(`Successfully loaded: ${file.name}`, {
-                duration: NotificationManager.CONSTANTS.DURATION.SHORT
-            });
-            
-            // Only log in browser environments (Playwright/Jest doesn't define `jest`)
-            if (typeof jest === 'undefined') {
+            // Only log in browser environments
+            if (!this.isTestEnvironment()) {
                 console.log(`📄 Loaded file: ${file.name}`);
             }
             cleanup();
@@ -344,34 +425,42 @@ class MarkdownEditor {
         // Only setup if uploadArea exists
         if (!this.uploadArea) return;
         
-        // Prevent default drag behaviors
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, this.preventDefaults, false);
-            document.body.addEventListener(eventName, this.preventDefaults, false);
-        });
+        const uploadArea = this.uploadArea;
         
-        // Highlight drop area when item is dragged over it
-        ['dragenter', 'dragover'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, () => {
-                this.uploadArea.classList.add('drag-over');
-            }, false);
-        });
+        // Prevent default drag behaviors and setup all event handlers
+        const dragEventHandlers = {
+            'dragenter': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.add('drag-over')
+            ],
+            'dragover': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.add('drag-over')
+            ],
+            'dragleave': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.remove('drag-over')
+            ],
+            'drop': [
+                (e) => this.preventDefaults(e),
+                () => uploadArea.classList.remove('drag-over'),
+                (e) => {
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.loadFile(files[0]);
+                    }
+                }
+            ]
+        };
         
-        ['dragleave', 'drop'].forEach(eventName => {
-            this.uploadArea.addEventListener(eventName, () => {
-                this.uploadArea.classList.remove('drag-over');
-            }, false);
+        // Apply all event listeners
+        Object.entries(dragEventHandlers).forEach(([eventName, handlers]) => {
+            handlers.forEach(handler => {
+                uploadArea.addEventListener(eventName, handler, false);
+            });
+            // Also prevent defaults on body
+            document.body.addEventListener(eventName, (e) => this.preventDefaults(e), false);
         });
-        
-        // Handle dropped files
-        this.uploadArea.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            
-            if (files.length > 0) {
-                this.loadFile(files[0]);
-            }
-        }, false);
     }
     
     preventDefaults(e) {
@@ -418,7 +507,7 @@ class MarkdownEditor {
 
     setupTabs() {
         const tabs = document.querySelectorAll('.tab');
-        const editorContainer = document.getElementById('editor-container');
+        const editorContainer = this.getCachedElement('editor-container');
         const editorPane = editorContainer?.querySelector('.editor-pane');
         const previewPane = editorContainer?.querySelector('.preview-pane');
 
@@ -436,7 +525,7 @@ class MarkdownEditor {
     }
 
     updateStatus(mode) {
-        const statusIndicator = document.getElementById('status-indicator');
+        const statusIndicator = this.getCachedElement('status-indicator');
         if (!statusIndicator) return;
         const statusDot = statusIndicator.querySelector('.status-dot');
         const statusText = statusIndicator.querySelector('span');
@@ -463,7 +552,7 @@ class MarkdownEditor {
             }
         });
 
-        const editorContainer = document.getElementById('editor-container');
+        const editorContainer = this.getCachedElement('editor-container');
         const editorPane = editorContainer?.querySelector('.editor-pane');
         const previewPane = editorContainer?.querySelector('.preview-pane');
 
@@ -472,7 +561,7 @@ class MarkdownEditor {
 
         // Animate transitions
         const animateSwap = (outEl, inEl) => {
-            if (outEl && (typeof window !== 'undefined' && window.getComputedStyle(outEl).display !== 'none')) {
+            if (outEl && (this.isBrowser() && window.getComputedStyle(outEl).display !== 'none')) {
                 this.anim.fadeOut(outEl, 160, 0, () => hide(outEl), { translateY: -6 });
             }
             if (inEl) {
@@ -538,8 +627,8 @@ class MarkdownEditor {
     }
 
     setupHelpBar() {
-        const helpToggle = document.getElementById('help-toggle');
-        const helpBar = document.querySelector('.help-bar');
+        const helpToggle = this.getCachedElement('help-toggle');
+        const helpBar = this.getCachedElement(null, '.help-bar');
 
         if (helpToggle && helpBar) {
             // Cache DOM references for better performance
@@ -548,28 +637,15 @@ class MarkdownEditor {
 
             helpToggle.addEventListener('click', () => {
                 helpBar.classList.toggle('show');
-
-                // Update button text/icon
                 const isVisible = helpBar.classList.contains('show');
-                
-                if (isVisible) {
-                    if (helpIcon) helpIcon.textContent = '✕';
-                    if (helpText) helpText.textContent = 'Close';
-                    helpToggle.setAttribute('aria-label', 'Close Markdown Help');
-                } else {
-                    if (helpIcon) helpIcon.textContent = '📚';
-                    if (helpText) helpText.textContent = 'Help';
-                    helpToggle.setAttribute('aria-label', 'Open Markdown Help');
-                }
+                this.updateHelpBarState(isVisible, helpIcon, helpText, helpToggle);
             });
 
             // Close help bar when clicking outside
             document.addEventListener('click', (e) => {
                 if (!helpBar.contains(e.target) && !helpToggle.contains(e.target)) {
                     helpBar.classList.remove('show');
-                    if (helpIcon) helpIcon.textContent = '📚';
-                    if (helpText) helpText.textContent = 'Help';
-                    helpToggle.setAttribute('aria-label', 'Open Markdown Help');
+                    this.updateHelpBarState(false, helpIcon, helpText, helpToggle);
                 }
             });
 
@@ -632,7 +708,9 @@ class MarkdownEditor {
 
     async copyToClipboard(text) {
         try {
-            if (typeof window === 'undefined' || !window.navigator || !window.navigator.clipboard) throw new Error('Clipboard API not available');
+            if (!this.isBrowser() || !window.navigator || !window.navigator.clipboard) {
+                throw new Error('Clipboard API not available');
+            }
             await window.navigator.clipboard.writeText(text);
             
             // Show success notification
@@ -644,31 +722,36 @@ class MarkdownEditor {
             return true;
         } catch (err) {
             console.error('❌ Clipboard API failed:', err);
-            
-            // Show notification with manual copy instructions
-            this.notify.warning('Example added to editor. Press Ctrl+C to copy manually.', {
-                duration: NotificationManager.CONSTANTS.DURATION.MEDIUM,
-                actions: [
-                    {
-                        label: 'Got it',
-                        primary: true,
-                        onClick: () => {}
-                    }
-                ]
-            });
-            
-            // Select the text in the editor so user can copy manually
-            if (this.editor) {
-                const currentValue = this.editor.value;
-                const start = currentValue.indexOf(text);
-                if (start !== -1) {
-                    this.editor.setSelectionRange(start, start + text.length);
-                    this.editor.focus();
-                }
+            // Show user-friendly error message
+            this.showClipboardError(text);
+            return false;
+        }
+    }
+
+    showClipboardError(text) {
+        // Show error notification using unified helper
+        this.showNotification(
+            '⚠️ Clipboard access denied. Text is selected - press Ctrl+C to copy.',
+            'error',
+            5000
+        );
+        
+        // As fallback, select the editor content so user can copy manually
+        if (this.editor) {
+            const currentValue = this.editor.value;
+            const start = currentValue.indexOf(text);
+            if (start !== -1) {
+                this.editor.setSelectionRange(start, start + text.length);
+                this.editor.focus();
             }
             
             return false;
         }
+    }
+
+    showCopyFeedback() {
+        // Show success notification using unified helper
+        this.showNotification('✅ Example copied!', 'success');
     }
     
     // Console helper for collaboration story
