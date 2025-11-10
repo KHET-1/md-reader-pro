@@ -106,7 +106,7 @@ jobs:
     # Upload lint logs as artifact (available even on failure)
     - name: 📤 Upload lint logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: lint-logs
         path: logs/lint.log
@@ -127,7 +127,7 @@ jobs:
 
     - name: 📤 Upload test logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: test-logs
         path: logs/test.log
@@ -148,7 +148,7 @@ jobs:
 
     - name: 📤 Upload coverage logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: coverage-logs
         path: logs/coverage.log
@@ -169,7 +169,7 @@ jobs:
 
     - name: 📤 Upload performance test logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: performance-logs
         path: logs/performance.log
@@ -190,7 +190,7 @@ jobs:
 
     - name: 📤 Upload benchmark logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: benchmark-logs
         path: logs/benchmarks.log
@@ -211,7 +211,7 @@ jobs:
 
     - name: 📤 Upload regression check logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: regression-logs
         path: logs/regression.log
@@ -232,7 +232,7 @@ jobs:
 
     - name: 📤 Upload build test logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: build-test-logs
         path: logs/build-test.log
@@ -258,7 +258,7 @@ jobs:
 
     - name: 📤 Upload summary log
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: quality-gates-summary
         path: logs/summary.log
@@ -267,7 +267,7 @@ jobs:
     # BEST PRACTICE: Upload all logs as a single artifact for easy download
     - name: 📦 Upload all quality gate logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: all-quality-gate-logs
         path: logs/
@@ -317,7 +317,7 @@ jobs:
 
     - name: 📤 Upload build logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: production-build-logs
         path: logs/build.log
@@ -338,7 +338,7 @@ jobs:
 
     - name: 📤 Upload deployment preparation logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: deploy-prepare-logs
         path: logs/deploy-prepare.log
@@ -375,7 +375,7 @@ jobs:
 
     - name: 📤 Upload deployment summary
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: deployment-summary
         path: logs/deploy-summary.log
@@ -383,7 +383,7 @@ jobs:
 
     - name: 📦 Upload all deployment logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: all-deployment-logs
         path: logs/
@@ -452,7 +452,7 @@ jobs:
 
     - name: 📤 Upload performance monitoring logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: performance-monitor-logs
         path: logs/monitor.log
@@ -473,7 +473,7 @@ jobs:
 
     - name: 📤 Upload regression check logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: performance-regression-logs
         path: logs/regression-check.log
@@ -494,7 +494,7 @@ jobs:
 
     - name: 📤 Upload baseline update logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: baseline-update-logs
         path: logs/baseline-update.log
@@ -515,7 +515,7 @@ jobs:
 
     - name: 📤 Upload monitoring summary
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: performance-monitoring-summary
         path: logs/monitor-summary.log
@@ -523,7 +523,7 @@ jobs:
 
     - name: 📦 Upload all monitoring logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: all-performance-monitor-logs
         path: logs/
