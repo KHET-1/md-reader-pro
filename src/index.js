@@ -403,10 +403,6 @@ class MarkdownEditor {
                                 this.fileInput.click();
                             }
                         }
-                    },
-                    {
-                        label: 'Dismiss',
-                        onClick: () => {}
                     }
                 ]
             });
