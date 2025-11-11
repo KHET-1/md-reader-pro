@@ -86,7 +86,7 @@ describe('File Upload Fix - No Duplicate Handlers', () => {
         expect(consoleErrorSpy).toHaveBeenCalledWith('File reading error:', errorEvent);
         
         // Check that notification was displayed (modern implementation)
-        const notification = document.querySelector('.notification-error');
+        const notification = document.querySelector('.notification.notification-error');
         expect(notification).toBeTruthy();
         
         consoleErrorSpy.mockRestore();
