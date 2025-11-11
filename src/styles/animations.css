@@ -43,3 +43,19 @@
   50% { background: linear-gradient(45deg, #32cd32, #ffd700, #ff69b4, #00d4ff); }
   75% { background: linear-gradient(45deg, #ffd700, #ff69b4, #00d4ff, #32cd32); }
 }
+
+/* Notification animations */
+.notification.show {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+}
+
+.notification:hover {
+    transform: translateX(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.notification.show:hover {
+    transform: translateX(-4px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+}

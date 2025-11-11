@@ -8,6 +8,7 @@ import 'prismjs/components/prism-markup.js';
 import 'prismjs/components/prism-json.js';
 import 'prismjs/components/prism-markdown.js';
 import AnimationManager from './utils/AnimationManager.js';
+import NotificationManager from './utils/NotificationManager.js';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/layout.css';
@@ -23,6 +24,7 @@ class MarkdownEditor {
         this.fileInput = null;
         this.uploadArea = null;
         this.anim = new AnimationManager();
+        this.notify = new NotificationManager();
         this.debounceTimer = null;
         // Cache DOM element references to avoid repeated queries
         this.cachedElements = {};
@@ -319,6 +321,54 @@ class MarkdownEditor {
             return;
         }
 
+        // Validate file size
+        const constants = MarkdownEditor.CONSTANTS;
+        if (file.size > constants.MAX_FILE_SIZE) {
+            this.notify.error(`File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is ${constants.MAX_FILE_SIZE / 1024 / 1024}MB.`, {
+                actions: [
+                    {
+                        label: 'Choose Another File',
+                        primary: true,
+                        onClick: () => {
+                            if (this.fileInput) {
+                                this.fileInput.click();
+                            }
+                        }
+                    }
+                ]
+            });
+            return;
+        }
+
+        // Validate file extension
+        const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+        if (!constants.SUPPORTED_EXTENSIONS.includes(ext)) {
+            this.notify.warning(`Unsupported file type: ${ext}. Supported types: ${constants.SUPPORTED_EXTENSIONS.join(', ')}`, {
+                actions: [
+                    {
+                        label: 'Load Anyway',
+                        primary: true,
+                        onClick: () => {
+                            this.readFile(file);
+                        }
+                    },
+                    {
+                        label: 'Choose Another',
+                        onClick: () => {
+                            if (this.fileInput) {
+                                this.fileInput.click();
+                            }
+                        }
+                    }
+                ]
+            });
+            return;
+        }
+
+        this.readFile(file);
+    }
+
+    readFile(file) {
         const reader = new FileReader();
 
         const cleanup = () => {
@@ -343,7 +393,19 @@ class MarkdownEditor {
 
         reader.onerror = (e) => {
             console.error('File reading error:', e);
-            alert('Error reading file. Please try again.');
+            this.notify.error('Failed to read file. Please try again.', {
+                actions: [
+                    {
+                        label: 'Try Again',
+                        primary: true,
+                        onClick: () => {
+                            if (this.fileInput) {
+                                this.fileInput.click();
+                            }
+                        }
+                    }
+                ]
+            });
             cleanup();
         };
 
@@ -524,6 +586,24 @@ class MarkdownEditor {
 
     saveMarkdown() {
         const content = this.editor ? this.editor.value : '';
+        
+        if (!content.trim()) {
+            this.notify.warning('Document is empty. Nothing to save.', {
+                actions: [
+                    {
+                        label: 'Start Writing',
+                        primary: true,
+                        onClick: () => {
+                            if (this.editor) {
+                                this.editor.focus();
+                            }
+                        }
+                    }
+                ]
+            });
+            return;
+        }
+        
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
 
@@ -531,10 +611,14 @@ class MarkdownEditor {
         a.href = url;
         a.download = 'document.md';
         document.body.appendChild(a);
-a.click();
+        a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
+        this.notify.success('Document saved successfully!', {
+            duration: NotificationManager.CONSTANTS.DURATION.SHORT
+        });
+        
         console.log('💾 Markdown saved');
     }
 
@@ -587,9 +671,6 @@ a.click();
     copyToEditor(example) {
         if (!this.editor) return;
 
-        // First, copy to clipboard
-        this.copyToClipboard(example);
-
         // Get current cursor position
         const cursorPos = this.editor.selectionStart;
         const currentValue = this.editor.value;
@@ -615,8 +696,8 @@ a.click();
         // Focus the editor
         this.editor.focus();
 
-        // Show success feedback
-        this.showCopyFeedback();
+        // Try to copy to clipboard
+        this.copyToClipboard(example);
 
         console.log('📋 Example copied to clipboard and editor');
     }
@@ -627,6 +708,12 @@ a.click();
                 throw new Error('Clipboard API not available');
             }
             await window.navigator.clipboard.writeText(text);
+            
+            // Show success notification
+            this.notify.success('Example copied to editor and clipboard!', {
+                duration: NotificationManager.CONSTANTS.DURATION.SHORT
+            });
+            
             console.log('✅ Text copied to clipboard');
             return true;
         } catch (err) {
@@ -653,6 +740,8 @@ a.click();
                 this.editor.setSelectionRange(start, start + text.length);
                 this.editor.focus();
             }
+            
+            return false;
         }
     }
 

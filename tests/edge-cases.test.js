@@ -66,11 +66,14 @@ describe('Edge Cases and Error Handling', () => {
       };
 
       expect(() => {
-        editor.loadFile(mockFile);
+        editor.readFile(mockFile);
       }).not.toThrow();
 
       expect(consoleSpy).toHaveBeenCalledWith('File reading error:', expect.any(Object));
-      expect(alertSpy).toHaveBeenCalledWith('Error reading file. Please try again.');
+      
+      // Check notification instead of alert
+      const notification = document.querySelector('.notification-error');
+      expect(notification).toBeTruthy();
 
       // Restore
       global.FileReader = originalFileReader;

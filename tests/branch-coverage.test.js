@@ -187,7 +187,7 @@ describe('Branch Coverage Tests', () => {
 
             global.FileReader = jest.fn(() => mockFileReader);
             
-            // Mock alert
+            // Mock alert (not needed anymore but keep for backward compat)
             global.alert = jest.fn();
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
             
@@ -199,7 +199,10 @@ describe('Branch Coverage Tests', () => {
             mockFileReader.onerror(mockErrorEvent);
             
             expect(consoleSpy).toHaveBeenCalledWith('File reading error:', mockErrorEvent);
-            expect(global.alert).toHaveBeenCalledWith('Error reading file. Please try again.');
+            
+            // Check that notification was called instead of alert
+            const notification = document.querySelector('.notification-error');
+            expect(notification).toBeTruthy();
             
             consoleSpy.mockRestore();
         });
