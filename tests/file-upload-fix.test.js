@@ -62,7 +62,6 @@ describe('File Upload Fix - No Duplicate Handlers', () => {
     
     test('should handle file errors gracefully', () => {
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
         
         const file = new File(['content'], 'test.md', { type: 'text/markdown' });
         
@@ -85,10 +84,12 @@ describe('File Upload Fix - No Duplicate Handlers', () => {
         
         // Verify error was handled
         expect(consoleErrorSpy).toHaveBeenCalledWith('File reading error:', errorEvent);
-        expect(alertSpy).toHaveBeenCalledWith('Error reading file. Please try again.');
+        
+        // Check that notification was displayed (modern implementation)
+        const notification = document.querySelector('.notification-error');
+        expect(notification).toBeTruthy();
         
         consoleErrorSpy.mockRestore();
-        alertSpy.mockRestore();
     });
     
     test('should not call loadFile multiple times for single file', () => {
