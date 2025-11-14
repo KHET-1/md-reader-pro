@@ -124,7 +124,7 @@ md-reader-pro/
 │   └── performance.yml            # GitHub Actions CI/CD
 ├── webpack.config.cjs      # Webpack 5 configuration
 ├── jest.config.cjs         # Jest testing configuration
-├── eslint.config.js        # ESLint flat configuration
+├── eslint.config.mjs       # ESLint v9 flat configuration
 ├── babel.config.cjs        # Babel transpilation settings
 ├── PERFORMANCE.md          # Performance testing documentation
 ├── ARCHITECTURE.md         # Complete system architecture with Mermaid diagrams
