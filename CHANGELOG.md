@@ -1,5 +1,17 @@
 # MD Reader Pro - Update Log
 
+## Version 3.4.1 - November 2025
+
+### 🔒 Security Fix
+- **CRITICAL:** Fixed js-yaml prototype pollution vulnerability (CVE GHSA-mh29-5h37-fv8m)
+  - Updated js-yaml from 4.1.0 to 4.1.1 via npm overrides
+  - Affects transitive dependencies: eslint, @microsoft/eslint-formatter-sarif, semantic-release
+  - Impact: Prevents prototype pollution attacks via __proto__ in yaml parsing
+  - All tests passing (261/261) ✅
+  - Build successful ✅
+
+---
+
 ## Version 3.4.0 - January 2025
 
 ### 🎉 Phase 2 Complete - Advanced Animations & Code Quality
