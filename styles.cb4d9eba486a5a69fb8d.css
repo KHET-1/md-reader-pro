@@ -280,6 +280,22 @@ body {
   75% { background: linear-gradient(45deg, #ffd700, #ff69b4, #00d4ff, #32cd32); }
 }
 
+/* Notification animations */
+.notification.show {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+}
+
+.notification:hover {
+    transform: translateX(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.notification.show:hover {
+    transform: translateX(-4px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
 /* Utilities extracted */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .focus-trap { outline: none; }
@@ -296,4 +312,4 @@ body {
 .upload-hint { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
 
 
-/*# sourceMappingURL=styles.7362743acab520a86391.css.map*/
+/*# sourceMappingURL=styles.cb4d9eba486a5a69fb8d.css.map*/
