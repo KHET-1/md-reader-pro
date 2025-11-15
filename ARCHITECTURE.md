@@ -280,7 +280,7 @@ sequenceDiagram
 ### Current Configuration Files
 - `webpack.config.cjs` - Build configuration and development server
 - `jest.config.cjs` - Testing framework configuration with performance settings
-- `eslint.config.js` - Code quality rules and linting configuration
+- `eslint.config.mjs` - Code quality rules and linting configuration (ESLint v9 flat config)
 - `babel.config.cjs` - JavaScript transpilation settings
 - `package.json` - Dependencies, scripts, and project metadata
 

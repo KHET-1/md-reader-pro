@@ -134,7 +134,7 @@ This document provides a comprehensive index of all documentation available for 
 - ✅ **package.json** - Dependencies and scripts
 - ✅ **jest.config.cjs** - Testing configuration
 - ✅ **webpack.config.cjs** - Build configuration
-- ✅ **eslint.config.js** - Code quality configuration
+- ✅ **eslint.config.mjs** - Code quality configuration (ESLint v9 flat config)
 - ✅ **babel.config.cjs** - Transpilation configuration
 
 ---
