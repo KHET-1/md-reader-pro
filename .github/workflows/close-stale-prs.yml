@@ -1,0 +1,54 @@
+name: Close Stale Pull Requests
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          # Only process pull requests, not issues
+          only-pr-labels: '' # Process all PRs regardless of labels
+          
+          # Days before a PR is considered stale (3 days)
+          days-before-pr-stale: 3
+          
+          # Close immediately after marking as stale (0 additional days)
+          days-before-pr-close: 0
+          
+          # Don't mark issues as stale
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          
+          # Message to post when marking PR as stale
+          stale-pr-message: 'This pull request has been open for 3 days without activity. It will be automatically closed soon.'
+          
+          # Message to post when closing PRs
+          close-pr-message: 'This pull request has been automatically closed because it has been open for more than 3 days without being merged.'
+          
+          # Don't add stale labels since we're closing directly
+          stale-pr-label: 'stale'
+          
+          # Exempt PRs with certain labels from being closed
+          exempt-pr-labels: 'keep-open,wip,work-in-progress,do-not-close'
+          
+          # Process all PRs, not just those with activity
+          exempt-all-pr-milestones: false
+          
+          # Remove stale label when a PR gets activity
+          remove-stale-when-updated: true
+          
+          # Enable debug output
+          debug-only: false
+          
+          # Operations per run (default is 30)
+          operations-per-run: 100

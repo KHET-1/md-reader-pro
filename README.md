@@ -241,6 +241,7 @@ MD Reader Pro includes a complete CI/CD pipeline for automated deployment to Git
 - **Performance Monitoring**: Daily automated performance checks
 - **Status Tracking**: Deployment status page and comprehensive logging
 - **Security**: Minimal permissions and branch protection
+- **PR Management**: Automatic closure of stale pull requests (3+ days old)
 
 ```bash
 # Test deployment locally
@@ -251,6 +252,17 @@ npm run pages:status
 ```
 
 **📚 Complete deployment guide**: [`DEPLOYMENT.md`](./DEPLOYMENT.md)
+
+### **Automated PR Management**
+Pull requests are automatically managed to keep the repository clean:
+- **Stale Detection**: PRs open for 3+ days are marked as stale
+- **Auto-Close**: Stale PRs are automatically closed with a notification
+- **Exemptions**: PRs with labels `keep-open`, `wip`, `work-in-progress`, or `do-not-close` are exempt
+- **Schedule**: Runs daily at 00:00 UTC
+- **Manual Trigger**: Can be manually triggered from GitHub Actions
+
+To keep a PR open longer, add one of the exempt labels or ensure regular activity.
+
 
 ## 🔧 Configuration
 
