@@ -75,7 +75,7 @@ The base branch (main) is in excellent condition:
 ## Comparison with Problem Statement
 
 The problem statement requires:
-> "determine the best fixed and merge, if there isn't anything worth integrating just destroy the branch"
+> "determine the best fixes and merge, if there isn't anything worth integrating just destroy the branch"
 
 ### Assessment:
 
