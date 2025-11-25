@@ -73,7 +73,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository (Quality Gates)
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 📦 Setup Node.js (Quality Gates)
       uses: actions/setup-node@v6
@@ -285,7 +285,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository (Deploy)
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 📦 Setup Node.js (Deploy)
       uses: actions/setup-node@v6
@@ -431,7 +431,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository (Monitor)
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 📦 Setup Node.js (Monitor)
       uses: actions/setup-node@v6
