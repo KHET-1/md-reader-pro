@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18, 20]
+        node-version: [22]
 
     steps:
     - name: Checkout code
@@ -102,7 +102,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: 20
+        node-version: 22
         cache: 'npm'
 
     - name: Install dependencies
@@ -175,7 +175,7 @@ jobs:
     - name: Setup Node.js with memory monitoring
       uses: actions/setup-node@v6
       with:
-        node-version: 20
+        node-version: 22
         cache: 'npm'
 
     - name: Install dependencies
@@ -205,7 +205,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: 20
+        node-version: 22
         cache: 'npm'
 
     - name: Install dependencies

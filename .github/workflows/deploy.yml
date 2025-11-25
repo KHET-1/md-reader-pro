@@ -78,7 +78,7 @@ jobs:
     - name: 📦 Setup Node.js (Quality Gates)
       uses: actions/setup-node@v6
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
 
     # Create logs directory for capturing step outputs
@@ -290,7 +290,7 @@ jobs:
     - name: 📦 Setup Node.js (Deploy)
       uses: actions/setup-node@v6
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
 
     # Create logs directory for deployment logs
@@ -436,7 +436,7 @@ jobs:
     - name: 📦 Setup Node.js (Monitor)
       uses: actions/setup-node@v6
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
 
     # Create logs directory for monitoring logs

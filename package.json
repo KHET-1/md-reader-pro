@@ -3,6 +3,9 @@
   "version": "3.4.1",
   "type": "module",
   "description": "Enterprise-grade markdown editor with advanced animations and comprehensive testing",
+  "engines": {
+    "node": ">=22.14.0"
+  },
   "scripts": {
     "dev": "webpack serve --config webpack.config.cjs --mode development",
     "dev:server": "webpack serve --config webpack.config.cjs --mode development",
