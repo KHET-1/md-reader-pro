@@ -14,7 +14,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           # Only process pull requests, not issues
           only-pr-labels: '' # Process all PRs regardless of labels
