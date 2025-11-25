@@ -7,7 +7,7 @@
 #### Current Status
 4 high severity vulnerabilities detected in transitive dependencies.
 
-#### Vulnerabilities Details
+#### Vulnerability Details
 
 **1. glob (v11.0.0 - 11.0.3)**
 - CVE: GHSA-5j98-mcp5-4vw2
