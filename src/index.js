@@ -18,7 +18,7 @@ import './styles/utilities.css';
 
 class MarkdownEditor {
     constructor() {
-        this.version = '3.4.0';
+        this.version = '4.0.0'; // Cathedral Edition!
         this.editor = null;
         this.preview = null;
         this.fileInput = null;
@@ -30,13 +30,34 @@ class MarkdownEditor {
         this.cachedElements = {};
         // Cache DOMPurify config for better performance
         this.sanitizeConfig = {
-            ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 
-                          'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 
-                          'strong', 'em', 'img', 'table', 'thead', 'tbody', 
+            ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a',
+                          'ul', 'ol', 'li', 'blockquote', 'code', 'pre',
+                          'strong', 'em', 'img', 'table', 'thead', 'tbody',
                           'tr', 'th', 'td', 'br', 'hr', 'del', 'input', 'span'],
-            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'type', 
+            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'type',
                           'checked', 'disabled', 'id']
         };
+
+        // ⚡ CATHEDRAL FEATURES ⚡
+        // Auto-save system
+        this.autoSaveTimer = null;
+        this.lastSaveTime = null;
+
+        // Undo/Redo system
+        this.history = [];
+        this.historyIndex = -1;
+        this.maxHistory = 50;
+
+        // Statistics tracking
+        this.stats = {
+            words: 0,
+            characters: 0,
+            lines: 0,
+            readingTime: 0
+        };
+
+        // Theme system
+        this.currentTheme = localStorage.getItem('md-reader-theme') || 'dark';
     }
 
     // Configuration constants
@@ -222,11 +243,16 @@ class MarkdownEditor {
         
         // Set up event listeners
         this.setupEventListeners();
-        
+
         // Initial render of placeholder content
         this.updatePreview();
-        
+
+        // ⚡ Initialize Cathedral Features ⚡
+        this.initCathedralFeatures();
+        this.enhanceKeyboardShortcuts();
+
         console.log('📝 Markdown editor initialized successfully');
+        console.log('🏰 MD Reader Pro Cathedral Edition v' + this.version);
     }
     
     setupEventListeners() {
@@ -770,6 +796,618 @@ class MarkdownEditor {
         console.log('   • Live preview with styling');
         console.log('');
         console.log('🎊 This is now a REAL markdown editor! 🎉');
+    }
+
+    // ⚡ CATHEDRAL FEATURES ⚡
+
+    // Initialize Cathedral features
+    initCathedralFeatures() {
+        this.setupStatsCounter();
+        this.setupAutoSave();
+        this.setupUndoRedo();
+        this.setupCopyButtons();
+        this.setupExportButton();
+        this.setupKeyboardShortcutsModal();
+        this.setupThemeToggle();
+        console.log('🏰 Cathedral features initialized!');
+    }
+
+    // Setup live statistics counter
+    setupStatsCounter() {
+        // Create stats display element
+        const statsDisplay = document.createElement('div');
+        statsDisplay.id = 'stats-counter';
+        statsDisplay.className = 'stats-counter';
+        statsDisplay.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(42, 42, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+            color: #FFD700;
+            z-index: 1000;
+            display: flex;
+            gap: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        `;
+
+        document.body.appendChild(statsDisplay);
+        this.statsDisplay = statsDisplay;
+
+        // Update stats on every input
+        if (this.editor) {
+            this.editor.addEventListener('input', () => this.updateStats());
+        }
+
+        // Initial stats update
+        this.updateStats();
+    }
+
+    // Update statistics
+    updateStats() {
+        if (!this.editor || !this.statsDisplay) return;
+
+        const text = this.editor.value;
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        const characters = text.length;
+        const charactersNoSpaces = text.replace(/\s/g, '').length;
+        const lines = text.split('\n').length;
+        const readingTime = Math.ceil(words / 200); // Average reading speed: 200 words/min
+
+        this.stats = { words, characters, lines, readingTime };
+
+        this.statsDisplay.innerHTML = `
+            <span title="Word count">📝 ${words} words</span>
+            <span title="Character count">🔤 ${characters} (${charactersNoSpaces}) chars</span>
+            <span title="Line count">📄 ${lines} lines</span>
+            <span title="Reading time">⏱️ ${readingTime} min read</span>
+        `;
+    }
+
+    // Setup auto-save to localStorage
+    setupAutoSave() {
+        // Load saved content on startup
+        this.loadFromAutoSave();
+
+        // Auto-save every 30 seconds
+        if (this.editor) {
+            this.editor.addEventListener('input', () => {
+                if (this.autoSaveTimer) {
+                    clearTimeout(this.autoSaveTimer);
+                }
+
+                this.autoSaveTimer = setTimeout(() => {
+                    this.saveToLocalStorage();
+                }, 30000); // 30 seconds
+            });
+        }
+
+        // Save before page unload
+        window.addEventListener('beforeunload', () => {
+            this.saveToLocalStorage();
+        });
+
+        // Create save indicator
+        this.createSaveIndicator();
+    }
+
+    saveToLocalStorage() {
+        if (!this.editor) return;
+
+        try {
+            const content = this.editor.value;
+            const timestamp = new Date().toISOString();
+
+            localStorage.setItem('md-reader-autosave', JSON.stringify({
+                content,
+                timestamp,
+                version: this.version
+            }));
+
+            this.lastSaveTime = new Date();
+            this.updateSaveIndicator();
+
+            console.log('💾 Auto-saved at', timestamp);
+        } catch (err) {
+            console.error('❌ Auto-save failed:', err);
+        }
+    }
+
+    loadFromAutoSave() {
+        if (!this.editor) return;
+
+        try {
+            const saved = localStorage.getItem('md-reader-autosave');
+            if (saved) {
+                const { content, timestamp } = JSON.parse(saved);
+
+                // Ask user if they want to restore
+                if (content && content !== this.editor.value) {
+                    const restore = confirm(`Restore auto-saved content from ${new Date(timestamp).toLocaleString()}?`);
+                    if (restore) {
+                        this.editor.value = content;
+                        this.updatePreview();
+                        this.showNotification('✅ Content restored from auto-save', 'success');
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('❌ Failed to load auto-save:', err);
+        }
+    }
+
+    createSaveIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'save-indicator';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.7);
+            z-index: 999;
+        `;
+        document.body.appendChild(indicator);
+        this.saveIndicator = indicator;
+        this.updateSaveIndicator();
+    }
+
+    updateSaveIndicator() {
+        if (!this.saveIndicator) return;
+
+        if (this.lastSaveTime) {
+            const timeAgo = this.getTimeAgo(this.lastSaveTime);
+            this.saveIndicator.textContent = `💾 Saved ${timeAgo}`;
+        } else {
+            this.saveIndicator.textContent = '💾 Auto-save enabled';
+        }
+    }
+
+    getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        return `${hours}h ago`;
+    }
+
+    // Setup Undo/Redo system
+    setupUndoRedo() {
+        if (!this.editor) return;
+
+        // Save initial state
+        this.saveToHistory(this.editor.value);
+
+        // Track changes
+        this.editor.addEventListener('input', () => {
+            // Debounce history saves
+            if (this.historyDebounce) {
+                clearTimeout(this.historyDebounce);
+            }
+
+            this.historyDebounce = setTimeout(() => {
+                this.saveToHistory(this.editor.value);
+            }, 500);
+        });
+
+        // Add undo/redo buttons to toolbar
+        this.addUndoRedoButtons();
+    }
+
+    saveToHistory(content) {
+        // Don't save if it's the same as current
+        if (this.history[this.historyIndex] === content) return;
+
+        // Remove everything after current index
+        this.history = this.history.slice(0, this.historyIndex + 1);
+
+        // Add new state
+        this.history.push(content);
+        this.historyIndex = this.history.length - 1;
+
+        // Limit history size
+        if (this.history.length > this.maxHistory) {
+            this.history.shift();
+            this.historyIndex--;
+        }
+
+        this.updateUndoRedoButtons();
+    }
+
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            this.editor.value = this.history[this.historyIndex];
+            this.updatePreview();
+            this.updateUndoRedoButtons();
+            this.showNotification('↩️ Undo', 'success', 1000);
+        }
+    }
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.editor.value = this.history[this.historyIndex];
+            this.updatePreview();
+            this.updateUndoRedoButtons();
+            this.showNotification('↪️ Redo', 'success', 1000);
+        }
+    }
+
+    addUndoRedoButtons() {
+        const toolbar = document.querySelector('.toolbar');
+        if (!toolbar) return;
+
+        const undoBtn = document.createElement('button');
+        undoBtn.className = 'toolbar-btn';
+        undoBtn.id = 'undo-btn';
+        undoBtn.innerHTML = '↩️ Undo';
+        undoBtn.title = 'Undo (Ctrl+Z)';
+        undoBtn.addEventListener('click', () => this.undo());
+
+        const redoBtn = document.createElement('button');
+        redoBtn.className = 'toolbar-btn';
+        redoBtn.id = 'redo-btn';
+        redoBtn.innerHTML = '↪️ Redo';
+        redoBtn.title = 'Redo (Ctrl+Y)';
+        redoBtn.addEventListener('click', () => this.redo());
+
+        // Insert at beginning of toolbar
+        toolbar.insertBefore(redoBtn, toolbar.firstChild);
+        toolbar.insertBefore(undoBtn, toolbar.firstChild);
+
+        this.undoBtn = undoBtn;
+        this.redoBtn = redoBtn;
+        this.updateUndoRedoButtons();
+    }
+
+    updateUndoRedoButtons() {
+        if (this.undoBtn) {
+            this.undoBtn.disabled = this.historyIndex <= 0;
+            this.undoBtn.style.opacity = this.historyIndex <= 0 ? '0.5' : '1';
+        }
+        if (this.redoBtn) {
+            this.redoBtn.disabled = this.historyIndex >= this.history.length - 1;
+            this.redoBtn.style.opacity = this.historyIndex >= this.history.length - 1 ? '0.5' : '1';
+        }
+    }
+
+    // Setup copy buttons
+    setupCopyButtons() {
+        const toolbar = document.querySelector('.toolbar');
+        if (!toolbar) return;
+
+        // Find the existing Copy button and enhance it
+        const existingCopyBtn = Array.from(toolbar.querySelectorAll('.toolbar-btn'))
+            .find(btn => btn.textContent.includes('Copy'));
+
+        if (existingCopyBtn) {
+            // Replace with dropdown
+            const copyDropdown = this.createCopyDropdown();
+            existingCopyBtn.replaceWith(copyDropdown);
+        }
+    }
+
+    createCopyDropdown() {
+        const container = document.createElement('div');
+        container.style.position = 'relative';
+        container.style.display = 'inline-block';
+
+        const mainBtn = document.createElement('button');
+        mainBtn.className = 'toolbar-btn';
+        mainBtn.innerHTML = '📋 Copy ▼';
+        mainBtn.title = 'Copy markdown or HTML';
+
+        const dropdown = document.createElement('div');
+        dropdown.style.cssText = `
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-top: 4px;
+            display: none;
+            min-width: 150px;
+            z-index: 1000;
+        `;
+
+        const copyMarkdownBtn = this.createDropdownItem('📝 Copy Markdown', () => {
+            this.copyMarkdown();
+            dropdown.style.display = 'none';
+        });
+
+        const copyHtmlBtn = this.createDropdownItem('🌐 Copy HTML', () => {
+            this.copyHTML();
+            dropdown.style.display = 'none';
+        });
+
+        dropdown.appendChild(copyMarkdownBtn);
+        dropdown.appendChild(copyHtmlBtn);
+
+        mainBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.addEventListener('click', () => {
+            dropdown.style.display = 'none';
+        });
+
+        container.appendChild(mainBtn);
+        container.appendChild(dropdown);
+
+        return container;
+    }
+
+    createDropdownItem(text, onClick) {
+        const item = document.createElement('button');
+        item.style.cssText = `
+            width: 100%;
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            color: #fff;
+            text-align: left;
+            cursor: pointer;
+            font-size: 12px;
+        `;
+        item.textContent = text;
+        item.addEventListener('click', onClick);
+        item.addEventListener('mouseenter', () => {
+            item.style.background = '#333';
+        });
+        item.addEventListener('mouseleave', () => {
+            item.style.background = 'none';
+        });
+        return item;
+    }
+
+    async copyMarkdown() {
+        if (!this.editor) return;
+        try {
+            await navigator.clipboard.writeText(this.editor.value);
+            this.showNotification('📝 Markdown copied to clipboard!', 'success');
+        } catch (err) {
+            this.showNotification('❌ Failed to copy', 'error');
+        }
+    }
+
+    async copyHTML() {
+        if (!this.preview) return;
+        try {
+            const html = this.preview.innerHTML;
+            await navigator.clipboard.writeText(html);
+            this.showNotification('🌐 HTML copied to clipboard!', 'success');
+        } catch (err) {
+            this.showNotification('❌ Failed to copy', 'error');
+        }
+    }
+
+    // Setup export button
+    setupExportButton() {
+        const toolbar = document.querySelector('.toolbar');
+        if (!toolbar) return;
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'toolbar-btn';
+        exportBtn.innerHTML = '📤 Export';
+        exportBtn.title = 'Export as HTML file';
+        exportBtn.addEventListener('click', () => this.exportAsHTML());
+
+        toolbar.appendChild(exportBtn);
+    }
+
+    exportAsHTML() {
+        if (!this.preview) return;
+
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exported from MD Reader Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <style>
+        body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        pre {
+            background: #2d2d2d;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        pre code {
+            background: none;
+            color: #f8f8f2;
+        }
+    </style>
+</head>
+<body>
+${this.preview.innerHTML}
+<hr>
+<footer style="text-align: center; color: #999; margin-top: 2rem;">
+    <p><small>Generated by MD Reader Pro v${this.version}</small></p>
+</footer>
+</body>
+</html>`;
+
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `markdown-export-${Date.now()}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        this.showNotification('📤 Exported as HTML!', 'success');
+    }
+
+    // Setup keyboard shortcuts modal
+    setupKeyboardShortcutsModal() {
+        // Listen for ? key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                // Don't trigger if typing in editor
+                if (document.activeElement === this.editor) return;
+                e.preventDefault();
+                this.showKeyboardShortcutsModal();
+            }
+        });
+    }
+
+    showKeyboardShortcutsModal() {
+        // Remove existing modal if any
+        const existing = document.getElementById('shortcuts-modal');
+        if (existing) {
+            existing.remove();
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'shortcuts-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: #1a1a1a;
+            border: 2px solid #FFD700;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(255, 215, 0, 0.3);
+        `;
+
+        content.innerHTML = `
+            <h2 style="color: #FFD700; margin-top: 0;">⌨️ Keyboard Shortcuts</h2>
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; color: #fff;">
+                <div><kbd style="background: #333; padding: 4px 8px; border-radius: 4px;">Ctrl/Cmd + S</kbd></div>
+                <div>Save markdown</div>
+
+                <div><kbd style="background: #333; padding: 4px 8px; border-radius: 4px;">Ctrl/Cmd + Z</kbd></div>
+                <div>Undo</div>
+
+                <div><kbd style="background: #333; padding: 4px 8px; border-radius: 4px;">Ctrl/Cmd + Y</kbd></div>
+                <div>Redo</div>
+
+                <div><kbd style="background: #333; padding: 4px 8px; border-radius: 4px;">Tab</kbd></div>
+                <div>Indent (in editor)</div>
+
+                <div><kbd style="background: #333; padding: 4px 8px; border-radius: 4px;">?</kbd></div>
+                <div>Show this help</div>
+
+                <div><kbd style="background: #333; padding: 4px 8px; border-radius: 4px;">Esc</kbd></div>
+                <div>Close modals</div>
+            </div>
+            <button id="close-shortcuts" style="
+                margin-top: 1.5rem;
+                padding: 8px 24px;
+                background: #FFD700;
+                color: #000;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+            ">Close</button>
+        `;
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Close on click outside or Esc
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+
+        document.getElementById('close-shortcuts').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        document.addEventListener('keydown', function closeOnEsc(e) {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', closeOnEsc);
+            }
+        });
+    }
+
+    // Setup theme toggle
+    setupThemeToggle() {
+        const headerControls = document.querySelector('.header-controls');
+        if (!headerControls) return;
+
+        const themeBtn = document.createElement('button');
+        themeBtn.className = 'toolbar-btn btn-interactive';
+        themeBtn.id = 'theme-toggle';
+        themeBtn.innerHTML = this.currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+        themeBtn.title = 'Toggle theme';
+        themeBtn.addEventListener('click', () => this.toggleTheme());
+
+        headerControls.insertBefore(themeBtn, headerControls.firstChild);
+    }
+
+    toggleTheme() {
+        this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('md-reader-theme', this.currentTheme);
+
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) {
+            themeBtn.innerHTML = this.currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+        }
+
+        document.body.classList.toggle('light-theme');
+        this.showNotification(`${this.currentTheme === 'dark' ? '🌙' : '☀️'} ${this.currentTheme} theme activated`, 'success', 1500);
+    }
+
+    // Enhanced keyboard shortcuts handler
+    enhanceKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                if (document.activeElement === this.editor) {
+                    e.preventDefault();
+                    this.undo();
+                }
+            }
+
+            // Redo
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                if (document.activeElement === this.editor) {
+                    e.preventDefault();
+                    this.redo();
+                }
+            }
+        });
     }
 }
 
