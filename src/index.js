@@ -9,6 +9,7 @@ import 'prismjs/components/prism-json.js';
 import 'prismjs/components/prism-markdown.js';
 import AnimationManager from './utils/AnimationManager.js';
 import NotificationManager from './utils/NotificationManager.js';
+import VERSION from './version.js';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/layout.css';
@@ -18,7 +19,7 @@ import './styles/utilities.css';
 
 class MarkdownEditor {
     constructor() {
-        this.version = '4.0.0'; // Cathedral Edition!
+        this.version = VERSION;
         this.editor = null;
         this.preview = null;
         this.fileInput = null;
@@ -805,7 +806,7 @@ class MarkdownEditor {
         this.setupStatsCounter();
         this.setupAutoSave();
         this.setupUndoRedo();
-        this.setupCopyButtons();
+        this.setupCopyDropdown();
         this.setupExportButton();
         this.setupKeyboardShortcutsModal();
         this.setupThemeToggle();
@@ -1070,8 +1071,8 @@ class MarkdownEditor {
         }
     }
 
-    // Setup copy buttons
-    setupCopyButtons() {
+    // Setup copy dropdown in toolbar
+    setupCopyDropdown() {
         const toolbar = document.querySelector('.toolbar');
         if (!toolbar) return;
 
