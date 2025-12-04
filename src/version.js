@@ -1,5 +1,5 @@
-// Version string from package.json
-// Note: This must match the version in package.json
+// Re-export version from package.json for use by modules
+// Note: Direct JSON import requires special handling in test environment
 const VERSION = '3.4.0';
 
 export { VERSION };
