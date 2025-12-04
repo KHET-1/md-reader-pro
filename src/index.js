@@ -1345,20 +1345,24 @@ ${this.preview.innerHTML}
         document.body.appendChild(modal);
 
         // Close on click outside or Esc
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.remove();
-        });
-
-        document.getElementById('close-shortcuts').addEventListener('click', () => {
+        const closeModal = () => {
             modal.remove();
+            document.removeEventListener('keydown', closeOnEsc);
+        };
+
+        const closeOnEsc = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        };
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
         });
 
-        document.addEventListener('keydown', function closeOnEsc(e) {
-            if (e.key === 'Escape') {
-                modal.remove();
-                document.removeEventListener('keydown', closeOnEsc);
-            }
-        });
+        document.getElementById('close-shortcuts').addEventListener('click', closeModal);
+
+        document.addEventListener('keydown', closeOnEsc);
     }
 
     // Setup theme toggle
