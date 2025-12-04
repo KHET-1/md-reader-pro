@@ -1,6 +1,6 @@
 {
   "name": "md-reader-pro",
-  "version": "4.0.0",
+  "version": "3.4.0",
   "type": "module",
   "description": "Enterprise-grade markdown editor with Cathedral features: auto-save, undo/redo, live stats, export, and more!",
   "engines": {
