@@ -943,14 +943,7 @@ class MarkdownEditor {
     createSaveIndicator() {
         const indicator = document.createElement('div');
         indicator.id = 'save-indicator';
-        indicator.style.cssText = `
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            font-size: 11px;
-            color: rgba(255, 215, 0, 0.7);
-            z-index: 999;
-        `;
+        indicator.classList.add('save-indicator');
         document.body.appendChild(indicator);
         this.saveIndicator = indicator;
         this.updateSaveIndicator();
