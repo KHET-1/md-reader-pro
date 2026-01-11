@@ -18,7 +18,7 @@ describe('Edge Cases and Error Handling', () => {
       expect(() => {
         const testEditor = new MarkdownEditor();
         testEditor.init(); // Initialize the editor
-        expect(testEditor.version).toBe('3.4.0');
+        expect(testEditor.version).toBe('4.0.0');
         expect(testEditor.editor).toBeInstanceOf(HTMLTextAreaElement);
         expect(testEditor.preview).toBeInstanceOf(HTMLDivElement);
       }).not.toThrow();
@@ -305,7 +305,7 @@ describe('Edge Cases and Error Handling', () => {
       }).not.toThrow();
       
       expect(editors).toHaveLength(10);
-      editors.forEach(e => expect(e.version).toBe('3.4.0'));
+      editors.forEach(e => expect(e.version).toBe('4.0.0'));
     });
 
     test('should handle rapid successive operations', () => {
