@@ -632,14 +632,17 @@ class MarkdownEditor {
         
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
-
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'document.md';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+
+        try {
+            a.href = url;
+            a.download = 'document.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } finally {
+            URL.revokeObjectURL(url);
+        }
 
         this.notify.success('Document saved successfully!', {
             duration: NotificationManager.CONSTANTS.DURATION.SHORT
@@ -682,6 +685,10 @@ class MarkdownEditor {
     }
 
     setupCopyButtons() {
+        // Guard against double-registration (called from setupHelpBar and initCathedralFeatures)
+        if (this._copyButtonsInitialized) return;
+        this._copyButtonsInitialized = true;
+
         // Add event listeners for all copy buttons with data-copy-text
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('copy-btn') && e.target.hasAttribute('data-copy-text')) {
@@ -1242,10 +1249,14 @@ ${this.preview.innerHTML}
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `markdown-export-${Date.now()}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
+
+        try {
+            a.href = url;
+            a.download = `markdown-export-${Date.now()}.html`;
+            a.click();
+        } finally {
+            URL.revokeObjectURL(url);
+        }
 
         this.showNotification('📤 Exported as HTML!', 'success');
     }
@@ -1337,8 +1348,9 @@ ${this.preview.innerHTML}
 
         // Close on click outside or Esc
         const closeModal = () => {
-            modal.remove();
+            // Remove listener first - ensures cleanup even if modal.remove() throws
             document.removeEventListener('keydown', closeOnEsc);
+            modal.remove();
         };
 
         const closeOnEsc = (e) => {
