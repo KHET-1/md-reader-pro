@@ -1,6 +1,12 @@
 /**
  * MD Reader Pro v4.0.0 - Cathedral Edition
- * Thin orchestrator composing EditorState, EditorIO, and EditorUI
+ * Enterprise-grade markdown editor with live preview, auto-save, and undo/redo.
+ *
+ * Architecture: Thin orchestrator composing EditorState, EditorIO, and EditorUI modules.
+ * All cross-module communication flows through callbacks for testability.
+ *
+ * @module MarkdownEditor
+ * @version 4.0.0
  */
 import AnimationManager from './utils/AnimationManager.js';
 import NotificationManager from './utils/NotificationManager.js';
@@ -14,6 +20,10 @@ import './styles/components.css';
 import './styles/animations.css';
 import './styles/utilities.css';
 
+/**
+ * Main MarkdownEditor class - orchestrates all editor functionality.
+ * @class
+ */
 class MarkdownEditor {
     constructor() {
         this.version = '4.0.0';
@@ -108,6 +118,11 @@ class MarkdownEditor {
     getFileReaderResult(e, r) { return this.io._getFileReaderResult(e, r); }
 
     // === Lifecycle ===
+
+    /**
+     * Initialize the editor. Call this after construction.
+     * Sets up DOM, event listeners, and Cathedral features.
+     */
     init() {
         if (!this.isBrowser()) return;
         console.log(`✅ MD Reader Pro v${this.version} initialized`);
