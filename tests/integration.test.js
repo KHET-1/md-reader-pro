@@ -75,7 +75,7 @@ console.log("Hello World");
 
             // 2. Copy example to editor
             const exampleMarkdown = '# Example Heading\n\nThis is an example from the help bar.';
-            window.copyToEditor(exampleMarkdown);
+            editor.copyToEditor(exampleMarkdown);
 
             // 3. Verify content was copied
             expect(editor.editor.value).toBe(exampleMarkdown);

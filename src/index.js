@@ -35,7 +35,7 @@ class MarkdownEditor {
                           'strong', 'em', 'img', 'table', 'thead', 'tbody',
                           'tr', 'th', 'td', 'br', 'hr', 'del', 'input', 'span'],
             ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'type',
-                          'checked', 'disabled', 'id']
+                          'checked', 'disabled']
         };
 
         // ⚡ CATHEDRAL FEATURES ⚡
@@ -677,10 +677,7 @@ class MarkdownEditor {
             });
         }
 
-        // Make copyToEditor globally available for onclick handlers
-        window.copyToEditor = (example) => this.copyToEditor(example);
-        
-        // Add event listeners for data-copy-text buttons
+        // Copy buttons handled via data-copy-text delegation in setupCopyButtons()
         this.setupCopyButtons();
     }
 
@@ -1006,7 +1003,8 @@ class MarkdownEditor {
         // Limit history size
         if (this.history.length > this.maxHistory) {
             this.history.shift();
-            this.historyIndex--;
+            // Prevent negative index when at position 0 during history overflow
+            this.historyIndex = Math.max(0, this.historyIndex - 1);
         }
 
         this.updateUndoRedoButtons();
