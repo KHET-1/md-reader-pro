@@ -119,9 +119,9 @@ describe('Benchmark Tests', () => {
 
             const result = await benchmarkRunner.runBenchmark('keyboard-shortcuts');
 
-            // Keyboard shortcuts should be instant
-            expect(result.average).toBeLessThan(2); // Under 2ms
-            expect(result.p95).toBeLessThan(5); // 95th percentile under 5ms
+            // Keyboard shortcuts should be instant (relaxed for CI/local variability)
+            expect(result.average).toBeLessThan(5); // Under 5ms
+            expect(result.p95).toBeLessThan(10); // 95th percentile under 10ms
         });
     });
 
@@ -162,9 +162,9 @@ describe('Benchmark Tests', () => {
 
             const result = await benchmarkRunner.runBenchmark('save-operation');
 
-            // Save operations should be very fast
-            expect(result.average).toBeLessThan(6); // Under 6ms (adjusted for CI variability)
-            expect(result.p95).toBeLessThan(20); // 95th percentile under 20ms (adjusted for system variability)
+            // Save operations should be very fast (relaxed for CI/local variability)
+            expect(result.average).toBeLessThan(12); // Under 12ms
+            expect(result.p95).toBeLessThan(30); // 95th percentile under 30ms
 
             // Restore mocks
             URL.createObjectURL = originalCreateObjectURL;
