@@ -219,6 +219,7 @@ class MarkdownEditor {
 
     /**
      * Accessible confirmation modal - replaces inaccessible native confirm()
+     * Diamond-grade design with smooth animations and premium UX
      * @param {string} message - Message to display
      * @param {Object} options - Configuration options
      * @returns {Promise<boolean>} Resolves to true if confirmed, false if cancelled
@@ -231,6 +232,39 @@ class MarkdownEditor {
                 cancelText = 'Cancel',
                 timestamp = null
             } = options;
+
+            // Inject keyframe animations if not already present
+            if (!document.getElementById('accessible-modal-styles')) {
+                const styleSheet = document.createElement('style');
+                styleSheet.id = 'accessible-modal-styles';
+                styleSheet.textContent = `
+                    @keyframes modalFadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    @keyframes modalSlideIn {
+                        from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+                        to { opacity: 1; transform: scale(1) translateY(0); }
+                    }
+                    @keyframes modalFadeOut {
+                        from { opacity: 1; }
+                        to { opacity: 0; }
+                    }
+                    @keyframes modalSlideOut {
+                        from { opacity: 1; transform: scale(1) translateY(0); }
+                        to { opacity: 0; transform: scale(0.9) translateY(-20px); }
+                    }
+                    @keyframes shimmer {
+                        0% { background-position: -200% center; }
+                        100% { background-position: 200% center; }
+                    }
+                    @keyframes pulseGlow {
+                        0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+                        50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); }
+                    }
+                `;
+                document.head.appendChild(styleSheet);
+            }
 
             // Create modal overlay
             const overlay = document.createElement('div');
@@ -245,25 +279,70 @@ class MarkdownEditor {
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0, 0, 0, 0.8);
+                background: rgba(0, 0, 0, 0.85);
                 z-index: 10001;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                backdrop-filter: blur(4px);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                animation: modalFadeIn 0.3s ease-out forwards;
             `;
 
             // Create modal content
             const modal = document.createElement('div');
             modal.style.cssText = `
-                background: #1a1a1a;
-                border: 2px solid #FFD700;
-                border-radius: 12px;
-                padding: 2rem;
-                max-width: 450px;
+                background: linear-gradient(145deg, #1e1e1e 0%, #141414 100%);
+                border: 1px solid rgba(255, 215, 0, 0.4);
+                border-radius: 16px;
+                padding: 2rem 2.5rem;
+                max-width: 420px;
                 width: 90%;
-                box-shadow: 0 20px 60px rgba(255, 215, 0, 0.3);
+                box-shadow:
+                    0 25px 80px rgba(0, 0, 0, 0.6),
+                    0 0 40px rgba(255, 215, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                animation: modalSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                position: relative;
+                overflow: hidden;
             `;
+
+            // Decorative top accent line
+            const accentLine = document.createElement('div');
+            accentLine.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg,
+                    transparent 0%,
+                    #FFD700 20%,
+                    #FFF8DC 50%,
+                    #FFD700 80%,
+                    transparent 100%);
+                background-size: 200% auto;
+                animation: shimmer 3s linear infinite;
+            `;
+            modal.appendChild(accentLine);
+
+            // Icon container
+            const iconContainer = document.createElement('div');
+            iconContainer.style.cssText = `
+                width: 56px;
+                height: 56px;
+                background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 100%);
+                border: 1px solid rgba(255, 215, 0, 0.3);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 1.25rem auto;
+                font-size: 24px;
+                animation: pulseGlow 2s ease-in-out infinite;
+            `;
+            iconContainer.textContent = '💾';
+            modal.appendChild(iconContainer);
 
             // Title
             const titleEl = document.createElement('h2');
@@ -271,36 +350,42 @@ class MarkdownEditor {
             titleEl.textContent = title;
             titleEl.style.cssText = `
                 color: #FFD700;
-                margin: 0 0 1rem 0;
-                font-size: 1.25rem;
+                margin: 0 0 0.75rem 0;
+                font-size: 1.35rem;
+                font-weight: 600;
+                text-align: center;
+                letter-spacing: 0.02em;
+                text-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
             `;
+            modal.appendChild(titleEl);
 
             // Message
             const messageEl = document.createElement('p');
             messageEl.id = 'confirm-message';
             messageEl.textContent = message;
             messageEl.style.cssText = `
-                color: #fff;
+                color: rgba(255, 255, 255, 0.9);
                 margin: 0 0 0.5rem 0;
-                line-height: 1.5;
+                line-height: 1.6;
+                text-align: center;
+                font-size: 0.95rem;
             `;
+            modal.appendChild(messageEl);
 
             // Timestamp (if provided)
             if (timestamp) {
                 const timestampEl = document.createElement('p');
-                timestampEl.textContent = `Saved: ${new Date(timestamp).toLocaleString()}`;
+                timestampEl.textContent = `Last saved: ${new Date(timestamp).toLocaleString()}`;
                 timestampEl.style.cssText = `
-                    color: #999;
-                    font-size: 0.875rem;
-                    margin: 0 0 1.5rem 0;
+                    color: rgba(255, 215, 0, 0.7);
+                    font-size: 0.8rem;
+                    margin: 0.25rem 0 1.5rem 0;
+                    text-align: center;
+                    font-style: italic;
                 `;
-                modal.appendChild(titleEl);
-                modal.appendChild(messageEl);
                 modal.appendChild(timestampEl);
             } else {
-                messageEl.style.marginBottom = '1.5rem';
-                modal.appendChild(titleEl);
-                modal.appendChild(messageEl);
+                messageEl.style.marginBottom = '1.75rem';
             }
 
             // Button container
@@ -308,59 +393,107 @@ class MarkdownEditor {
             buttonContainer.style.cssText = `
                 display: flex;
                 gap: 12px;
-                justify-content: flex-end;
+                justify-content: center;
+                margin-top: 0.5rem;
             `;
+
+            // Shared button hover effect function
+            const addButtonEffects = (btn, isConfirm) => {
+                btn.addEventListener('mouseenter', () => {
+                    if (isConfirm) {
+                        btn.style.background = 'linear-gradient(135deg, #FFE55C 0%, #FFD700 100%)';
+                        btn.style.transform = 'translateY(-2px)';
+                        btn.style.boxShadow = '0 8px 25px rgba(255, 215, 0, 0.4)';
+                    } else {
+                        btn.style.background = 'rgba(255, 255, 255, 0.1)';
+                        btn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                        btn.style.transform = 'translateY(-2px)';
+                    }
+                });
+                btn.addEventListener('mouseleave', () => {
+                    if (isConfirm) {
+                        btn.style.background = 'linear-gradient(135deg, #FFD700 0%, #E5C100 100%)';
+                        btn.style.transform = 'translateY(0)';
+                        btn.style.boxShadow = '0 4px 15px rgba(255, 215, 0, 0.3)';
+                    } else {
+                        btn.style.background = 'transparent';
+                        btn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                        btn.style.transform = 'translateY(0)';
+                    }
+                });
+                btn.addEventListener('focus', () => {
+                    btn.style.outline = 'none';
+                    btn.style.boxShadow = isConfirm
+                        ? '0 0 0 3px rgba(255, 215, 0, 0.5), 0 8px 25px rgba(255, 215, 0, 0.4)'
+                        : '0 0 0 3px rgba(255, 255, 255, 0.3)';
+                });
+                btn.addEventListener('blur', () => {
+                    btn.style.boxShadow = isConfirm
+                        ? '0 4px 15px rgba(255, 215, 0, 0.3)'
+                        : 'none';
+                });
+            };
 
             // Cancel button
             const cancelBtn = document.createElement('button');
             cancelBtn.textContent = cancelText;
             cancelBtn.setAttribute('type', 'button');
             cancelBtn.style.cssText = `
-                padding: 10px 20px;
+                padding: 12px 28px;
                 background: transparent;
-                color: #fff;
-                border: 1px solid #666;
-                border-radius: 6px;
+                color: rgba(255, 255, 255, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                border-radius: 8px;
                 cursor: pointer;
                 font-size: 14px;
                 font-weight: 500;
-                transition: all 0.2s;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                min-width: 100px;
             `;
+            addButtonEffects(cancelBtn, false);
 
             // Confirm button
             const confirmBtn = document.createElement('button');
             confirmBtn.textContent = confirmText;
             confirmBtn.setAttribute('type', 'button');
             confirmBtn.style.cssText = `
-                padding: 10px 20px;
-                background: #FFD700;
+                padding: 12px 28px;
+                background: linear-gradient(135deg, #FFD700 0%, #E5C100 100%);
                 color: #000;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
                 cursor: pointer;
                 font-size: 14px;
                 font-weight: 600;
-                transition: all 0.2s;
+                transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+                min-width: 100px;
             `;
+            addButtonEffects(confirmBtn, true);
 
             buttonContainer.appendChild(cancelBtn);
             buttonContainer.appendChild(confirmBtn);
             modal.appendChild(buttonContainer);
             overlay.appendChild(modal);
 
-            // Cleanup function
-            const cleanup = () => {
-                document.removeEventListener('keydown', handleKeydown);
-                if (overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
+            // Animated cleanup function
+            const cleanup = (result) => {
+                overlay.style.animation = 'modalFadeOut 0.2s ease-out forwards';
+                modal.style.animation = 'modalSlideOut 0.2s ease-out forwards';
+
+                setTimeout(() => {
+                    document.removeEventListener('keydown', handleKeydown);
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                    resolve(result);
+                }, 200);
             };
 
             // Handle keyboard navigation
             const handleKeydown = (e) => {
                 if (e.key === 'Escape') {
-                    cleanup();
-                    resolve(false);
+                    cleanup(false);
                 } else if (e.key === 'Tab') {
                     // Trap focus within modal
                     const focusable = [cancelBtn, confirmBtn];
@@ -375,26 +508,17 @@ class MarkdownEditor {
                         first.focus();
                     }
                 } else if (e.key === 'Enter' && document.activeElement === confirmBtn) {
-                    cleanup();
-                    resolve(true);
+                    cleanup(true);
                 }
             };
 
             // Event handlers
-            cancelBtn.addEventListener('click', () => {
-                cleanup();
-                resolve(false);
-            });
-
-            confirmBtn.addEventListener('click', () => {
-                cleanup();
-                resolve(true);
-            });
+            cancelBtn.addEventListener('click', () => cleanup(false));
+            confirmBtn.addEventListener('click', () => cleanup(true));
 
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
-                    cleanup();
-                    resolve(false);
+                    cleanup(false);
                 }
             });
 

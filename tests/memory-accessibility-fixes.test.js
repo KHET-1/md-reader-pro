@@ -223,7 +223,7 @@ describe('Memory Leak Prevention and Accessibility Fixes', () => {
             });
 
             const modal = document.getElementById('accessible-confirm-modal');
-            expect(modal.textContent).toContain('Saved:');
+            expect(modal.textContent).toContain('Last saved:');
 
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
             await promise;
