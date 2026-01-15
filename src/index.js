@@ -58,6 +58,11 @@ class MarkdownEditor {
 
         // Theme system
         this.currentTheme = localStorage.getItem('md-reader-theme') || 'dark';
+
+        // Event listener tracking for cleanup (memory leak prevention)
+        this._boundListeners = new Map();
+        this._abortController = null;
+        this._isDestroyed = false;
     }
 
     // Configuration constants
@@ -194,7 +199,290 @@ class MarkdownEditor {
         }
         return '';
     }
-    
+
+    // Helper: Track event listener for cleanup
+    _trackListener(element, type, handler, options) {
+        const key = `${type}-${this._boundListeners.size}`;
+        this._boundListeners.set(key, { element, type, handler, options });
+        element.addEventListener(type, handler, options);
+        return key;
+    }
+
+    // Helper: Remove tracked event listener
+    _removeTrackedListener(key) {
+        const listener = this._boundListeners.get(key);
+        if (listener) {
+            listener.element.removeEventListener(listener.type, listener.handler, listener.options);
+            this._boundListeners.delete(key);
+        }
+    }
+
+    /**
+     * Accessible confirmation modal - replaces inaccessible native confirm()
+     * @param {string} message - Message to display
+     * @param {Object} options - Configuration options
+     * @returns {Promise<boolean>} Resolves to true if confirmed, false if cancelled
+     */
+    showAccessibleConfirm(message, options = {}) {
+        return new Promise((resolve) => {
+            const {
+                title = 'Confirm',
+                confirmText = 'Confirm',
+                cancelText = 'Cancel',
+                timestamp = null
+            } = options;
+
+            // Create modal overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'accessible-confirm-modal';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'confirm-title');
+            overlay.setAttribute('aria-describedby', 'confirm-message');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 10001;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(4px);
+            `;
+
+            // Create modal content
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: #1a1a1a;
+                border: 2px solid #FFD700;
+                border-radius: 12px;
+                padding: 2rem;
+                max-width: 450px;
+                width: 90%;
+                box-shadow: 0 20px 60px rgba(255, 215, 0, 0.3);
+            `;
+
+            // Title
+            const titleEl = document.createElement('h2');
+            titleEl.id = 'confirm-title';
+            titleEl.textContent = title;
+            titleEl.style.cssText = `
+                color: #FFD700;
+                margin: 0 0 1rem 0;
+                font-size: 1.25rem;
+            `;
+
+            // Message
+            const messageEl = document.createElement('p');
+            messageEl.id = 'confirm-message';
+            messageEl.textContent = message;
+            messageEl.style.cssText = `
+                color: #fff;
+                margin: 0 0 0.5rem 0;
+                line-height: 1.5;
+            `;
+
+            // Timestamp (if provided)
+            if (timestamp) {
+                const timestampEl = document.createElement('p');
+                timestampEl.textContent = `Saved: ${new Date(timestamp).toLocaleString()}`;
+                timestampEl.style.cssText = `
+                    color: #999;
+                    font-size: 0.875rem;
+                    margin: 0 0 1.5rem 0;
+                `;
+                modal.appendChild(titleEl);
+                modal.appendChild(messageEl);
+                modal.appendChild(timestampEl);
+            } else {
+                messageEl.style.marginBottom = '1.5rem';
+                modal.appendChild(titleEl);
+                modal.appendChild(messageEl);
+            }
+
+            // Button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                display: flex;
+                gap: 12px;
+                justify-content: flex-end;
+            `;
+
+            // Cancel button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelText;
+            cancelBtn.setAttribute('type', 'button');
+            cancelBtn.style.cssText = `
+                padding: 10px 20px;
+                background: transparent;
+                color: #fff;
+                border: 1px solid #666;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+            `;
+
+            // Confirm button
+            const confirmBtn = document.createElement('button');
+            confirmBtn.textContent = confirmText;
+            confirmBtn.setAttribute('type', 'button');
+            confirmBtn.style.cssText = `
+                padding: 10px 20px;
+                background: #FFD700;
+                color: #000;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.2s;
+            `;
+
+            buttonContainer.appendChild(cancelBtn);
+            buttonContainer.appendChild(confirmBtn);
+            modal.appendChild(buttonContainer);
+            overlay.appendChild(modal);
+
+            // Cleanup function
+            const cleanup = () => {
+                document.removeEventListener('keydown', handleKeydown);
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            };
+
+            // Handle keyboard navigation
+            const handleKeydown = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    resolve(false);
+                } else if (e.key === 'Tab') {
+                    // Trap focus within modal
+                    const focusable = [cancelBtn, confirmBtn];
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+
+                    if (e.shiftKey && document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                } else if (e.key === 'Enter' && document.activeElement === confirmBtn) {
+                    cleanup();
+                    resolve(true);
+                }
+            };
+
+            // Event handlers
+            cancelBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            confirmBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(true);
+            });
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    cleanup();
+                    resolve(false);
+                }
+            });
+
+            document.addEventListener('keydown', handleKeydown);
+
+            // Add to DOM and focus
+            document.body.appendChild(overlay);
+            confirmBtn.focus();
+        });
+    }
+
+    /**
+     * Cleanup method to prevent memory leaks
+     * Removes all event listeners, timers, and dynamically created elements
+     */
+    destroy() {
+        if (this._isDestroyed) return;
+        this._isDestroyed = true;
+
+        // Abort any pending operations
+        if (this._abortController) {
+            this._abortController.abort();
+            this._abortController = null;
+        }
+
+        // Clear all timers
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = null;
+        }
+        if (this.autoSaveTimer) {
+            clearTimeout(this.autoSaveTimer);
+            this.autoSaveTimer = null;
+        }
+        if (this.historyDebounce) {
+            clearTimeout(this.historyDebounce);
+            this.historyDebounce = null;
+        }
+
+        // Remove all tracked event listeners
+        for (const [key] of this._boundListeners) {
+            this._removeTrackedListener(key);
+        }
+
+        // Cancel all animations
+        if (this.anim) {
+            this.anim.cancelAll();
+        }
+
+        // Dismiss all notifications
+        if (this.notify) {
+            this.notify.dismissAll();
+        }
+
+        // Remove dynamically created elements
+        const elementsToRemove = [
+            'stats-counter',
+            'save-indicator',
+            'shortcuts-modal',
+            'accessible-confirm-modal'
+        ];
+        elementsToRemove.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        });
+
+        // Clean up global references
+        if (typeof window !== 'undefined') {
+            if (window.MDReaderPro) {
+                delete window.MDReaderPro;
+            }
+            // Legacy cleanup
+            if (window.copyToEditor) {
+                delete window.copyToEditor;
+            }
+        }
+
+        // Clear cached elements
+        this.cachedElements = {};
+
+        // Clear history
+        this.history = [];
+
+        console.log('🧹 MarkdownEditor destroyed - all resources cleaned up');
+    }
+
     init() {
         // Only initialize if we are in a browser environment
         if (!this.isBrowser()) return;
@@ -677,9 +965,15 @@ class MarkdownEditor {
             });
         }
 
-        // Make copyToEditor globally available for onclick handlers
+        // Make copyToEditor available via namespaced global for onclick handlers
+        // Note: Prefer data-copy-text attribute approach over inline onclick
+        if (typeof window !== 'undefined' && window.MDReaderPro) {
+            // Already namespaced, add method reference
+            window.MDReaderPro.copyToEditor = (example) => this.copyToEditor(example);
+        }
+        // Legacy support for inline onclick handlers
         window.copyToEditor = (example) => this.copyToEditor(example);
-        
+
         // Add event listeners for data-copy-text buttons
         this.setupCopyButtons();
     }
@@ -917,26 +1211,62 @@ class MarkdownEditor {
         }
     }
 
-    loadFromAutoSave() {
+    async loadFromAutoSave() {
         if (!this.editor) return;
+
+        // Create abort controller for race condition prevention
+        if (this._abortController) {
+            this._abortController.abort();
+        }
+        this._abortController = new AbortController();
+        const signal = this._abortController.signal;
 
         try {
             const saved = localStorage.getItem('md-reader-autosave');
             if (saved) {
                 const { content, timestamp } = JSON.parse(saved);
 
-                // Ask user if they want to restore
-                if (content && content !== this.editor.value) {
-                    const restore = confirm(`Restore auto-saved content from ${new Date(timestamp).toLocaleString()}?`);
+                // Capture current state before async operation
+                const currentContent = this.editor.value;
+
+                // Ask user if they want to restore using accessible modal
+                if (content && content !== currentContent) {
+                    const restore = await this.showAccessibleConfirm(
+                        'Would you like to restore your previously saved content?',
+                        {
+                            title: 'Restore Auto-Saved Content',
+                            confirmText: 'Restore',
+                            cancelText: 'Discard',
+                            timestamp
+                        }
+                    );
+
+                    // Check if operation was aborted during modal
+                    if (signal.aborted) {
+                        console.log('Auto-save restore cancelled (aborted)');
+                        return;
+                    }
+
+                    // Check if editor content changed while modal was open (race condition prevention)
+                    if (this.editor.value !== currentContent) {
+                        console.log('Editor content changed during restore prompt - skipping restore');
+                        this.showNotification('Content changed during restore prompt', 'warning', 3000);
+                        return;
+                    }
+
                     if (restore) {
                         this.editor.value = content;
                         this.updatePreview();
-                        this.showNotification('✅ Content restored from auto-save', 'success');
+                        this.showNotification('Content restored from auto-save', 'success');
                     }
                 }
             }
         } catch (err) {
-            console.error('❌ Failed to load auto-save:', err);
+            if (err.name === 'AbortError') {
+                console.log('Auto-save restore aborted');
+                return;
+            }
+            console.error('Failed to load auto-save:', err);
         }
     }
 
@@ -1415,14 +1745,33 @@ export default MarkdownEditor;
 if (typeof window !== 'undefined' && typeof jest === 'undefined') {
     const markdownEditor = new MarkdownEditor();
     markdownEditor.init(); // Initialize the editor
-    window.markdownEditor = markdownEditor;
+
+    // Namespace all exports under a single global object (prevents global pollution)
+    window.MDReaderPro = Object.freeze({
+        editor: markdownEditor,
+        showCollabStory: () => markdownEditor.showCollaborationStory(),
+        getAnimationFPS: () => {
+            try { return Math.round(markdownEditor?.anim?.getFPS() ?? 0); } catch (_) { return 0; }
+        },
+        destroy: () => markdownEditor.destroy(),
+        version: markdownEditor.version
+    });
+
+    // Legacy support: keep window.markdownEditor for backwards compatibility
+    // but mark it as deprecated
+    Object.defineProperty(window, 'markdownEditor', {
+        get() {
+            console.warn('window.markdownEditor is deprecated. Use window.MDReaderPro.editor instead.');
+            return markdownEditor;
+        },
+        configurable: true
+    });
 
     // Ensure stable constructor name for test environments and dev builds
     try {
-        const ctorName = window.markdownEditor?.constructor?.name;
+        const ctorName = markdownEditor?.constructor?.name;
         if (ctorName !== 'MarkdownEditor') {
-            // Override instance constructor reference locally so tests relying on the name pass consistently
-            Object.defineProperty(window.markdownEditor, 'constructor', {
+            Object.defineProperty(markdownEditor, 'constructor', {
                 value: { name: 'MarkdownEditor' },
                 configurable: true,
                 enumerable: false,
@@ -1431,13 +1780,9 @@ if (typeof window !== 'undefined' && typeof jest === 'undefined') {
         }
     } catch (_) { /* no-op */ }
 
-    window.showCollabStory = () => markdownEditor.showCollaborationStory();
-    window.getAnimationFPS = () => {
-        try { return Math.round(markdownEditor?.anim?.getFPS() ?? 0); } catch (_) { return 0; }
-    };
-
     console.log('💡 Console commands available:');
-    console.log('   • markdownEditor - Editor instance');
-    console.log('   • showCollabStory() - Development journey!');
-    console.log('   • getAnimationFPS() - Current animation FPS estimate');
+    console.log('   • MDReaderPro.editor - Editor instance');
+    console.log('   • MDReaderPro.showCollabStory() - Development journey!');
+    console.log('   • MDReaderPro.getAnimationFPS() - Current animation FPS estimate');
+    console.log('   • MDReaderPro.destroy() - Clean up all resources');
 }
