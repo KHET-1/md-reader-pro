@@ -22,6 +22,24 @@
   --transition-slow: 0.5s ease;
 }
 
+/* Light theme overrides */
+.light-theme {
+  --accent-color: #0088cc;
+  --accent-glow: rgba(0, 136, 204, 0.3);
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e8e8e8;
+  --text-primary: #1a1a1a;
+  --text-secondary: #444444;
+  --text-muted: #666666;
+  --border-color: #d0d0d0;
+  --border-hover: #aaaaaa;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
