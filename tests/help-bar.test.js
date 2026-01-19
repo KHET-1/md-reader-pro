@@ -23,9 +23,9 @@ describe('Help Bar Functionality', () => {
             expect(helpToggle).toBeTruthy();
             expect(helpBar).toBeTruthy();
 
-            // Check that setupHelpBar was called
-            expect(window.copyToEditor).toBeDefined();
-            expect(typeof window.copyToEditor).toBe('function');
+            // Check that setupHelpBar was called - copyToEditor is instance method, not global
+            expect(editor.copyToEditor).toBeDefined();
+            expect(typeof editor.copyToEditor).toBe('function');
         });
 
         test('should toggle help bar visibility on button click', () => {
@@ -72,7 +72,7 @@ describe('Help Bar Functionality', () => {
             const exampleMarkdown = '# Test Heading\nThis is a test.';
 
             // Call copyToEditor
-            window.copyToEditor(exampleMarkdown);
+            editor.copyToEditor(exampleMarkdown);
 
             // Check that editor content was updated
             expect(editor.editor.value).toBe(exampleMarkdown);
@@ -85,7 +85,7 @@ describe('Help Bar Functionality', () => {
             const updatePreviewSpy = jest.spyOn(editor, 'updatePreview');
 
             // Call copyToEditor
-            window.copyToEditor(exampleMarkdown);
+            editor.copyToEditor(exampleMarkdown);
 
             // Check that updatePreview was called
             expect(updatePreviewSpy).toHaveBeenCalled();
@@ -98,7 +98,7 @@ describe('Help Bar Functionality', () => {
             const focusSpy = jest.spyOn(editor.editor, 'focus');
 
             // Call copyToEditor
-            window.copyToEditor(exampleMarkdown);
+            editor.copyToEditor(exampleMarkdown);
 
             // Check that focus was called
             expect(focusSpy).toHaveBeenCalled();
@@ -108,7 +108,7 @@ describe('Help Bar Functionality', () => {
             const emptyExample = '';
 
             expect(() => {
-                window.copyToEditor(emptyExample);
+                editor.copyToEditor(emptyExample);
             }).not.toThrow();
 
             expect(editor.editor.value).toBe('');
@@ -130,7 +130,7 @@ console.log("Hello World");
 |--------|-------|
 | Test   | Data  |`;
 
-            window.copyToEditor(complexExample);
+            editor.copyToEditor(complexExample);
             expect(editor.editor.value).toBe(complexExample);
         });
     });
@@ -140,7 +140,7 @@ console.log("Hello World");
             const exampleMarkdown = '# Test';
 
             // Call copyToEditor which should trigger the notification
-            window.copyToEditor(exampleMarkdown);
+            editor.copyToEditor(exampleMarkdown);
             
             // Wait for async clipboard operation to complete
             await TestUtils.waitFor(100);
@@ -160,7 +160,7 @@ console.log("Hello World");
             const exampleMarkdown = '# Test';
 
             // Call copyToEditor
-            window.copyToEditor(exampleMarkdown);
+            editor.copyToEditor(exampleMarkdown);
             
             // Wait for async clipboard operation to complete
             await TestUtils.waitFor(100);
@@ -190,7 +190,7 @@ console.log("Hello World");
 
             // Should not throw when calling copyToEditor
             expect(() => {
-                window.copyToEditor('# Test');
+                editor.copyToEditor('# Test');
             }).not.toThrow();
         });
 
@@ -224,14 +224,14 @@ console.log("Hello World");
     describe('Help Bar Examples Coverage', () => {
         test('should handle heading examples', () => {
             const headingExample = '# Heading 1\n## Heading 2\n### Heading 3';
-            window.copyToEditor(headingExample);
+            editor.copyToEditor(headingExample);
             expect(editor.editor.value).toContain('# Heading 1');
             expect(editor.editor.value).toContain('## Heading 2');
         });
 
         test('should handle text formatting examples', () => {
             const formatExample = '**Bold text**\n*Italic text*\n`Inline code`';
-            window.copyToEditor(formatExample);
+            editor.copyToEditor(formatExample);
             expect(editor.editor.value).toContain('**Bold text**');
             expect(editor.editor.value).toContain('*Italic text*');
             expect(editor.editor.value).toContain('`Inline code`');
@@ -239,35 +239,35 @@ console.log("Hello World");
 
         test('should handle code block examples', () => {
             const codeExample = '```javascript\nconsole.log("Hello");\n```';
-            window.copyToEditor(codeExample);
+            editor.copyToEditor(codeExample);
             expect(editor.editor.value).toContain('```javascript');
             expect(editor.editor.value).toContain('console.log');
         });
 
         test('should handle list examples', () => {
             const listExample = '- First item\n- Second item\n  - Nested item';
-            window.copyToEditor(listExample);
+            editor.copyToEditor(listExample);
             expect(editor.editor.value).toContain('- First item');
             expect(editor.editor.value).toContain('  - Nested item');
         });
 
         test('should handle link examples', () => {
             const linkExample = '[GitHub](https://github.com)\n[Google](https://google.com "Google Search")';
-            window.copyToEditor(linkExample);
+            editor.copyToEditor(linkExample);
             expect(editor.editor.value).toContain('[GitHub](https://github.com)');
             expect(editor.editor.value).toContain('"Google Search"');
         });
 
         test('should handle table examples', () => {
             const tableExample = '| Header | Value |\n|--------|-------|\n| Cell   | Data  |';
-            window.copyToEditor(tableExample);
+            editor.copyToEditor(tableExample);
             expect(editor.editor.value).toContain('| Header | Value |');
             expect(editor.editor.value).toContain('|--------|-------|');
         });
 
         test('should handle blockquote examples', () => {
             const quoteExample = '> This is a blockquote\n> with multiple lines';
-            window.copyToEditor(quoteExample);
+            editor.copyToEditor(quoteExample);
             expect(editor.editor.value).toContain('> This is a blockquote');
         });
     });
