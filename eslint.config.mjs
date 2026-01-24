@@ -17,7 +17,6 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         localStorage: 'readonly',
-        sessionStorage: 'readonly',
         confirm: 'readonly',
         FileReader: 'readonly',
         File: 'readonly',
