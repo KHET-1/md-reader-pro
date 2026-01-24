@@ -1,0 +1,796 @@
+# LM Studio TTS Plugin Implementation
+
+## Overview
+This document outlines the implementation of a Text-to-Speech (TTS) plugin for LM Studio. The plugin will integrate seamlessly with LM Studio's model chat functionality, converting textual responses into spoken audio using a TTS engine (initially eSpeak). The design emphasizes modularity, extensibility, and minimal intrusion into existing workflows.
+
+## Project Structure
+```
+tts-plugin/
+├── src/
+│   ├── __init__.py
+│   ├── llm_tts.py          # Core TTS decorator and engine
+│   ├── engines/
+│   │   ├── __init__.py
+│   │   ├── espeak_engine.py # Espeak implementation
+│   │   └── base_engine.py   # Abstract TTS engine interface
+│   └── config.py           # Configuration management
+├── tests/
+│   ├── test_llm_tts.py     # Unit tests for decorator
+│   └── test_engines.py     # Engine-specific tests
+├── requirements.txt        # Python dependencies
+├── setup.py                # Installation script
+├── README.md               # Documentation
+└── .gitignore
+```
+
+## Core Implementation Details
+
+### 1. TTS Decorator (`src/llm_tts.py`)
+The primary component is a Python decorator that wraps LM Studio's model chat methods. This decorator captures the textual response and triggers TTS playback without altering the original method's behavior.
+
+```python
+import subprocess
+import threading
+from functools import wraps
+from typing import Callable, Any
+from .engines import TTSEngineFactory
+from .config import TTSConfig
+
+def tts_decorator(wrapped_method: Callable) -> Callable:
+    """
+    Decorator that adds TTS functionality to model chat methods.
+    """
+    config = TTSConfig()
+
+    @wraps(wrapped_method)
+    def wrapper(*args, **kwargs) -> Any:
+        # Call the original method to get the response
+        result = wrapped_method(*args, **kwargs)
+
+        # Extract text from result (assuming result has a text attribute or similar)
+        if hasattr(result, 'text'):
+            text = result.text
+        elif isinstance(result, str):
+            text = result
+        else:
+            text = str(result)
+
+        # Trigger TTS in a separate thread to avoid blocking
+        if config.enabled:
+            thread = threading.Thread(
+                target=_play_tts,
+                args=(text, config),
+                daemon=True
+            )
+            thread.start()
+
+        return result
+
+    return wrapper
+
+def _play_tts(text: str, config: TTSConfig) -> None:
+    """
+    Internal function to handle TTS playback.
+    Runs in a separate thread to prevent blocking.
+    """
+    try:
+        engine = TTSEngineFactory.create(config.engine)
+        engine.speak(text, config.voice, config.rate, config.volume)
+    except Exception as e:
+        # Log error but don't raise to avoid disrupting main flow
+        print(f"TTS playback failed: {e}")
+
+# Usage example for LM Studio integration
+def enable_tts_for_model(model_instance):
+    """
+    Apply the TTS decorator to a model's chat method.
+    This would be called during plugin initialization.
+    """
+    original_chat = model_instance.chat
+    model_instance.chat = tts_decorator(original_chat)
+    return model_instance
+```
+
+### 2. TTS Engine Abstraction (`src/engines/base_engine.py`)
+An abstract base class ensures pluggable TTS engine support.
+
+```python
+from abc import ABC, abstractmethod
+from typing import Optional
+
+class TTSEngine(ABC):
+    """
+    Abstract base class for TTS engines.
+    """
+
+    @abstractmethod
+    def speak(self, text: str, voice: Optional[str] = None, 
+              rate: Optional[int] = None, volume: Optional[int] = None) -> None:
+        """
+        Convert text to speech and play it.
+
+        Args:
+            text: Text to speak
+            voice: Voice identifier (if supported)
+            rate: Speech rate (words per minute)
+            volume: Volume level (0-100)
+        """
+        pass
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Check if the engine is properly installed and available."""
+        pass
+```
+
+### 3. Espeak Engine Implementation (`src/engines/espeak_engine.py`)
+The initial TTS engine using Espeak for cross-platform compatibility.
+
+```python
+import subprocess
+import platform
+from .base_engine import TTSEngine
+
+class EspeakEngine(TTSEngine):
+    """
+    TTS engine implementation using Espeak.
+    """
+
+    def __init__(self):
+        self.system = platform.system().lower()
+
+    def speak(self, text: str, voice: str = None, 
+              rate: int = 150, volume: int = 100) -> None:
+        """
+        Speak text using Espeak.
+        """
+        if not self.is_available():
+            raise RuntimeError("Espeak is not available on this system")
+
+        # Clean text for Espeak (remove special characters if needed)
+        clean_text = self._clean_text(text)
+
+        # Build Espeak command
+        cmd = ['espeak']
+
+        if voice:
+            cmd.extend(['-v', voice])
+
+        # Rate: 0-450, default 150
+        rate = max(0, min(450, rate))
+        cmd.extend(['-s', str(rate)])
+
+        # Volume via amplitude: -100 to 20, default 0
+        amplitude = int((volume / 100.0) * 20) - 10
+        cmd.extend(['-a', str(amplitude)])
+
+        # Platform-specific audio output
+        if self.system == 'darwin':  # macOS
+            cmd.extend(['-w', '/dev/null'])  # Use built-in audio
+        elif self.system == 'windows':
+            cmd.append('--stdout')  # Windows espeak outputs to stdout
+        else:  # Linux
+            pass  # Default audio output
+
+        cmd.append(clean_text)
+
+        # Execute Espeak
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, 
+                         text=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("TTS playback timed out")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Espeak failed: {e.stderr}")
+
+    def is_available(self) -> bool:
+        """Check if Espeak is installed and accessible."""
+        try:
+            result = subprocess.run(['espeak', '--version'], 
+                                  capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
+
+    def _clean_text(self, text: str) -> str:
+        """
+        Clean text for Espeak compatibility.
+        Espeak handles most punctuation well, but we can add specific cleaning.
+        """
+        # Basic cleaning - remove or escape problematic characters
+        # This is a simple implementation; could be enhanced
+        return text.strip()
+```
+
+### 4. TTS Engine Factory (`src/engines/__init__.py`)
+Factory pattern for creating TTS engine instances.
+
+```python
+from typing import Optional
+from .espeak_engine import EspeakEngine
+from .base_engine import TTSEngine
+
+class TTSEngineFactory:
+    """
+    Factory for creating TTS engine instances based on configuration.
+    """
+
+    @classmethod
+    def create(cls, engine_name: str) -> TTSEngine:
+        """
+        Create a TTS engine instance by name.
+
+        Args:
+            engine_name: Name of the TTS engine ('espeak', etc.)
+
+        Returns:
+            Initialized TTSEngine instance
+
+        Raises:
+            ValueError: If engine_name is not supported
+        """
+        engine_name = engine_name.lower()
+
+        if engine_name == 'espeak':
+            return EspeakEngine()
+        else:
+            raise ValueError(f"Unsupported TTS engine: {engine_name}")
+
+    @classmethod
+    def get_available_engines(cls) -> list[str]:
+        """
+        Return list of available TTS engines on this system.
+        """
+        available = []
+
+        # Check Espeak
+        try:
+            engine = cls.create('espeak')
+            if engine.is_available():
+                available.append('espeak')
+        except ValueError:
+            pass
+
+        return available
+```
+
+### 5. Configuration Management (`src/config.py`)
+Handle TTS settings with sensible defaults and easy customization.
+
+```python
+import os
+import json
+from typing import Optional, Dict, Any
+from dataclasses import dataclass, asdict
+
+@dataclass
+class TTSConfig:
+    """
+    Configuration for the TTS plugin.
+    """
+    enabled: bool = True
+    engine: str = 'espeak'
+    voice: Optional[str] = None  # Default to system voice
+    rate: int = 150             # Words per minute (0-450 for Espeak)
+    volume: int = 100           # 0-100
+    config_file: str = './tts_config.json'
+
+    @classmethod
+    def from_file(cls, config_path: Optional[str] = None) -> 'TTSConfig':
+        """
+        Load configuration from JSON file.
+        """
+        config_path = config_path or cls.config_file
+
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    data = json.load(f)
+
+                # Convert to dataclass
+                return cls(
+                    enabled=data.get('enabled', True),
+                    engine=data.get('engine', 'espeak'),
+                    voice=data.get('voice'),
+                    rate=data.get('rate', 150),
+                    volume=data.get('volume', 100)
+                )
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Warning: Invalid config file {config_path}: {e}")
+
+        return cls()
+
+    def save(self, config_path: Optional[str] = None) -> None:
+        """
+        Save configuration to JSON file.
+        """
+        config_path = config_path or self.config_file
+        data = asdict(self)
+
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def validate(self) -> bool:
+        """
+        Validate configuration settings.
+        """
+        if not (0 <= self.rate <= 450):
+            print(f"Warning: Rate {self.rate} out of range (0-450), using 150")
+            self.rate = 150
+
+        if not (0 <= self.volume <= 100):
+            print(f"Warning: Volume {self.volume} out of range (0-100), using 100")
+            self.volume = 100
+
+        return True
+```
+
+### 6. Requirements (`requirements.txt`)
+```
+# Core dependencies (minimal for initial implementation)
+# No external dependencies needed for Espeak integration
+
+# Future dependencies for additional features:
+# pyttsx3==2.90          # Alternative TTS library
+# pydub==0.25.1          # Audio manipulation (future)
+# elevenlabs==0.2.0      # ElevenLabs API integration (future)
+```
+
+### 7. Setup Script (`setup.py`)
+```python
+from setuptools import setup, find_packages
+
+setup(
+    name='lmstudio-tts-plugin',
+    version='0.1.0',
+    description='Text-to-Speech plugin for LM Studio',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
+    packages=find_packages(where='src'),
+    package_dir={'': 'src'},
+    install_requires=[
+        # No pip-installable dependencies for MVP
+    ],
+    python_requires='>=3.8',
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+    ],
+    author='Your Name',
+    author_email='your.email@example.com',
+    url='https://github.com/yourusername/tts-plugin',
+    keywords=['lmstudio', 'tts', 'espeak', 'plugin'],
+)
+```
+
+## Installation and Setup
+
+### 1. Prerequisites
+- **LM Studio**: Latest version installed
+- **Espeak**: TTS engine dependency
+
+#### Install Espeak:
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install espeak espeak-data
+```
+
+**macOS:**
+```bash
+brew install espeak
+```
+
+**Windows:**
+1. Download Espeak from: http://espeak.sourceforge.net/download.html
+2. Install and ensure `espeak.exe` is in your PATH
+3. Or use: `choco install espeak` (with Chocolatey)
+
+### 2. Plugin Installation
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/tts-plugin.git
+cd tts-plugin
+
+# Install Python package
+pip install -e .
+
+# Verify Espeak availability
+python -c "from src.engines.espeak_engine import EspeakEngine; print('Espeak available' if EspeakEngine().is_available() else 'Espeak not found')"
+```
+
+### 3. Configuration
+Create a configuration file at `./tts_config.json`:
+```json
+{
+  "enabled": true,
+  "engine": "espeak",
+  "voice": "en-us",  // Optional: specify voice
+  "rate": 150,
+  "volume": 100
+}
+```
+
+## Integration with LM Studio
+
+### Basic Usage
+After installation, enable TTS for your LM Studio model:
+
+```python
+# Example integration (adjust based on actual LM Studio API)
+from lmstudio import Model  # Hypothetical import
+from src.llm_tts import enable_tts_for_model
+
+# Load your model
+model = Model.load("path/to/your/model")
+
+# Enable TTS
+model_with_tts = enable_tts_for_model(model)
+
+# Now chat responses will be spoken automatically
+response = model_with_tts.chat("Hello, how are you?")
+```
+
+### Advanced Integration (LM Studio Plugin System)
+If LM Studio provides a plugin architecture, register the TTS handler:
+
+```python
+# plugin_entry.py (hypothetical LM Studio plugin entry point)
+from lmstudio import PluginRegistry
+from src.llm_tts import tts_decorator, enable_tts_for_model
+
+class TTSPlugin:
+    def __init__(self):
+        self.name = "TTS Output Plugin"
+        self.version = "0.1.0"
+        self.description = "Adds text-to-speech output to model responses"
+
+    def initialize(self, registry: PluginRegistry):
+        """
+        Called when plugin is loaded by LM Studio.
+        """
+        # Register the decorator for output processing
+        registry.register_output_hook(self._tts_output_hook)
+
+        # Or decorate all model chat methods
+        for model in registry.get_models():
+            enable_tts_for_model(model)
+
+    def _tts_output_hook(self, output_data):
+        """
+        Hook into LM Studio's output pipeline.
+        """
+        if hasattr(output_data, 'text') and output_data.text:
+            from src.llm_tts import _play_tts
+            from src.config import TTSConfig
+            config = TTSConfig.from_file()
+
+            # Play TTS asynchronously
+            import threading
+            threading.Thread(
+                target=_play_tts,
+                args=(output_data.text, config),
+                daemon=True
+            ).start()
+
+        return output_data  # Pass through original output
+
+# Register plugin (if LM Studio supports this pattern)
+plugin = TTSPlugin()
+```
+
+## Testing
+
+### Unit Tests (`tests/test_llm_tts.py`)
+```python
+import unittest
+from unittest.mock import patch, MagicMock
+import threading
+from src.llm_tts import tts_decorator, _play_tts
+from src.config import TTSConfig
+
+class TestTTSDecorator(unittest.TestCase):
+
+    def setUp(self):
+        self.config = TTSConfig(enabled=True)
+
+    @patch('src.llm_tts.threading.Thread')
+    @patch('src.llm_tts._play_tts')
+    def test_decorator_calls_tts_when_enabled(self, mock_play_tts, mock_thread):
+        # Mock the wrapped method
+        def mock_chat(text):
+            class Response:
+                text = f"Response to: {text}"
+            return Response()
+
+        decorated_chat = tts_decorator(mock_chat)
+        result = decorated_chat("Hello")
+
+        # Verify TTS was called with correct text
+        mock_play_tts.assert_called_once_with("Response to: Hello", self.config)
+        self.assertIsNotNone(result.text)
+
+    @patch('src.llm_tts.threading.Thread')
+    def test_decorator_works_when_disabled(self, mock_thread):
+        config = TTSConfig(enabled=False)
+
+        def mock_chat(text):
+            return f"Response: {text}"
+
+        with patch('src.llm_tts.TTSConfig', return_value=config):
+            decorated_chat = tts_decorator(mock_chat)
+            result = decorated_chat("Test")
+
+        # Verify no TTS thread was created
+        mock_thread.assert_not_called()
+        self.assertEqual(result, "Response: Test")
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+### Engine Tests (`tests/test_engines.py`)
+```python
+import unittest
+from unittest.mock import patch, MagicMock
+from src.engines.espeak_engine import EspeakEngine
+from src.engines import TTSEngineFactory
+
+class TestEspeakEngine(unittest.TestCase):
+
+    @patch('subprocess.run')
+    def test_speak_calls_espeak(self, mock_run):
+        # Mock subprocess success
+        mock_run.return_value = MagicMock(returncode=0)
+
+        engine = EspeakEngine()
+        engine.speak("Hello world", voice="en-us", rate=120, volume=80)
+
+        # Verify Espeak was called with correct parameters
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+
+        self.assertIn('espeak', call_args)
+        self.assertIn('-v', call_args)
+        self.assertIn('en-us', call_args)
+        self.assertIn('-s', call_args)
+        self.assertIn('120', call_args)
+        self.assertIn('-a', call_args)
+        self.assertIn('Hello world', call_args)
+
+    @patch('subprocess.run', side_effect=FileNotFoundError)
+    def test_is_available_returns_false_when_espeak_missing(self, mock_run):
+        engine = EspeakEngine()
+        self.assertFalse(engine.is_available())
+
+    def test_rate_clamping(self):
+        engine = EspeakEngine()
+
+        # Test rate below minimum
+        with patch('subprocess.run') as mock_run:
+            engine.speak("test", rate=-50)
+            args = mock_run.call_args[0][0]
+            self.assertIn('-s', args)
+            self.assertIn('0', args)  # Should clamp to 0
+
+        # Test rate above maximum
+        with patch('subprocess.run') as mock_run:
+            engine.speak("test", rate=600)
+            args = mock_run.call_args[0][0]
+            self.assertIn('-s', args)
+            self.assertIn('450', args)  # Should clamp to 450
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+## Running Tests
+```bash
+# Install test dependencies
+pip install pytest mock
+
+# Run tests
+pytest tests/ -v
+
+# Run specific test file
+python -m pytest tests/test_llm_tts.py -v
+```
+
+## Future Enhancements
+
+### 1. Additional TTS Engines
+- **ElevenLabs Integration**: Cloud-based, high-quality voices
+- **Azure Cognitive Services**: Enterprise-grade TTS with SSML support
+- **pyttsx3**: Offline TTS with multiple engine backends
+
+### 2. Audio Playback Options
+- **Save to File**: Export responses as audio files
+- **Audio Queue**: Queue multiple responses for sequential playback
+- **Volume Normalization**: Automatic audio level adjustment
+
+### 3. Advanced Features
+- **SSML Support**: Speech Synthesis Markup Language for prosody control
+- **Voice Selection UI**: In-app voice preview and selection
+- **Speed Control**: Real-time speech rate adjustment during playback
+- **Language Detection**: Automatic voice selection based on response language
+
+### 4. TypeScript Integration
+If integrating with LM Studio's TypeScript agent tools:
+
+```typescript
+// schemas/tts.ts
+import { z } from 'zod';
+
+export const TTSRequestSchema = z.object({
+  text: z.string().min(1).max(5000),
+  voice: z.string().optional(),
+  rate: z.number().min(0).max(450).optional().default(150),
+  volume: z.number().min(0).max(100).optional().default(100),
+});
+
+export const TTSResponseSchema = z.object({
+  success: z.boolean(),
+  audio_duration: z.number().optional(),  // seconds
+  engine: z.string(),
+});
+
+// Integration with LM Studio tools
+export const ttsTool = {
+  name: 'tts_speak',
+  description: 'Convert text to speech using TTS engine',
+  parameters: TTSRequestSchema,
+  execute: async (params: z.infer<typeof TTSRequestSchema>) => {
+    // Call Python backend via API or bridge
+    const response = await fetch('/api/tts/speak', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+    return TTSResponseSchema.parse(await response.json());
+  },
+};
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Espeak not found" Error**
+   ```
+   RuntimeError: Espeak is not available on this system
+   ```
+   **Solution**: Install Espeak following the platform-specific instructions above.
+
+2. **No Audio Output**
+   - Check system audio settings
+   - Verify Espeak installation: `espeak "test"` in terminal
+   - On Linux, ensure audio group membership: `sudo usermod -aG audio $USER`
+
+3. **TTS Too Fast/Slow**
+   Edit `tts_config.json`:
+   ```json
+   {
+     "rate": 120  // Slower speech
+   }
+   ```
+
+4. **Plugin Not Loading in LM Studio**
+   - Ensure plugin is in LM Studio's plugin directory
+   - Check LM Studio logs for import errors
+   - Verify Python version compatibility (3.8+)
+
+### Debugging Tips
+- Enable debug logging by setting environment variable:
+  ```bash
+  export TTS_DEBUG=1
+  ```
+- Check Espeak version: `espeak --version`
+- Test audio pipeline independently: `espeak -v en-us "test message"`
+
+## Repository Setup
+
+### GitHub Repository Structure
+```
+tts-plugin/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # GitHub Actions CI
+├── docs/
+│   ├── installation.md
+│   ├── configuration.md
+│   └── api.md
+├── src/                    # Source code (as detailed above)
+├── tests/                  # Unit tests
+├── examples/
+│   └── quickstart.py       # Usage examples
+├── CHANGELOG.md
+├── LICENSE                 # MIT License
+├── README.md              # Main documentation
+└── pyproject.toml          # Modern Python packaging
+```
+
+### CI/CD Configuration (`.github/workflows/ci.yml`)
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[test]"
+        # Install espeak (platform-specific)
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y espeak
+        fi
+
+    - name: Run tests
+      run: |
+        pytest tests/ --cov=src/ --cov-report=xml
+
+    - name: Check Espeak availability
+      run: |
+        python -c "from src.engines.espeak_engine import EspeakEngine; assert EspeakEngine().is_available(), 'Espeak not available'"
+      if: runner.os == 'Linux'
+```
+
+## Deployment Options
+
+### 1. Local Development
+- Install in development mode: `pip install -e .`
+- Run tests frequently: `pytest tests/`
+- Use virtual environment for isolation
+
+### 2. LM Studio Plugin Distribution
+- Package as wheel: `python setup.py bdist_wheel`
+- Create installer script for easy deployment
+- Document plugin registration process
+
+### 3. Cross-Platform Considerations
+- **Windows**: Bundle Espeak binary if needed
+- **macOS**: Ensure proper audio permissions
+- **Linux**: Handle audio group membership requirements
+
+## License
+MIT License - see LICENSE file for details.
+
+## Contributing
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/tts-enhancement`)
+3. Add tests for new functionality
+4. Ensure all tests pass (`pytest tests/`)
+5. Submit pull request
+
+## Contact
+For support or questions, open an issue on the GitHub repository or contact the maintainer.
+
+---
+
+*This implementation provides a solid foundation for TTS integration with LM Studio. The modular design allows easy extension to additional TTS engines and advanced features while maintaining compatibility with LM Studio's architecture.*

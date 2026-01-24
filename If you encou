@@ -1,0 +1,53 @@
+If you encounter the error "Failed to connect to Qdrant vector database" with net::ERR_CONNECTION_REFUSED at http://localhost:6333, it means the Qdrant server is not running or not accessible. Here's how to set it up and ensure it's running:
+
+### 1. **Install Qdrant (if not already installed)**
+   - Download the latest version from the [official Qdrant website](https://qdrant.tech/documentation/quick-start/).
+   - For Docker (recommended for quick setup):
+     ```
+     docker pull qdrant/qdrant
+     ```
+   - For other methods (binary, from source), follow the [installation guide](https://qdrant.tech/documentation/guides/installation/).
+
+### 2. **Run Qdrant**
+   - Using Docker:
+   docker run -p 6333:6333 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
+   ```
+   Note: The Qdrant dashboard is not available in the Docker image; it must be accessed via API endpoints or a separate dashboard tool if needed. This maps port 6333 for the API and persists data in a local `qdrant_storage` directory.
+     This maps port 6333 for the API and persists data in a local `qdrant_storage` directory.
+   - Using binary (after download):
+   ```- ForFirst,```
+ docker pulldockerrun```
+ Note: Port-ForLinuxEnsure```
+ sudo dockersudo```
+ ./qdrant ---p 6333:6333 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
+   ```
+   Note: The Qdrant dashboard is available on http://localhost:6334 (if exposed). The API is on port 6333. Data persists in `./qdrant_storage`.
+   - On Windows (using PowerShell or Command Prompt), use this equivalent:
+     ```
+     docker run -p 6333:6333 -p 6334:6334 -v "%CD%/qdrant_storage:/qdrant/storage" qdrant/qdrant
+     ```
+     If you encounter "docker: invalid reference format", ensure you're using Command Prompt or PowerShell (not Git Bash, as `$(pwd)` syntax may cause issues). Alternatively, use `%CD%` for the current directory path.
+   - For Linux/Mac:
+     ```
+     docker run -p 6333:6333 -p 6334:6334 -v $(pwd)/qdrant_storage:/qdrant/storage qdrant/qdrant
+     ```
+     Ensure Docker is installed and running. If the error persists, verify the command syntax with `docker run --help`.storage-path ./qdrant_storage
+   ```
+ - Verify it's running: Open http://localhost:6333 in your browser or use `curl http://localhost:6333`. You should see the Qdrant dashboard or a response.
+
+### 3. **Troubleshooting Connection Issues**
+ - **Check if Qdrant is running**: Use `docker ps` (for Docker) or check processes with `ps aux | grep qdrant`.
+ - **Firewall/Port issues**: Ensure port 6333 is open. On Linux: `sudo ufw allow 6333`.
+ - **If using a different host/port**: Update your application's config to match (e.g., environment variable `QDRANT_URL=http://your-host:port`).
+ - **Logs**: Check Qdrant logs for errors (e.g., `docker logs <container_id>`).
+ - Restart the server and retry the connection.
+
+Once Qdrant is up, your initial scan should succeed. If issues persist, provide more details about your setup (e.g., OS, installation method).### 4. **Check Process Lasso Event Logs**
+    If you're running on Windows and using Process Lasso (a process management tool), it may interfere with Docker or Qdrant processes, leading to connection issues. To investigate:
+    - Open Event Viewer (search for "Event Viewer" in the Start menu).
+    - Navigate to **Windows Logs > Application** or **System**.
+    - Filter for events from "ProcessLassoService" or related to Docker/Qdrant processes (look for error codes like timeouts or denied access).
+    - Common issues: Process Lasso may be restricting CPU/IO for docker.exe or qdrant processes. Temporarily disable active profiles in Process Lasso (via its GUI) for testing.
+    - If logs show resource throttling, adjust Process Lasso rules to exclude Docker and Qdrant, or pause the service via Services.msc.
+    - What's up? High CPU/memory usage or priority changes in logs could indicate why the server isn't stable—restart Process Lasso after adjustments and retest the connection.
+    If no relevant events appear, consider disabling Process Lasso entirely for troubleshooting. Great, you've shut off Process Lasso. Now, retry running the Qdrant Docker container and check the connection to http://localhost:6333. With Process Lasso disabled, any interference from resource throttling should be eliminated, so the server should start and connect without issues. If it's still not working, check the Docker logs with `docker logs <container_id>` and ensure no other software is interfering.

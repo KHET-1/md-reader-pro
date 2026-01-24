@@ -1,0 +1,72 @@
+
+I am working on traing an AI between parcing data, you just deted all my case studies to test the IA with. 
+
+I need you create 3 fake training reporets that have evidence inside that repor tthat makes sense if justifed or maybe a mixup or maybe tree. I want you to make 3 reports 3 are innocent 1 isnt. ALl 3 have valide complains. Just drop the aswer file butI got to get sleep after this
+
+---
+
+**REPORT #1 - Employee Complaint Investigation**
+**Case ID:** EC-2024-0847
+**Subject:** Sarah Mitchell, Marketing Coordinator
+**Complainant:** James Chen, Marketing Manager
+**Date:** January 15, 2024
+
+**Complaint Summary:**
+Sarah Mitchell allegedly accessed confidential client pricing documents outside her authorization level and shared screenshots in a personal Slack channel.
+
+**Evidence Collected:**
+- Access logs show Sarah's credentials were used to open "Q1_Pricing_Strategy_2024.xlsx" on January 8, 2024 at 2:47 PM
+- Sarah was covering for her colleague who was on medical leave and was given temporary elevated permissions
+- Email from James Chen dated January 5 explicitly granting Sarah access to pricing folders during coverage period
+- Screenshots in question were shared to the official Marketing team channel, not personal channel (James misidentified the channel)
+- IT confirms Sarah's access was legitimate and within her temporary authorization
+
+**Conclusion:** INNOCENT - Justified access due to legitimate business need and manager authorization.
+
+---
+
+**REPORT #2 - Expense Reimbursement Review**
+**Case ID:** FR-2024-0923
+**Subject:** Marcus Thompson, Sales Representative
+**Reviewer:** Finance Department
+**Date:** February 3, 2024
+
+**Complaint Summary:**
+Marcus Thompson submitted duplicate expense claims totaling $3,847 for client dinner meetings in December 2023.
+
+**Evidence Collected:**
+- Two separate expense reports filed: ER-12-445 ($1,923.50) and ER-01-089 ($1,923.50)
+- Both reports reference "Client Dinner - Riverside Restaurant - December 14, 2023"
+- Credit card statement shows single charge of $1,923.50 on December 14
+- Marcus received reimbursement for both claims ($3,847 total)
+- Interview with Marcus: claims he "accidentally submitted the same receipt twice" and "didn't notice the double payment"
+- Pattern analysis shows 3 similar incidents in past 8 months with different restaurants
+- Marcus has not returned any of the duplicate payments despite being notified 6 weeks ago
+
+**Conclusion:** NOT INNOCENT - Evidence suggests intentional duplicate submission pattern and retention of overpayment despite notification.
+
+---
+
+**REPORT #3 - Data Security Incident**
+**Case ID:** DS-2024-1156
+**Subject:** Dr. Priya Kapoor, Research Analyst
+**Complainant:** IT Security Team
+**Date:** March 22, 2024
+
+**Complaint Summary:**
+Automated security system flagged unusual data transfer activity from Dr. Kapoor's workstation to external cloud storage service.
+
+**Evidence Collected:**
+- Security logs show 847MB transferred to personal Dropbox account on March 18, 2024
+- Transfer occurred at 11:43 PM, outside normal business hours
+- Files included research datasets labeled "Project_Aurora_Raw_Data_2024"
+- Interview with Dr. Kapoor: She was preparing for conference presentation and needed to work from home due to child care emergency
+- Email trail confirms Dr. Kapoor requested remote access approval from supervisor on March 18 at 6:15 PM
+- Supervisor approved via email at 7:33 PM with instruction to "use secure method to transfer necessary files"
+- Company VPN was experiencing outages that evening (IT ticket #8847 confirms)
+- Dr. Kapoor used company-approved Dropbox Business account (not personal account - initial flag was miscategorized)
+- All files were deleted from cloud storage on March 20 after presentation was completed
+
+**Conclusion:** INNOCENT - Legitimate business need with supervisor approval, used approved secure platform, followed up appropriately.
+
+---
