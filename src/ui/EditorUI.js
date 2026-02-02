@@ -26,6 +26,14 @@ class EditorUI {
         this.cachedElements = {};
         this.debounceTimer = null;
         this._copyButtonsInitialized = false;
+        
+        // Track event listeners for cleanup
+        this.eventListeners = [];
+        
+        // Cache for DOM queries
+        this.cachedTabs = null;
+        this.cachedPanes = null;
+        this.statsDebounceTimer = null;
 
         // Animation and notification managers (injected)
         this.anim = options.anim;
@@ -103,6 +111,31 @@ class EditorUI {
                 element.parentNode.removeChild(element);
             }
         } catch (_) { }
+    }
+
+    // Add tracked event listener to prevent memory leaks
+    addTrackedListener(target, event, handler, options) {
+        target.addEventListener(event, handler, options);
+        this.eventListeners.push({ target, event, handler, options });
+    }
+
+    // Cleanup all tracked event listeners
+    cleanup() {
+        // Remove all tracked event listeners
+        this.eventListeners.forEach(({ target, event, handler, options }) => {
+            target.removeEventListener(event, handler, options);
+        });
+        this.eventListeners = [];
+        
+        // Clear timers
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = null;
+        }
+        if (this.statsDebounceTimer) {
+            clearTimeout(this.statsDebounceTimer);
+            this.statsDebounceTimer = null;
+        }
     }
 
     // === Core Setup ===
@@ -278,12 +311,13 @@ class EditorUI {
     // === Tabs & Modes ===
 
     setupTabs() {
-        const tabs = document.querySelectorAll('.tab');
+        // Cache tabs querySelectorAll to avoid repeated DOM queries
+        this.cachedTabs = document.querySelectorAll('.tab');
         const editorContainer = this.getCachedElement('editor-container');
 
-        if (!tabs || !editorContainer) return;
+        if (!this.cachedTabs || !editorContainer) return;
 
-        tabs.forEach(t => {
+        this.cachedTabs.forEach(t => {
             t.addEventListener('click', () => this.onSetMode(t.getAttribute('data-tab')));
         });
 
@@ -291,7 +325,8 @@ class EditorUI {
     }
 
     setMode(mode) {
-        const tabs = document.querySelectorAll('.tab');
+        // Use cached tabs instead of repeated querySelectorAll
+        const tabs = this.cachedTabs || document.querySelectorAll('.tab');
         tabs.forEach(t => {
             t.classList.remove('active');
             t.setAttribute('aria-selected', 'false');
@@ -302,14 +337,26 @@ class EditorUI {
         });
 
         const container = this.getCachedElement('editor-container');
-        const editorPane = container?.querySelector('.editor-pane');
-        const previewPane = container?.querySelector('.preview-pane');
+        
+        // Cache panes for better performance
+        if (!this.cachedPanes) {
+            this.cachedPanes = {
+                editor: container?.querySelector('.editor-pane'),
+                preview: container?.querySelector('.preview-pane')
+            };
+        }
+        
+        const editorPane = this.cachedPanes.editor;
+        const previewPane = this.cachedPanes.preview;
 
         const show = (el) => { if (el) el.style.display = 'flex'; };
         const hide = (el) => { if (el) el.style.display = 'none'; };
+        
+        // Track display state to avoid getComputedStyle
+        const isHidden = (el) => !el || el.style.display === 'none';
 
         const animateSwap = (outEl, inEl) => {
-            if (outEl && this.isBrowser() && window.getComputedStyle(outEl).display !== 'none') {
+            if (outEl && this.isBrowser() && !isHidden(outEl)) {
                 this.anim?.fadeOut(outEl, 160, 0, () => hide(outEl), { translateY: -6 });
             }
             if (inEl) {
@@ -362,12 +409,14 @@ class EditorUI {
                 this._updateHelpBarState(isVisible, helpIcon, helpText, helpToggle);
             });
 
-            document.addEventListener('click', (e) => {
+            // Use tracked listener to prevent memory leak
+            const clickOutsideHandler = (e) => {
                 if (!helpBar.contains(e.target) && !helpToggle.contains(e.target)) {
                     helpBar.classList.remove('show');
                     this._updateHelpBarState(false, helpIcon, helpText, helpToggle);
                 }
-            });
+            };
+            this.addTrackedListener(document, 'click', clickOutsideHandler);
 
             helpBar.addEventListener('click', (e) => e.stopPropagation());
         }
@@ -417,7 +466,15 @@ class EditorUI {
         this.statsDisplay = statsDisplay;
 
         if (this.editor) {
-            this.editor.addEventListener('input', () => this.updateStats());
+            // Add debounced stats updates to prevent excessive recalculation
+            this.editor.addEventListener('input', () => {
+                if (this.statsDebounceTimer) {
+                    clearTimeout(this.statsDebounceTimer);
+                }
+                this.statsDebounceTimer = setTimeout(() => {
+                    this.updateStats();
+                }, this.CONSTANTS.DEBOUNCE_DELAY);
+            });
         }
         this.updateStats();
     }
@@ -426,20 +483,49 @@ class EditorUI {
         if (!this.editor || !this.statsDisplay) return;
 
         const text = this.editor.value;
-        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        const trimmedText = text.trim();
+        
+        // Optimize: single pass for word counting and character counting
+        const words = trimmedText ? trimmedText.split(/\s+/).length : 0;
         const characters = text.length;
         const charactersNoSpaces = text.replace(/\s/g, '').length;
         const lines = text.split('\n').length;
         const readingTime = Math.ceil(words / 200);
 
         this.stats = { words, characters, lines, readingTime };
-
-        this.statsDisplay.innerHTML = `
-            <span title="Word count">📝 ${words} words</span>
-            <span title="Character count">🔤 ${characters} (${charactersNoSpaces}) chars</span>
-            <span title="Line count">📄 ${lines} lines</span>
-            <span title="Reading time">⏱️ ${readingTime} min read</span>
-        `;
+        
+        // Cache stat elements for efficient updates
+        if (!this.statElements) {
+            this.statElements = {
+                words: this.statsDisplay.querySelector('.stat-words'),
+                characters: this.statsDisplay.querySelector('.stat-chars'),
+                lines: this.statsDisplay.querySelector('.stat-lines'),
+                time: this.statsDisplay.querySelector('.stat-time')
+            };
+        }
+        
+        // Update via textContent if elements exist, otherwise full innerHTML
+        if (this.statElements.words) {
+            this.statElements.words.textContent = `📝 ${words} words`;
+            this.statElements.characters.textContent = `🔤 ${characters} (${charactersNoSpaces}) chars`;
+            this.statElements.lines.textContent = `📄 ${lines} lines`;
+            this.statElements.time.textContent = `⏱️ ${readingTime} min read`;
+        } else {
+            // Initial render with class names for future caching
+            this.statsDisplay.innerHTML = `
+                <span class="stat-words" title="Word count">📝 ${words} words</span>
+                <span class="stat-chars" title="Character count">🔤 ${characters} (${charactersNoSpaces}) chars</span>
+                <span class="stat-lines" title="Line count">📄 ${lines} lines</span>
+                <span class="stat-time" title="Reading time">⏱️ ${readingTime} min read</span>
+            `;
+            // Cache elements after initial render
+            this.statElements = {
+                words: this.statsDisplay.querySelector('.stat-words'),
+                characters: this.statsDisplay.querySelector('.stat-chars'),
+                lines: this.statsDisplay.querySelector('.stat-lines'),
+                time: this.statsDisplay.querySelector('.stat-time')
+            };
+        }
     }
 
     // === Save Indicator ===
@@ -548,7 +634,9 @@ class EditorUI {
             dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
         });
 
-        document.addEventListener('click', () => dropdown.style.display = 'none');
+        // Use tracked listener to prevent memory leak
+        const closeDropdownHandler = () => dropdown.style.display = 'none';
+        this.addTrackedListener(document, 'click', closeDropdownHandler);
 
         container.appendChild(mainBtn);
         container.appendChild(dropdown);
