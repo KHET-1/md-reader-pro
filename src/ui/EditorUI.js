@@ -494,18 +494,8 @@ class EditorUI {
 
         this.stats = { words, characters, lines, readingTime };
         
-        // Cache stat elements for efficient updates
-        if (!this.statElements) {
-            this.statElements = {
-                words: this.statsDisplay.querySelector('.stat-words'),
-                characters: this.statsDisplay.querySelector('.stat-chars'),
-                lines: this.statsDisplay.querySelector('.stat-lines'),
-                time: this.statsDisplay.querySelector('.stat-time')
-            };
-        }
-        
         // Update via textContent if elements exist, otherwise full innerHTML
-        if (this.statElements.words) {
+        if (this.statElements && this.statElements.words) {
             this.statElements.words.textContent = `📝 ${words} words`;
             this.statElements.characters.textContent = `🔤 ${characters} (${charactersNoSpaces}) chars`;
             this.statElements.lines.textContent = `📄 ${lines} lines`;
