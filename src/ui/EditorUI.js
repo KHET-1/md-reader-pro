@@ -113,31 +113,10 @@ class EditorUI {
         } catch (_) { }
     }
 
-    // Add tracked event listener to prevent memory leaks
+    // Add event listener via a single abstraction point
     addTrackedListener(target, event, handler, options) {
         target.addEventListener(event, handler, options);
-        this.eventListeners.push({ target, event, handler, options });
     }
-
-    // Cleanup all tracked event listeners
-    cleanup() {
-        // Remove all tracked event listeners
-        this.eventListeners.forEach(({ target, event, handler, options }) => {
-            target.removeEventListener(event, handler, options);
-        });
-        this.eventListeners = [];
-        
-        // Clear timers
-        if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer);
-            this.debounceTimer = null;
-        }
-        if (this.statsDebounceTimer) {
-            clearTimeout(this.statsDebounceTimer);
-            this.statsDebounceTimer = null;
-        }
-    }
-
     // === Core Setup ===
 
     setupDOM() {
