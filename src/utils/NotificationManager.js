@@ -181,14 +181,26 @@ class NotificationManager {
             transition: background 0.2s;
             opacity: 0.7;
         `;
-        closeBtn.addEventListener('mouseenter', () => {
+        
+        // Store handlers for cleanup
+        const closeBtnEnterHandler = () => {
             closeBtn.style.opacity = '1';
             closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-        });
-        closeBtn.addEventListener('mouseleave', () => {
+        };
+        const closeBtnLeaveHandler = () => {
             closeBtn.style.opacity = '0.7';
             closeBtn.style.background = 'transparent';
-        });
+        };
+        
+        closeBtn.addEventListener('mouseenter', closeBtnEnterHandler);
+        closeBtn.addEventListener('mouseleave', closeBtnLeaveHandler);
+        
+        // Initialize handlers array early for cleanup tracking
+        const eventHandlers = [];
+        eventHandlers.push(
+            { element: closeBtn, event: 'mouseenter', handler: closeBtnEnterHandler },
+            { element: closeBtn, event: 'mouseleave', handler: closeBtnLeaveHandler }
+        );
 
         messageContainer.appendChild(iconSpan);
         messageContainer.appendChild(messageText);
@@ -225,22 +237,32 @@ class NotificationManager {
                     `}
                 `;
                 
-                btn.addEventListener('mouseenter', () => {
+                // Store handlers for cleanup
+                const btnEnterHandler = () => {
                     if (action.primary) {
                         btn.style.transform = 'translateY(-1px)';
                         btn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                     } else {
                         btn.style.background = 'rgba(255, 255, 255, 0.1)';
                     }
-                });
+                };
                 
-                btn.addEventListener('mouseleave', () => {
+                const btnLeaveHandler = () => {
                     btn.style.transform = 'translateY(0)';
                     btn.style.boxShadow = 'none';
                     if (!action.primary) {
                         btn.style.background = 'transparent';
                     }
-                });
+                };
+                
+                btn.addEventListener('mouseenter', btnEnterHandler);
+                btn.addEventListener('mouseleave', btnLeaveHandler);
+                
+                // Store handlers for cleanup
+                eventHandlers.push(
+                    { element: btn, event: 'mouseenter', handler: btnEnterHandler },
+                    { element: btn, event: 'mouseleave', handler: btnLeaveHandler }
+                );
 
                 btn.addEventListener('click', () => {
                     if (action.onClick) {
@@ -261,7 +283,8 @@ class NotificationManager {
         const notification = {
             element,
             timeoutId: null,
-            onDismiss
+            onDismiss,
+            handlers: eventHandlers
         };
 
         closeBtn.addEventListener('click', () => {
@@ -277,6 +300,14 @@ class NotificationManager {
         // Clear timeout if exists
         if (notification.timeoutId) {
             clearTimeout(notification.timeoutId);
+        }
+        
+        // Remove event listeners to prevent memory leaks
+        if (notification.handlers) {
+            notification.handlers.forEach(({ element, event, handler }) => {
+                element.removeEventListener(event, handler);
+            });
+            notification.handlers = [];
         }
 
         // Animate out
