@@ -74,3 +74,4 @@ playwright-report/
 # Package manager
 package-lock.json.bak
 yarn.lock.bak
+rust-cli/target/
