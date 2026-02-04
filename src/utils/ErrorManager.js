@@ -200,31 +200,7 @@ class ErrorManager {
     }
 
     _generateId() {
-        return `err_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-    }
-
-    /**
-     * Generate a random alphanumeric string using a cryptographically secure
-     * random number generator when available, falling back to Math.random
-     * in environments where crypto is not supported.
-     */
-    _generateRandomString(length) {
-        const GLOBAL = (typeof window !== 'undefined') ? window : (typeof self !== 'undefined' ? self : null);
-        const cryptoObj = GLOBAL && (GLOBAL.crypto || GLOBAL.msCrypto);
-
-        if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
-            const bytes = new Uint32Array(length);
-            cryptoObj.getRandomValues(bytes);
-            let result = '';
-            for (let i = 0; i < bytes.length && result.length < length; i++) {
-                // Convert each random 32-bit value to base-36 and append
-                result += bytes[i].toString(36);
-            }
-            return result.slice(0, length);
-        }
-
-        // Fallback for very old environments without crypto support
-        return Math.random().toString(36).slice(2, 2 + length);
+        return `err_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     }
 
     _getSessionId() {
@@ -233,7 +209,7 @@ class ErrorManager {
         try {
             let sessionId = window.sessionStorage.getItem('md-reader-session-id');
             if (!sessionId) {
-                sessionId = `session_${Date.now()}_${this._generateRandomString(9)}`;
+                sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
                 window.sessionStorage.setItem('md-reader-session-id', sessionId);
             }
             return sessionId;
@@ -263,7 +239,10 @@ class ErrorManager {
             localStorage.setItem(ErrorManager.STORAGE_KEY, JSON.stringify(errors));
         } catch (e) {
             // Storage full - force aggressive cleanup
-            this._forceCleanup();
+            // Add guard to prevent infinite recursion
+            if (!this._isCleaningUp) {
+                this._forceCleanup();
+            }
         }
     }
 
@@ -288,9 +267,27 @@ class ErrorManager {
 
     _forceCleanup() {
         // Aggressive cleanup - keep only last 50%
-        const errors = this._load();
-        const half = Math.ceil(errors.length / 2);
-        this._save(errors.slice(half));
+        // Guard against infinite recursion
+        this._isCleaningUp = true;
+        try {
+            const errors = this._load();
+            const half = Math.ceil(errors.length / 2);
+            const cleaned = errors.slice(half);
+            
+            // Try to save, if it fails again, give up gracefully
+            try {
+                localStorage.setItem(ErrorManager.STORAGE_KEY, JSON.stringify(cleaned));
+            } catch {
+                // Storage is completely full, clear everything as last resort
+                try {
+                    localStorage.removeItem(ErrorManager.STORAGE_KEY);
+                } catch {
+                    // Can't do anything more
+                }
+            }
+        } finally {
+            this._isCleaningUp = false;
+        }
     }
 
     _runDailyCleanup() {
