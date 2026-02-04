@@ -278,19 +278,22 @@ class MarkdownEditor {
         const catcher = document.getElementById('app-click-catcher');
         if (!catcher) return;
 
-        catcher.addEventListener('click', (e) => {
+        // Store handler reference for cleanup
+        this._clickCatcherHandler = (e) => {
             // If clicking on the background, focus the editor
             if (e.target === catcher && this.editor) {
                 this.editor.focus();
             }
-        });
+        };
+        catcher.addEventListener('click', this._clickCatcherHandler);
 
         // Also catch any unhandled clicks on the background layer
         const background = document.getElementById('app-background');
         if (background) {
-            background.addEventListener('click', () => {
+            this._backgroundClickHandler = () => {
                 if (this.editor) this.editor.focus();
-            });
+            };
+            background.addEventListener('click', this._backgroundClickHandler);
         }
     }
 
@@ -300,23 +303,28 @@ class MarkdownEditor {
     setupGlobalErrorHandling() {
         if (!this.isBrowser()) return;
 
-        // Catch unhandled errors
-        window.addEventListener('error', (e) => {
+        // Store handler references for cleanup
+        this._globalErrorHandler = (e) => {
             this.errors.capture(e.error || e.message, {
                 component: 'global',
                 action: 'unhandled-error',
                 filename: e.filename,
                 lineno: e.lineno
             }, true); // silent - don't show toast for all global errors
-        });
+        };
 
-        // Catch unhandled promise rejections
-        window.addEventListener('unhandledrejection', (e) => {
+        this._unhandledRejectionHandler = (e) => {
             this.errors.capture(e.reason || 'Unhandled promise rejection', {
                 component: 'global',
                 action: 'unhandled-rejection'
             }, true);
-        });
+        };
+
+        // Catch unhandled errors
+        window.addEventListener('error', this._globalErrorHandler);
+
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', this._unhandledRejectionHandler);
     }
 
     /**
@@ -344,7 +352,7 @@ class MarkdownEditor {
             </div>
             <div class="error-toast-message">${this._escapeHtml(entry.message)}</div>
             <div class="error-toast-meta">
-                <span class="error-toast-component">${entry.context?.component || 'app'}</span>
+                <span class="error-toast-component">${this._escapeHtml(String(entry.context?.component || 'app'))}</span>
                 <span>${new Date(entry.timestamp).toLocaleTimeString()}</span>
             </div>
             <div class="error-toast-progress"></div>
@@ -363,9 +371,12 @@ class MarkdownEditor {
         });
 
         // Auto-dismiss after 5s
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             this._dismissErrorToast(toast);
         }, 5000);
+        
+        // Store timeout ID on toast element so it can be cleared
+        toast._autoDismissTimeout = timeoutId;
     }
 
     /**
@@ -374,6 +385,13 @@ class MarkdownEditor {
      */
     _dismissErrorToast(toast) {
         if (!toast || toast.classList.contains('hiding')) return;
+        
+        // Clear auto-dismiss timeout if it exists
+        if (toast._autoDismissTimeout) {
+            clearTimeout(toast._autoDismissTimeout);
+            toast._autoDismissTimeout = null;
+        }
+        
         toast.classList.add('hiding');
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
@@ -468,6 +486,52 @@ class MarkdownEditor {
     setupThemeToggle() { this.ui.setupThemeToggle(); }
     toggleTheme() { this.ui.toggleTheme(); this.currentTheme = this.ui.currentTheme; }
     enhanceKeyboardShortcuts() { this.ui.setupEnhancedKeyboardShortcuts(); }
+
+    /**
+     * Clean up all resources and event listeners
+     * Call this method when destroying the editor instance to prevent memory leaks
+     */
+    destroy() {
+        if (!this.isBrowser()) return;
+
+        // Remove global error handlers
+        if (this._globalErrorHandler) {
+            window.removeEventListener('error', this._globalErrorHandler);
+            this._globalErrorHandler = null;
+        }
+        if (this._unhandledRejectionHandler) {
+            window.removeEventListener('unhandledrejection', this._unhandledRejectionHandler);
+            this._unhandledRejectionHandler = null;
+        }
+
+        // Remove click catcher handlers
+        const catcher = document.getElementById('app-click-catcher');
+        if (catcher && this._clickCatcherHandler) {
+            catcher.removeEventListener('click', this._clickCatcherHandler);
+            this._clickCatcherHandler = null;
+        }
+
+        const background = document.getElementById('app-background');
+        if (background && this._backgroundClickHandler) {
+            background.removeEventListener('click', this._backgroundClickHandler);
+            this._backgroundClickHandler = null;
+        }
+
+        // Clean up any active error toasts
+        const toastContainer = document.getElementById('error-toast-container');
+        if (toastContainer) {
+            const toasts = toastContainer.querySelectorAll('.error-toast');
+            toasts.forEach(toast => {
+                if (toast._autoDismissTimeout) {
+                    clearTimeout(toast._autoDismissTimeout);
+                }
+            });
+            toastContainer.innerHTML = '';
+        }
+
+        // Clear any module-specific cleanup if needed
+        // (EditorState, EditorIO, EditorUI don't currently need cleanup)
+    }
 
     showCollaborationStory() {
         console.log('');
