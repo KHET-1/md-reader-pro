@@ -213,7 +213,10 @@ class ErrorManager {
                 window.sessionStorage.setItem('md-reader-session-id', sessionId);
             }
             return sessionId;
-        } catch {
+        } catch (e) {
+            if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
+                console.warn('[ErrorManager] Could not access sessionStorage:', e);
+            }
             return 'server';
         }
     }
