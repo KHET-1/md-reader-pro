@@ -203,13 +203,37 @@ class ErrorManager {
         return `err_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     }
 
+    /**
+     * Generate a random alphanumeric string using a cryptographically secure
+     * random number generator when available, falling back to Math.random
+     * in environments where crypto is not supported.
+     */
+    _generateRandomString(length) {
+        const GLOBAL = (typeof window !== 'undefined') ? window : (typeof self !== 'undefined' ? self : null);
+        const cryptoObj = GLOBAL && (GLOBAL.crypto || GLOBAL.msCrypto);
+
+        if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
+            const bytes = new Uint32Array(length);
+            cryptoObj.getRandomValues(bytes);
+            let result = '';
+            for (let i = 0; i < bytes.length && result.length < length; i++) {
+                // Convert each random 32-bit value to base-36 and append
+                result += bytes[i].toString(36);
+            }
+            return result.slice(0, length);
+        }
+
+        // Fallback for very old environments without crypto support
+        return Math.random().toString(36).slice(2, 2 + length);
+    }
+
     _getSessionId() {
         if (typeof window === 'undefined' || !window.sessionStorage) return 'server';
 
         try {
             let sessionId = window.sessionStorage.getItem('md-reader-session-id');
             if (!sessionId) {
-                sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+                sessionId = `session_${Date.now()}_${this._generateRandomString(9)}`;
                 window.sessionStorage.setItem('md-reader-session-id', sessionId);
             }
             return sessionId;
