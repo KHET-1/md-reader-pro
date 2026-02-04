@@ -2103,9 +2103,24 @@
     </style>
 </head>
 <body>
+    <!-- App Background Layer with Etched Logo -->
+    <div class="app-background" id="app-background">
+        <div class="app-background-logo">
+            <div class="app-background-logo-icon">MD</div>
+            <div class="app-background-logo-text">Reader Pro</div>
+            <div class="app-background-logo-tagline">Cathedral Edition</div>
+        </div>
+    </div>
+
+    <!-- Click catcher for void areas - prevents errors on background clicks -->
+    <div class="app-click-catcher" id="app-click-catcher"></div>
+
+    <!-- Error Toast Container -->
+    <div class="error-toast-container" id="error-toast-container"></div>
+
     <!-- Skip to content link for accessibility -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
-    
+
     <div class="header">
         <div class="logo">MD Reader Pro</div>
         <div class="tabs">
