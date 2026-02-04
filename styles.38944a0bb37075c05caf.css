@@ -345,6 +345,7 @@ body {
 }
 
 .error-toast {
+  position: relative;
   background: rgba(30, 30, 30, 0.95);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(239, 68, 68, 0.3);
@@ -469,57 +470,16 @@ body {
   margin-bottom: 12px;
 }
 
-.empty-state-description {
-  font-size: 14px;
-  max-width: 400px;
-  line-height: 1.6;
-  margin-bottom: 24px;
-}
-
-.empty-state-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.empty-state-btn {
-  padding: 10px 20px;
-  background: rgba(42, 42, 42, 0.8);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.empty-state-btn:hover {
-  background: rgba(42, 42, 42, 1);
-  border-color: var(--accent-color);
-  color: var(--text-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.empty-state-btn.primary {
-  background: linear-gradient(135deg, var(--accent-color), var(--accent-glow));
-  border-color: var(--accent-color);
-  color: #000;
-}
-
-.empty-state-btn.primary:hover {
-  box-shadow: 0 4px 20px var(--accent-glow);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* TODO(empty-state): Reintroduce empty-state component styles here
+ * when implementing the editor's empty/document state UI.
+ * These were removed because they are currently unused and were
+ * flagged by static analysis (CodeQL) as dead CSS.
+ * Previous styles included:
+ * - .empty-state-description
+ * - .empty-state-actions
+ * - .empty-state-btn (with hover and primary variants)
+ * - @keyframes fadeIn
+ */
 
 /* Animations and keyframes extracted */
 .status-indicator { animation: float 3s ease-in-out infinite; }
@@ -599,4 +559,4 @@ body {
 .upload-hint { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
 
 
-/*# sourceMappingURL=styles.36cd15157b6b6c73eb07.css.map*/
+/*# sourceMappingURL=styles.38944a0bb37075c05caf.css.map*/
