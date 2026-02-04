@@ -2,7 +2,7 @@
  * Coverage Gap Fix Tests
  * Targets specific uncovered lines identified in coverage report
  */
-import { TestUtils, setupTestEnvironment } from './test-utils.js';
+import { TestUtils } from './test-utils.js';
 import MarkdownEditor from '../src/index.js';
 import EditorState from '../src/core/EditorState.js';
 import EditorIO from '../src/io/EditorIO.js';
