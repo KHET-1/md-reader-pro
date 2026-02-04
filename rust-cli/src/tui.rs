@@ -1,7 +1,7 @@
 //! TUI Module - Terminal User Interface with ratatui
 //!
 //! Provides interactive source/destination picker and analysis viewer.
-//! Enhanced with vim-style navigation, help overlay, and file preview.
+//! Features: vim navigation, help overlay, file preview, search filter, themes.
 
 #![cfg(feature = "tui")]
 
@@ -29,6 +29,111 @@ use crate::ro_lock::ReadOnlyLock;
 const PREVIEW_MAX_BYTES: usize = 4096;
 /// Event poll timeout in milliseconds
 const POLL_TIMEOUT_MS: u64 = 50;
+/// Maximum entries to load initially (lazy loading)
+const LAZY_LOAD_LIMIT: usize = 500;
+
+/// Color themes
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Theme {
+    Dark,
+    Light,
+    Ocean,
+}
+
+impl Theme {
+    fn next(self) -> Self {
+        match self {
+            Theme::Dark => Theme::Light,
+            Theme::Light => Theme::Ocean,
+            Theme::Ocean => Theme::Dark,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Theme::Dark => "Dark",
+            Theme::Light => "Light",
+            Theme::Ocean => "Ocean",
+        }
+    }
+
+    fn bg(self) -> Color {
+        match self {
+            Theme::Dark => Color::Reset,
+            Theme::Light => Color::White,
+            Theme::Ocean => Color::Rgb(13, 17, 23),
+        }
+    }
+
+    fn fg(self) -> Color {
+        match self {
+            Theme::Dark => Color::White,
+            Theme::Light => Color::Black,
+            Theme::Ocean => Color::Rgb(201, 209, 217),
+        }
+    }
+
+    fn accent(self) -> Color {
+        match self {
+            Theme::Dark => Color::Cyan,
+            Theme::Light => Color::Blue,
+            Theme::Ocean => Color::Rgb(88, 166, 255),
+        }
+    }
+
+    fn highlight(self) -> Color {
+        match self {
+            Theme::Dark => Color::DarkGray,
+            Theme::Light => Color::LightBlue,
+            Theme::Ocean => Color::Rgb(33, 38, 45),
+        }
+    }
+
+    fn dim(self) -> Color {
+        match self {
+            Theme::Dark => Color::Gray,
+            Theme::Light => Color::DarkGray,
+            Theme::Ocean => Color::Rgb(110, 118, 129),
+        }
+    }
+}
+
+/// File type filter
+#[derive(Debug, Clone, PartialEq)]
+enum FileFilter {
+    All,
+    Extension(String),
+}
+
+impl FileFilter {
+    fn matches(&self, path: &PathBuf) -> bool {
+        match self {
+            FileFilter::All => true,
+            FileFilter::Extension(ext) => {
+                if path.is_dir() {
+                    return true; // Always show directories
+                }
+                path.extension()
+                    .map(|e| e.to_string_lossy().to_lowercase() == ext.to_lowercase())
+                    .unwrap_or(false)
+            }
+        }
+    }
+
+    fn label(&self) -> String {
+        match self {
+            FileFilter::All => "All".to_string(),
+            FileFilter::Extension(ext) => format!("*.{}", ext),
+        }
+    }
+}
+
+/// Input mode for the TUI
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum InputMode {
+    Normal,
+    Search,
+}
 
 /// Application state
 struct App {
@@ -36,13 +141,24 @@ struct App {
     source: Option<String>,
     dest: Option<String>,
     current_dir: PathBuf,
-    entries: Vec<PathBuf>,
+    all_entries: Vec<PathBuf>,      // All entries in directory
+    filtered_entries: Vec<PathBuf>, // Filtered view
     selected: usize,
     config: Config,
     message: Option<String>,
     show_help: bool,
     preview_content: Option<String>,
     scroll_offset: usize,
+    // v4 UX additions
+    theme: Theme,
+    input_mode: InputMode,
+    search_query: String,
+    file_filter: FileFilter,
+    filter_extensions: Vec<String>,
+    filter_index: usize,
+    // v5 Performance
+    is_large_dir: bool,
+    total_entries: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -57,36 +173,80 @@ enum AppState {
 impl App {
     fn new(config: Config) -> Self {
         let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
-        let entries = list_dir(&current_dir);
+        let (all_entries, is_large, total) = list_dir_lazy(&current_dir, LAZY_LOAD_LIMIT);
 
         Self {
             state: AppState::SelectSource,
             source: None,
             dest: None,
             current_dir,
-            entries,
+            all_entries: all_entries.clone(),
+            filtered_entries: all_entries,
             selected: 0,
             config,
             message: None,
             show_help: false,
             preview_content: None,
             scroll_offset: 0,
+            theme: Theme::Dark,
+            input_mode: InputMode::Normal,
+            search_query: String::new(),
+            file_filter: FileFilter::All,
+            filter_extensions: vec![
+                "rs".to_string(),
+                "md".to_string(),
+                "toml".to_string(),
+                "json".to_string(),
+                "txt".to_string(),
+            ],
+            filter_index: 0,
+            is_large_dir: is_large,
+            total_entries: total,
         }
     }
 
     fn refresh_entries(&mut self) {
-        self.entries = list_dir(&self.current_dir);
+        let (entries, is_large, total) = list_dir_lazy(&self.current_dir, LAZY_LOAD_LIMIT);
+        self.all_entries = entries;
+        self.is_large_dir = is_large;
+        self.total_entries = total;
+        self.apply_filters();
         self.selected = 0;
         self.scroll_offset = 0;
         self.update_preview();
     }
 
+    fn apply_filters(&mut self) {
+        let query = self.search_query.to_lowercase();
+        self.filtered_entries = self.all_entries
+            .iter()
+            .filter(|p| {
+                // Apply file filter
+                if !self.file_filter.matches(p) {
+                    return false;
+                }
+                // Apply search query
+                if query.is_empty() {
+                    return true;
+                }
+                p.file_name()
+                    .map(|n| n.to_string_lossy().to_lowercase().contains(&query))
+                    .unwrap_or(false)
+            })
+            .cloned()
+            .collect();
+
+        // Reset selection if out of bounds
+        if self.selected >= self.filtered_entries.len() {
+            self.selected = self.filtered_entries.len().saturating_sub(1);
+        }
+    }
+
     fn update_preview(&mut self) {
-        if let Some(path) = self.entries.get(self.selected) {
+        if let Some(path) = self.filtered_entries.get(self.selected) {
             if path.is_file() {
                 self.preview_content = read_file_preview(path);
             } else {
-                // Show directory contents count
                 let count = fs::read_dir(path).map(|rd| rd.count()).unwrap_or(0);
                 self.preview_content = Some(format!(
                     "📁 Directory\n\n{} items\n\nPress Enter to navigate",
@@ -99,9 +259,10 @@ impl App {
     }
 
     fn select_current(&mut self) {
-        if let Some(path) = self.entries.get(self.selected).cloned() {
+        if let Some(path) = self.filtered_entries.get(self.selected).cloned() {
             if path.is_dir() {
                 self.current_dir = path;
+                self.search_query.clear();
                 self.refresh_entries();
             } else {
                 match self.state {
@@ -127,12 +288,13 @@ impl App {
     fn go_up(&mut self) {
         if let Some(parent) = self.current_dir.parent() {
             self.current_dir = parent.to_path_buf();
+            self.search_query.clear();
             self.refresh_entries();
         }
     }
 
     fn move_selection(&mut self, delta: i32) {
-        let len = self.entries.len();
+        let len = self.filtered_entries.len();
         if len == 0 {
             return;
         }
@@ -152,14 +314,14 @@ impl App {
     }
 
     fn goto_end(&mut self) {
-        if !self.entries.is_empty() {
-            self.selected = self.entries.len() - 1;
+        if !self.filtered_entries.is_empty() {
+            self.selected = self.filtered_entries.len() - 1;
         }
         self.update_preview();
     }
 
     fn page_down(&mut self, page_size: usize) {
-        let len = self.entries.len();
+        let len = self.filtered_entries.len();
         if len == 0 {
             return;
         }
@@ -175,6 +337,50 @@ impl App {
     fn toggle_help(&mut self) {
         self.show_help = !self.show_help;
     }
+
+    fn cycle_theme(&mut self) {
+        self.theme = self.theme.next();
+        self.message = Some(format!("🎨 Theme: {}", self.theme.name()));
+    }
+
+    fn cycle_filter(&mut self) {
+        self.filter_index = (self.filter_index + 1) % (self.filter_extensions.len() + 1);
+        self.file_filter = if self.filter_index == 0 {
+            FileFilter::All
+        } else {
+            FileFilter::Extension(self.filter_extensions[self.filter_index - 1].clone())
+        };
+        self.apply_filters();
+        self.message = Some(format!("🔍 Filter: {}", self.file_filter.label()));
+        self.update_preview();
+    }
+
+    fn enter_search_mode(&mut self) {
+        self.input_mode = InputMode::Search;
+        self.search_query.clear();
+    }
+
+    fn exit_search_mode(&mut self) {
+        self.input_mode = InputMode::Normal;
+    }
+
+    fn handle_search_input(&mut self, c: char) {
+        self.search_query.push(c);
+        self.apply_filters();
+        self.update_preview();
+    }
+
+    fn handle_search_backspace(&mut self) {
+        self.search_query.pop();
+        self.apply_filters();
+        self.update_preview();
+    }
+
+    fn clear_search(&mut self) {
+        self.search_query.clear();
+        self.apply_filters();
+        self.update_preview();
+    }
 }
 
 /// Read first N bytes of a file for preview
@@ -184,7 +390,6 @@ fn read_file_preview(path: &PathBuf) -> Option<String> {
     let bytes_read = file.read(&mut buffer).ok()?;
     buffer.truncate(bytes_read);
 
-    // Try to convert to string, replace invalid UTF-8
     let content = String::from_utf8_lossy(&buffer).to_string();
 
     // Check if file is likely binary
@@ -205,15 +410,26 @@ fn read_file_preview(path: &PathBuf) -> Option<String> {
     Some(truncated)
 }
 
-fn list_dir(path: &PathBuf) -> Vec<PathBuf> {
-    let mut entries: Vec<PathBuf> = fs::read_dir(path)
-        .map(|rd| {
-            rd.filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .collect()
-        })
-        .unwrap_or_default();
+/// List directory with lazy loading for large directories
+fn list_dir_lazy(path: &PathBuf, limit: usize) -> (Vec<PathBuf>, bool, usize) {
+    let read_dir = match fs::read_dir(path) {
+        Ok(rd) => rd,
+        Err(_) => return (vec![], false, 0),
+    };
 
+    let mut entries: Vec<PathBuf> = Vec::new();
+    let mut total_count = 0;
+
+    for entry in read_dir.filter_map(|e| e.ok()) {
+        total_count += 1;
+        if entries.len() < limit {
+            entries.push(entry.path());
+        }
+    }
+
+    let is_large = total_count > limit;
+
+    // Sort: directories first, then by name
     entries.sort_by(|a, b| {
         match (a.is_dir(), b.is_dir()) {
             (true, false) => std::cmp::Ordering::Less,
@@ -222,21 +438,24 @@ fn list_dir(path: &PathBuf) -> Vec<PathBuf> {
         }
     });
 
-    entries
+    (entries, is_large, total_count)
+}
+
+/// Legacy list_dir for compatibility
+fn list_dir(path: &PathBuf) -> Vec<PathBuf> {
+    list_dir_lazy(path, usize::MAX).0
 }
 
 /// Run the TUI application
 pub async fn run(config: Config) -> Result<()> {
-    // Setup terminal
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     let mut app = App::new(config);
-    app.update_preview(); // Initial preview
+    app.update_preview();
     let result = run_app(&mut terminal, &mut app).await;
 
-    // Restore terminal
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
 
@@ -246,18 +465,17 @@ pub async fn run(config: Config) -> Result<()> {
 async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
     loop {
         let area = terminal.size()?;
-        let page_size = (area.height as usize).saturating_sub(8); // Approximate visible rows
+        let page_size = (area.height as usize).saturating_sub(8);
 
         terminal.draw(|f| ui(f, app))?;
 
-        // Non-blocking event poll - fixes async runtime blocking
         if event::poll(Duration::from_millis(POLL_TIMEOUT_MS))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Press {
                     continue;
                 }
 
-                // Help overlay intercepts all keys except 'q' and '?'
+                // Help overlay intercepts all keys
                 if app.show_help {
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('?') => {
@@ -268,20 +486,36 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     continue;
                 }
 
-                match key.code {
-                    // Quit
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
+                // Search mode input handling
+                if app.input_mode == InputMode::Search {
+                    match key.code {
+                        KeyCode::Esc => app.exit_search_mode(),
+                        KeyCode::Enter => app.exit_search_mode(),
+                        KeyCode::Backspace => app.handle_search_backspace(),
+                        KeyCode::Char(c) => app.handle_search_input(c),
+                        _ => {}
+                    }
+                    continue;
+                }
 
-                    // Help
+                // Normal mode
+                match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                     KeyCode::Char('?') => app.toggle_help(),
 
-                    // Navigation - vim style
+                    // Search & Filter
+                    KeyCode::Char('/') => app.enter_search_mode(),
+                    KeyCode::Char('f') => app.cycle_filter(),
+                    KeyCode::Char('c') => app.clear_search(),
+
+                    // Theme
+                    KeyCode::Char('t') => app.cycle_theme(),
+
+                    // Navigation
                     KeyCode::Up | KeyCode::Char('k') => app.move_selection(-1),
                     KeyCode::Down | KeyCode::Char('j') => app.move_selection(1),
-                    KeyCode::Char('g') => app.goto_start(), // gg (simplified to single g)
+                    KeyCode::Char('g') => app.goto_start(),
                     KeyCode::Char('G') => app.goto_end(),
-
-                    // Page navigation
                     KeyCode::PageUp => app.page_up(page_size),
                     KeyCode::PageDown => app.page_down(page_size),
                     KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -316,7 +550,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         }
                     }
 
-                    // Reset selection
+                    // Reset
                     KeyCode::Char('r') => {
                         app.source = None;
                         app.dest = None;
@@ -332,27 +566,28 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
 }
 
 async fn run_analysis(source: &str, dest: &str, config: &Config) -> Result<String> {
-    // Acquire read-only lock
     let _lock = ReadOnlyLock::acquire(source).await?;
-
-    // Analyze
     let results = analyzer::analyze(source, config).await?;
     let summary = format!(
         "✅ Analyzed {} files ({} bytes) → {}",
         results.total_files, results.total_size, dest
     );
-
     analyzer::export(&results, dest).await?;
-
     Ok(summary)
 }
 
 fn ui(frame: &mut Frame, app: &App) {
-    // Main layout: header, content, status
+    let theme = app.theme;
+
+    // Clear with background color
+    let bg_block = Block::default().style(Style::default().bg(theme.bg()));
+    frame.render_widget(bg_block, frame.area());
+
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),  // Header
+            Constraint::Length(1),  // Search bar (when active)
             Constraint::Min(10),    // Content
             Constraint::Length(3),  // Status
         ])
@@ -367,47 +602,75 @@ fn ui(frame: &mut Frame, app: &App) {
         AppState::Error => "❌ Error",
     };
 
-    let header = Paragraph::new(format!("{} | Press ? for help", title))
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
-        .block(Block::default().borders(Borders::ALL).title("💎 Diamond Drill"));
+    let header_text = format!(
+        "{} | Theme: {} | Filter: {} | ? for help",
+        title, theme.name(), app.file_filter.label()
+    );
+
+    let header = Paragraph::new(header_text)
+        .style(Style::default().fg(theme.accent()).add_modifier(Modifier::BOLD))
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.dim()))
+            .title("💎 Diamond Drill"));
     frame.render_widget(header, main_chunks[0]);
 
-    // Content: file list (left) + preview (right)
+    // Search bar
+    let search_style = if app.input_mode == InputMode::Search {
+        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(theme.dim())
+    };
+
+    let search_text = if app.search_query.is_empty() {
+        if app.input_mode == InputMode::Search {
+            "Type to search...".to_string()
+        } else {
+            "Press / to search".to_string()
+        }
+    } else {
+        format!("🔍 {}", app.search_query)
+    };
+
+    let search_bar = Paragraph::new(search_text).style(search_style);
+    frame.render_widget(search_bar, main_chunks[1]);
+
+    // Content
     let content_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
-        .split(main_chunks[1]);
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(main_chunks[2]);
 
     // File list
-    let items: Vec<ListItem> = app.entries.iter().enumerate().map(|(i, path)| {
+    let items: Vec<ListItem> = app.filtered_entries.iter().enumerate().map(|(i, path)| {
         let icon = if path.is_dir() { "📁" } else { "📄" };
         let name = path.file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| path.display().to_string());
 
         let style = if i == app.selected {
-            Style::default().bg(Color::DarkGray).add_modifier(Modifier::BOLD)
+            Style::default().bg(theme.highlight()).fg(theme.fg()).add_modifier(Modifier::BOLD)
         } else {
-            Style::default()
+            Style::default().fg(theme.fg())
         };
 
         ListItem::new(format!("{} {}", icon, name)).style(style)
     }).collect();
 
-    let position_info = if app.entries.is_empty() {
+    let position_info = if app.filtered_entries.is_empty() {
         "(empty)".to_string()
+    } else if app.is_large_dir {
+        format!("{}/{} ({}+ total)", app.selected + 1, app.filtered_entries.len(), app.total_entries)
     } else {
-        format!("{}/{}", app.selected + 1, app.entries.len())
+        format!("{}/{}", app.selected + 1, app.filtered_entries.len())
     };
 
     let list = List::new(items)
         .block(Block::default()
             .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.dim()))
             .title(format!("📂 {} [{}]", app.current_dir.display(), position_info)))
-        .highlight_style(Style::default().bg(Color::DarkGray).add_modifier(Modifier::BOLD))
+        .highlight_style(Style::default().bg(theme.highlight()).add_modifier(Modifier::BOLD))
         .highlight_symbol("▶ ");
 
     let mut state = ListState::default();
@@ -417,9 +680,12 @@ fn ui(frame: &mut Frame, app: &App) {
     // Preview pane
     let preview_text = app.preview_content.as_deref().unwrap_or("No preview available");
     let preview = Paragraph::new(preview_text)
-        .block(Block::default().borders(Borders::ALL).title("📋 Preview"))
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.dim()))
+            .title("📋 Preview"))
         .wrap(Wrap { trim: false })
-        .style(Style::default().fg(Color::Gray));
+        .style(Style::default().fg(theme.dim()));
     frame.render_widget(preview, content_chunks[1]);
 
     // Status bar
@@ -435,21 +701,23 @@ fn ui(frame: &mut Frame, app: &App) {
 
     let status_bar = Paragraph::new(status)
         .style(Style::default().fg(Color::Yellow))
-        .block(Block::default().borders(Borders::ALL).title("Status"));
-    frame.render_widget(status_bar, main_chunks[2]);
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme.dim()))
+            .title("Status"));
+    frame.render_widget(status_bar, main_chunks[3]);
 
-    // Help overlay (rendered last, on top)
+    // Help overlay
     if app.show_help {
-        render_help_overlay(frame);
+        render_help_overlay(frame, theme);
     }
 }
 
-fn render_help_overlay(frame: &mut Frame) {
+fn render_help_overlay(frame: &mut Frame, theme: Theme) {
     let area = frame.area();
 
-    // Center the help box
-    let help_width = 60;
-    let help_height = 20;
+    let help_width = 65;
+    let help_height = 24;
     let help_area = Rect {
         x: area.width.saturating_sub(help_width) / 2,
         y: area.height.saturating_sub(help_height) / 2,
@@ -457,28 +725,31 @@ fn render_help_overlay(frame: &mut Frame) {
         height: help_height.min(area.height),
     };
 
-    // Semi-transparent background effect (clear area)
-    let overlay = Block::default()
-        .style(Style::default().bg(Color::Black));
+    let overlay = Block::default().style(Style::default().bg(Color::Black));
     frame.render_widget(overlay, area);
 
     let help_text = vec![
-        Line::from(Span::styled("KEYBOARD SHORTCUTS", Style::default().add_modifier(Modifier::BOLD).fg(Color::Cyan))),
+        Line::from(Span::styled("KEYBOARD SHORTCUTS", Style::default().add_modifier(Modifier::BOLD).fg(theme.accent()))),
         Line::from(""),
         Line::from(Span::styled("Navigation", Style::default().add_modifier(Modifier::BOLD))),
         Line::from("  j/↓         Move down"),
         Line::from("  k/↑         Move up"),
         Line::from("  g           Go to first item"),
         Line::from("  G           Go to last item"),
-        Line::from("  Ctrl+d      Half page down"),
-        Line::from("  Ctrl+u      Half page up"),
+        Line::from("  Ctrl+d/u    Half page down/up"),
         Line::from("  PgDn/PgUp   Full page scroll"),
+        Line::from(""),
+        Line::from(Span::styled("Search & Filter", Style::default().add_modifier(Modifier::BOLD))),
+        Line::from("  /           Enter search mode (type to filter)"),
+        Line::from("  f           Cycle file type filter (*.rs, *.md, etc)"),
+        Line::from("  c           Clear search query"),
         Line::from(""),
         Line::from(Span::styled("Actions", Style::default().add_modifier(Modifier::BOLD))),
         Line::from("  Enter/l     Select / Enter directory"),
         Line::from("  Backspace/h Go to parent directory"),
         Line::from("  a           Analyze (when both selected)"),
         Line::from("  r           Reset selection"),
+        Line::from("  t           Cycle theme (Dark/Light/Ocean)"),
         Line::from("  ?           Toggle this help"),
         Line::from("  q/Esc       Quit"),
     ];
@@ -486,7 +757,7 @@ fn render_help_overlay(frame: &mut Frame) {
     let help = Paragraph::new(help_text)
         .block(Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(theme.accent()))
             .title("💎 Help")
             .title_style(Style::default().add_modifier(Modifier::BOLD)))
         .style(Style::default().bg(Color::Black).fg(Color::White))
@@ -507,7 +778,6 @@ mod tests {
 
         let entries = list_dir(&temp.path().to_path_buf());
         assert_eq!(entries.len(), 2);
-        // Directories should come first
         assert!(entries[0].is_dir());
     }
 
@@ -515,11 +785,12 @@ mod tests {
     fn test_app_move_selection() {
         let config = Config::default();
         let mut app = App::new(config);
-        app.entries = vec![
+        app.all_entries = vec![
             PathBuf::from("/a"),
             PathBuf::from("/b"),
             PathBuf::from("/c"),
         ];
+        app.filtered_entries = app.all_entries.clone();
 
         app.move_selection(1);
         assert_eq!(app.selected, 1);
@@ -528,18 +799,19 @@ mod tests {
         assert_eq!(app.selected, 2);
 
         app.move_selection(1);
-        assert_eq!(app.selected, 2); // Clamped, no wrap
+        assert_eq!(app.selected, 2);
     }
 
     #[test]
     fn test_app_goto_navigation() {
         let config = Config::default();
         let mut app = App::new(config);
-        app.entries = vec![
+        app.all_entries = vec![
             PathBuf::from("/a"),
             PathBuf::from("/b"),
             PathBuf::from("/c"),
         ];
+        app.filtered_entries = app.all_entries.clone();
 
         app.goto_end();
         assert_eq!(app.selected, 2);
@@ -552,7 +824,8 @@ mod tests {
     fn test_app_page_navigation() {
         let config = Config::default();
         let mut app = App::new(config);
-        app.entries = (0..50).map(|i| PathBuf::from(format!("/file{}", i))).collect();
+        app.all_entries = (0..50).map(|i| PathBuf::from(format!("/file{}", i))).collect();
+        app.filtered_entries = app.all_entries.clone();
 
         app.page_down(10);
         assert_eq!(app.selected, 10);
@@ -584,5 +857,60 @@ mod tests {
         let preview = read_file_preview(&temp.path().to_path_buf());
         assert!(preview.is_some());
         assert!(preview.unwrap().contains("Hello, preview!"));
+    }
+
+    #[test]
+    fn test_theme_cycle() {
+        let config = Config::default();
+        let mut app = App::new(config);
+
+        assert_eq!(app.theme, Theme::Dark);
+        app.cycle_theme();
+        assert_eq!(app.theme, Theme::Light);
+        app.cycle_theme();
+        assert_eq!(app.theme, Theme::Ocean);
+        app.cycle_theme();
+        assert_eq!(app.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn test_file_filter() {
+        let filter = FileFilter::Extension("rs".to_string());
+        assert!(filter.matches(&PathBuf::from("/foo/bar.rs")));
+        assert!(!filter.matches(&PathBuf::from("/foo/bar.txt")));
+
+        // Directories always match
+        let temp = tempfile::tempdir().unwrap();
+        assert!(filter.matches(&temp.path().to_path_buf()));
+    }
+
+    #[test]
+    fn test_search_filter() {
+        let config = Config::default();
+        let mut app = App::new(config);
+        app.all_entries = vec![
+            PathBuf::from("/apple.txt"),
+            PathBuf::from("/banana.rs"),
+            PathBuf::from("/cherry.md"),
+        ];
+        app.filtered_entries = app.all_entries.clone();
+
+        app.search_query = "an".to_string();
+        app.apply_filters();
+        assert_eq!(app.filtered_entries.len(), 1);
+        assert!(app.filtered_entries[0].to_string_lossy().contains("banana"));
+    }
+
+    #[test]
+    fn test_lazy_loading() {
+        let temp = tempfile::tempdir().unwrap();
+        for i in 0..10 {
+            std::fs::write(temp.path().join(format!("file{}.txt", i)), "content").unwrap();
+        }
+
+        let (entries, is_large, total) = list_dir_lazy(&temp.path().to_path_buf(), 5);
+        assert_eq!(entries.len(), 5);
+        assert!(is_large);
+        assert_eq!(total, 10);
     }
 }
