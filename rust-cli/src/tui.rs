@@ -3,8 +3,6 @@
 //! Features: vim navigation, help overlay, file preview, search filter, themes,
 //! bookmarks, virtual scrolling, async preview loading.
 
-#![cfg(feature = "tui")]
-
 use std::io::{stdout, Read};
 use std::path::PathBuf;
 use std::fs::{self, File};
@@ -496,6 +494,7 @@ impl App {
         }
     }
 
+    #[allow(dead_code)] // UI feature for future keybind
     fn delete_bookmark(&mut self, slot: usize) {
         if self.bookmarks.remove(&slot).is_some() {
             self.message = Some(format!("🗑️ Bookmark {} deleted", slot));
@@ -574,6 +573,7 @@ fn list_dir_lazy(path: &PathBuf, limit: usize) -> (Vec<PathBuf>, bool, usize) {
 }
 
 /// Legacy list_dir for compatibility
+#[allow(dead_code)]
 fn list_dir(path: &PathBuf) -> Vec<PathBuf> {
     list_dir_lazy(path, usize::MAX).0
 }

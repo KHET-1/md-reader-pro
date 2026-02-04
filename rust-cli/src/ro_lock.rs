@@ -6,6 +6,8 @@
 //! 3. File::open with read-only flags
 //! 4. Panic on any write attempt
 
+#![allow(dead_code)] // API surface for CLI ro-lock enforcement
+
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read};
 use std::os::unix::fs::OpenOptionsExt;

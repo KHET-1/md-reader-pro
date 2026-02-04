@@ -5,7 +5,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
-use tokio::sync::mpsc;
 use tracing::debug;
 
 use crate::analyzer;
@@ -131,6 +130,7 @@ async fn handle_message(msg: PluginMessage) -> PluginResponse {
     match msg.action.as_str() {
         "ping" => handle_ping(msg.id),
         "analyze" => handle_analyze(msg.id, msg.payload).await,
+        "deep_analyze" => handle_deep_analyze(msg.id, msg.payload).await,
         "report" => handle_report(msg.id, msg.payload).await,
         "browse" => handle_browse(msg.id, msg.payload).await,
         "get_capabilities" => handle_capabilities(msg.id),
@@ -309,11 +309,28 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
     )
 }
 
+/// Deep analyze using the full analyzer module (directory recursion, file types, etc.)
+async fn handle_deep_analyze(id: String, payload: serde_json::Value) -> PluginResponse {
+    let path = match payload.get("path").and_then(|p| p.as_str()) {
+        Some(p) => p,
+        None => return PluginResponse::error(id, "Missing 'path' in payload".to_string()),
+    };
+
+    let config = Config::default();
+
+    match analyzer::analyze(path, &config).await {
+        Ok(results) => {
+            PluginResponse::success(id, serde_json::to_value(results).unwrap_or_default())
+        }
+        Err(e) => PluginResponse::error(id, format!("Deep analysis failed: {}", e)),
+    }
+}
+
 fn handle_capabilities(id: String) -> PluginResponse {
     PluginResponse::success(
         id,
         serde_json::json!({
-            "actions": ["ping", "analyze", "report", "browse", "shutdown"],
+            "actions": ["ping", "analyze", "deep_analyze", "report", "browse", "shutdown"],
             "version": env!("CARGO_PKG_VERSION"),
             "features": {
                 "tui": cfg!(feature = "tui"),

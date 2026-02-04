@@ -14,7 +14,7 @@ describe('Markdown Editor Core Features', () => {
 
   describe('Application Initialization', () => {
     test('should initialize with correct default values', () => {
-      expect(editor.version).toBe('4.0.0'); // Cathedral Edition!
+      expect(editor.version).toBe('4.1.0'); // Cathedral Edition!
       expect(editor.editor).toBeInstanceOf(HTMLTextAreaElement); // DOM elements now available
       expect(editor.preview).toBeInstanceOf(HTMLDivElement);
     });

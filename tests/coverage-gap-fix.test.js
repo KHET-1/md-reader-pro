@@ -163,7 +163,7 @@ describe('EditorIO - Coverage Gap Tests', () => {
         };
 
         io = new EditorIO({
-            version: '4.0.0',
+            version: '4.1.0',
             notify: mockNotify,
             ...mockCallbacks
         });

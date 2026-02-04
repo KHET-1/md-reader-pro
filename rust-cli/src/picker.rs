@@ -3,6 +3,8 @@
 //! Provides interactive file/directory selection for CLI mode.
 //! TUI and GUI modes have their own implementations.
 
+#![allow(dead_code)] // Utility functions for CLI mode
+
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::fs;

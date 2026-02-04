@@ -1,19 +1,22 @@
 /**
- * MD Reader Pro v4.0.0 - Cathedral Edition
+ * MD Reader Pro v4.1.0 - Cathedral Edition
  * Enterprise-grade markdown editor with live preview, auto-save, and undo/redo.
+ * Now with Plugin System support!
  *
  * Architecture: Thin orchestrator composing EditorState, EditorIO, and EditorUI modules.
  * All cross-module communication flows through callbacks for testability.
  *
  * @module MarkdownEditor
- * @version 4.0.0
+ * @version 4.1.0
  */
 import AnimationManager from './utils/AnimationManager.js';
 import NotificationManager from './utils/NotificationManager.js';
 import ErrorManager from './utils/ErrorManager.js';
 import EditorState from './core/EditorState.js';
+import Settings from './core/Settings.js';
 import EditorIO from './io/EditorIO.js';
 import EditorUI from './ui/EditorUI.js';
+import { PluginLoader, PluginRegistry } from './plugins/index.js';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/layout.css';
@@ -27,9 +30,22 @@ import './styles/utilities.css';
  */
 class MarkdownEditor {
     constructor() {
-        this.version = '4.0.0';
+        this.version = '4.1.0';
         this.anim = new AnimationManager();
         this.notify = new NotificationManager();
+
+        // Settings manager with edit mode toggle
+        this.settings = new Settings({
+            onChange: (key, value) => this._onSettingsChange(key, value)
+        });
+
+        // Plugin system
+        this.pluginRegistry = new PluginRegistry();
+        this.pluginLoader = new PluginLoader({
+            onPluginReady: (id) => this._onPluginReady(id),
+            onPluginError: (id, err) => this._onPluginError(id, err),
+            onPluginMessage: (id, msg) => this._onPluginMessage(id, msg)
+        });
 
         // Error manager with graceful UI feedback
         this.errors = new ErrorManager({
@@ -487,6 +503,164 @@ class MarkdownEditor {
     toggleTheme() { this.ui.toggleTheme(); this.currentTheme = this.ui.currentTheme; }
     enhanceKeyboardShortcuts() { this.ui.setupEnhancedKeyboardShortcuts(); }
 
+    // === Settings & Edit Mode ===
+
+    /**
+     * Toggle edit mode (enable/disable editing)
+     * @returns {boolean} - New edit mode value
+     */
+    toggleEditMode() {
+        const enabled = this.settings.toggleEditMode();
+        this._applyEditMode(enabled);
+        return enabled;
+    }
+
+    /**
+     * Set edit mode
+     * @param {boolean} enabled
+     */
+    setEditMode(enabled) {
+        this.settings.setEditMode(enabled);
+        this._applyEditMode(enabled);
+    }
+
+    /**
+     * Check if edit mode is enabled
+     * @returns {boolean}
+     */
+    isEditModeEnabled() {
+        return this.settings.isEditModeEnabled();
+    }
+
+    /**
+     * Apply edit mode to UI
+     * @private
+     */
+    _applyEditMode(enabled) {
+        if (!this.editor) return;
+
+        this.editor.readOnly = !enabled;
+        this.editor.classList.toggle('readonly-mode', !enabled);
+
+        // Update status
+        if (this.ui) {
+            this.ui.showNotification(
+                enabled ? 'Edit mode enabled' : 'Read-only mode enabled',
+                'info',
+                2000
+            );
+        }
+    }
+
+    /**
+     * Handle settings changes
+     * @private
+     */
+    _onSettingsChange(key, value) {
+        if (key === 'editMode') {
+            this._applyEditMode(value);
+        } else if (key === 'theme') {
+            if (this.ui && this.ui.currentTheme !== value) {
+                this.ui.toggleTheme();
+            }
+        }
+    }
+
+    // === Plugin System ===
+
+    /**
+     * Initialize plugin system
+     * @returns {Promise<void>}
+     */
+    async initPlugins() {
+        try {
+            // Discover available plugins
+            await this.pluginLoader.discover();
+
+            // Auto-load enabled plugins
+            if (this.settings.get('plugins.autoLoad')) {
+                const enabled = this.settings.getEnabledPlugins();
+                for (const pluginId of enabled) {
+                    await this.loadPlugin(pluginId);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to initialize plugins:', err);
+        }
+    }
+
+    /**
+     * Load a plugin by ID
+     * @param {string} pluginId
+     * @returns {Promise<Object>}
+     */
+    async loadPlugin(pluginId) {
+        const instance = await this.pluginLoader.load(pluginId);
+        if (!this.pluginRegistry.isRegistered(pluginId)) {
+            this.pluginRegistry.register(pluginId);
+        }
+        this.settings.enablePlugin(pluginId);
+        return instance;
+    }
+
+    /**
+     * Unload a plugin
+     * @param {string} pluginId
+     */
+    async unloadPlugin(pluginId) {
+        await this.pluginLoader.unload(pluginId);
+        this.settings.disablePlugin(pluginId);
+    }
+
+    /**
+     * Send action to a plugin
+     * @param {string} pluginId
+     * @param {string} action
+     * @param {Object} payload
+     * @returns {Promise<any>}
+     */
+    async sendToPlugin(pluginId, action, payload = {}) {
+        const instance = this.pluginLoader.get(pluginId);
+        if (!instance) {
+            throw new Error(`Plugin not loaded: ${pluginId}`);
+        }
+        return instance.send(action, payload);
+    }
+
+    /**
+     * Get list of available plugins
+     * @returns {Object[]}
+     */
+    getAvailablePlugins() {
+        return this.pluginLoader.getAvailablePlugins();
+    }
+
+    /**
+     * Plugin ready callback
+     * @private
+     */
+    _onPluginReady(pluginId) {
+        console.log(`Plugin ready: ${pluginId}`);
+        this.notify.success(`Plugin loaded: ${pluginId}`);
+    }
+
+    /**
+     * Plugin error callback
+     * @private
+     */
+    _onPluginError(pluginId, err) {
+        console.error(`Plugin error (${pluginId}):`, err);
+        this.notify.error(`Plugin error: ${pluginId}`);
+    }
+
+    /**
+     * Plugin message callback
+     * @private
+     */
+    _onPluginMessage(pluginId, msg) {
+        console.log(`Plugin message (${pluginId}):`, msg);
+    }
+
     /**
      * Clean up all resources and event listeners
      * Call this method when destroying the editor instance to prevent memory leaks
@@ -529,8 +703,10 @@ class MarkdownEditor {
             toastContainer.innerHTML = '';
         }
 
-        // Clear any module-specific cleanup if needed
-        // (EditorState, EditorIO, EditorUI don't currently need cleanup)
+        // Stop all plugins
+        if (this.pluginLoader) {
+            this.pluginLoader.stopAll();
+        }
     }
 
     showCollaborationStory() {
