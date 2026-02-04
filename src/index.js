@@ -10,6 +10,7 @@
  */
 import AnimationManager from './utils/AnimationManager.js';
 import NotificationManager from './utils/NotificationManager.js';
+import ErrorManager from './utils/ErrorManager.js';
 import EditorState from './core/EditorState.js';
 import EditorIO from './io/EditorIO.js';
 import EditorUI from './ui/EditorUI.js';
@@ -29,6 +30,13 @@ class MarkdownEditor {
         this.version = '4.0.0';
         this.anim = new AnimationManager();
         this.notify = new NotificationManager();
+
+        // Error manager with graceful UI feedback
+        this.errors = new ErrorManager({
+            maxErrors: 100,
+            maxAgeDays: 7,
+            onError: (entry) => this._showErrorToast(entry)
+        });
 
         // Compose modules with dependency injection
         this.state = new EditorState({
@@ -256,7 +264,155 @@ class MarkdownEditor {
         this.ui.setupThemeToggle();
         this.ui.setupHelpBar();
         this.ui.setupTabs();
+        this.setupClickCatcher();
+        this.setupGlobalErrorHandling();
         console.log('🏰 Cathedral features initialized!');
+    }
+
+    // === Error Handling & Click Catcher ===
+
+    /**
+     * Setup click catcher to prevent errors on void clicks
+     */
+    setupClickCatcher() {
+        const catcher = document.getElementById('app-click-catcher');
+        if (!catcher) return;
+
+        catcher.addEventListener('click', (e) => {
+            // If clicking on the background, focus the editor
+            if (e.target === catcher && this.editor) {
+                this.editor.focus();
+            }
+        });
+
+        // Also catch any unhandled clicks on the background layer
+        const background = document.getElementById('app-background');
+        if (background) {
+            background.addEventListener('click', () => {
+                if (this.editor) this.editor.focus();
+            });
+        }
+    }
+
+    /**
+     * Setup global error handling with graceful UI feedback
+     */
+    setupGlobalErrorHandling() {
+        if (!this.isBrowser()) return;
+
+        // Catch unhandled errors
+        window.addEventListener('error', (e) => {
+            this.errors.capture(e.error || e.message, {
+                component: 'global',
+                action: 'unhandled-error',
+                filename: e.filename,
+                lineno: e.lineno
+            }, true); // silent - don't show toast for all global errors
+        });
+
+        // Catch unhandled promise rejections
+        window.addEventListener('unhandledrejection', (e) => {
+            this.errors.capture(e.reason || 'Unhandled promise rejection', {
+                component: 'global',
+                action: 'unhandled-rejection'
+            }, true);
+        });
+    }
+
+    /**
+     * Show a non-intrusive error toast
+     * @param {Object} entry - Error entry from ErrorManager
+     */
+    _showErrorToast(entry) {
+        if (!this.isBrowser()) return;
+
+        const container = document.getElementById('error-toast-container');
+        if (!container) return;
+
+        // Limit visible toasts to 3
+        const existingToasts = container.querySelectorAll('.error-toast');
+        if (existingToasts.length >= 3) {
+            existingToasts[0]?.remove();
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'error-toast';
+        toast.innerHTML = `
+            <div class="error-toast-header">
+                <span class="error-toast-title">Something went wrong</span>
+                <button class="error-toast-close" aria-label="Dismiss">&times;</button>
+            </div>
+            <div class="error-toast-message">${this._escapeHtml(entry.message)}</div>
+            <div class="error-toast-meta">
+                <span class="error-toast-component">${entry.context?.component || 'app'}</span>
+                <span>${new Date(entry.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div class="error-toast-progress"></div>
+        `;
+
+        container.appendChild(toast);
+
+        // Trigger show animation
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Close button
+        toast.querySelector('.error-toast-close')?.addEventListener('click', () => {
+            this._dismissErrorToast(toast);
+        });
+
+        // Auto-dismiss after 5s
+        setTimeout(() => {
+            this._dismissErrorToast(toast);
+        }, 5000);
+    }
+
+    /**
+     * Dismiss an error toast with animation
+     * @param {HTMLElement} toast - Toast element to dismiss
+     */
+    _dismissErrorToast(toast) {
+        if (!toast || toast.classList.contains('hiding')) return;
+        toast.classList.add('hiding');
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    /**
+     * Escape HTML to prevent XSS in error messages
+     * @param {string} str - String to escape
+     * @returns {string} Escaped string
+     */
+    _escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+    }
+
+    /**
+     * Get error statistics for debugging
+     * @returns {Object} Error stats
+     */
+    getErrorStats() {
+        return this.errors.getStats();
+    }
+
+    /**
+     * Get recent errors for debugging
+     * @param {number} count - Number of errors to return
+     * @returns {Array} Recent errors
+     */
+    getRecentErrors(count = 10) {
+        return this.errors.getRecent(count);
+    }
+
+    /**
+     * Clear all stored errors
+     */
+    clearErrors() {
+        this.errors.clearAll();
+        this.showNotification('Errors cleared', 'success');
     }
 
     setupStatsCounter() { this.ui.setupStatsCounter(); }
