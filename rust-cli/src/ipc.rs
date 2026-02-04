@@ -133,6 +133,7 @@ async fn handle_message(msg: PluginMessage) -> PluginResponse {
         "deep_analyze" => handle_deep_analyze(msg.id, msg.payload).await,
         "report" => handle_report(msg.id, msg.payload).await,
         "browse" => handle_browse(msg.id, msg.payload).await,
+        "set_theme" => handle_set_theme(msg.id, msg.payload),
         "get_capabilities" => handle_capabilities(msg.id),
         "shutdown" => handle_shutdown(msg.id),
         _ => PluginResponse::error(
@@ -326,11 +327,49 @@ async fn handle_deep_analyze(id: String, payload: serde_json::Value) -> PluginRe
     }
 }
 
+/// Current theme (stored for plugin mode)
+static CURRENT_THEME: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+/// Theme constants
+const THEME_DARK: u8 = 0;
+const THEME_LIGHT: u8 = 1;
+
+fn handle_set_theme(id: String, payload: serde_json::Value) -> PluginResponse {
+    let theme = payload
+        .get("theme")
+        .and_then(|t| t.as_str())
+        .unwrap_or("dark");
+
+    let theme_id = match theme {
+        "light" => THEME_LIGHT,
+        _ => THEME_DARK,
+    };
+
+    CURRENT_THEME.store(theme_id, std::sync::atomic::Ordering::SeqCst);
+
+    PluginResponse::success(
+        id,
+        serde_json::json!({
+            "theme": theme,
+            "applied": true
+        }),
+    )
+}
+
+/// Get current theme name
+#[allow(dead_code)]
+pub fn get_current_theme() -> &'static str {
+    match CURRENT_THEME.load(std::sync::atomic::Ordering::SeqCst) {
+        THEME_LIGHT => "light",
+        _ => "dark",
+    }
+}
+
 fn handle_capabilities(id: String) -> PluginResponse {
     PluginResponse::success(
         id,
         serde_json::json!({
-            "actions": ["ping", "analyze", "deep_analyze", "report", "browse", "shutdown"],
+            "actions": ["ping", "analyze", "deep_analyze", "report", "browse", "set_theme", "shutdown"],
             "version": env!("CARGO_PKG_VERSION"),
             "features": {
                 "tui": cfg!(feature = "tui"),

@@ -16,7 +16,7 @@ import EditorState from './core/EditorState.js';
 import Settings from './core/Settings.js';
 import EditorIO from './io/EditorIO.js';
 import EditorUI from './ui/EditorUI.js';
-import { PluginLoader, PluginRegistry } from './plugins/index.js';
+import { PluginLoader, PluginRegistry, PluginPanel, Storefront } from './plugins/index.js';
 import './styles/variables.css';
 import './styles/base.css';
 import './styles/layout.css';
@@ -45,6 +45,18 @@ class MarkdownEditor {
             onPluginReady: (id) => this._onPluginReady(id),
             onPluginError: (id, err) => this._onPluginError(id, err),
             onPluginMessage: (id, msg) => this._onPluginMessage(id, msg)
+        });
+
+        // Plugin UI
+        this.pluginPanel = new PluginPanel({
+            onClose: () => this._onPluginPanelClose()
+        });
+        this.storefront = new Storefront({
+            pluginLoader: this.pluginLoader,
+            pluginRegistry: this.pluginRegistry,
+            settings: this.settings,
+            onPluginLoad: (id) => this.loadPlugin(id),
+            onPluginUnload: (id) => this.unloadPlugin(id)
         });
 
         // Error manager with graceful UI feedback
@@ -280,9 +292,108 @@ class MarkdownEditor {
         this.ui.setupThemeToggle();
         this.ui.setupHelpBar();
         this.ui.setupTabs();
+        this.setupPluginMenu();
         this.setupClickCatcher();
         this.setupGlobalErrorHandling();
         console.log('🏰 Cathedral features initialized!');
+    }
+
+    // === Plugin Menu ===
+    setupPluginMenu() {
+        const headerControls = document.querySelector('.header-controls');
+        if (!headerControls) return;
+
+        // Create plugin menu container
+        const menuContainer = document.createElement('div');
+        menuContainer.style.cssText = 'position: relative; display: inline-block;';
+
+        // Plugin button
+        const pluginBtn = document.createElement('button');
+        pluginBtn.className = 'toolbar-btn btn-interactive';
+        pluginBtn.id = 'plugin-menu-btn';
+        pluginBtn.innerHTML = '🔌 Plugins';
+        pluginBtn.title = 'Plugin options';
+
+        // Dropdown menu
+        const dropdown = document.createElement('div');
+        dropdown.id = 'plugin-dropdown';
+        dropdown.style.cssText = `
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #1a1a2e;
+            border: 1px solid #FFD700;
+            border-radius: 8px;
+            min-width: 200px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            z-index: 1001;
+            overflow: hidden;
+        `;
+
+        const menuItems = [
+            { icon: '💎', label: 'Diamond Drill', action: () => this.toggleDiamondDrill() },
+            { icon: '📊', label: 'Analyze Document', action: () => this.analyzeCurrentDocument() },
+            { divider: true },
+            { icon: '🏪', label: 'Plugin Storefront', action: () => this.openStorefront() },
+            { icon: '📋', label: 'Toggle Panel', action: () => this.pluginPanel.toggle() }
+        ];
+
+        menuItems.forEach(item => {
+            if (item.divider) {
+                const divider = document.createElement('div');
+                divider.style.cssText = 'height: 1px; background: #333; margin: 4px 0;';
+                dropdown.appendChild(divider);
+            } else {
+                const menuItem = document.createElement('button');
+                menuItem.style.cssText = `
+                    display: block;
+                    width: 100%;
+                    padding: 10px 16px;
+                    border: none;
+                    background: none;
+                    color: #e0e0e0;
+                    text-align: left;
+                    cursor: pointer;
+                    font-size: 13px;
+                    transition: background 0.2s;
+                `;
+                menuItem.innerHTML = `${item.icon} ${item.label}`;
+                menuItem.addEventListener('mouseenter', () => {
+                    menuItem.style.background = 'rgba(255, 215, 0, 0.1)';
+                });
+                menuItem.addEventListener('mouseleave', () => {
+                    menuItem.style.background = 'none';
+                });
+                menuItem.addEventListener('click', () => {
+                    dropdown.style.display = 'none';
+                    item.action();
+                });
+                dropdown.appendChild(menuItem);
+            }
+        });
+
+        // Toggle dropdown on click
+        pluginBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Close on outside click
+        document.addEventListener('click', () => {
+            dropdown.style.display = 'none';
+        });
+
+        menuContainer.appendChild(pluginBtn);
+        menuContainer.appendChild(dropdown);
+
+        // Insert after theme toggle
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn && themeBtn.nextSibling) {
+            headerControls.insertBefore(menuContainer, themeBtn.nextSibling);
+        } else {
+            headerControls.appendChild(menuContainer);
+        }
     }
 
     // === Error Handling & Click Catcher ===
@@ -563,6 +674,19 @@ class MarkdownEditor {
             if (this.ui && this.ui.currentTheme !== value) {
                 this.ui.toggleTheme();
             }
+            // Sync theme to all loaded plugins
+            this._syncThemeToAllPlugins(value);
+        }
+    }
+
+    /**
+     * Sync theme to all loaded plugins
+     * @private
+     */
+    _syncThemeToAllPlugins(theme) {
+        const loadedPlugins = this.pluginLoader?.getLoadedPlugins() || [];
+        for (const pluginId of loadedPlugins) {
+            this.syncThemeToPlugin(pluginId);
         }
     }
 
@@ -662,6 +786,146 @@ class MarkdownEditor {
     }
 
     /**
+     * Plugin panel close callback
+     * @private
+     */
+    _onPluginPanelClose() {
+        console.log('Plugin panel closed');
+    }
+
+    // === Plugin UI Actions ===
+
+    /**
+     * Toggle Diamond Drill plugin
+     */
+    async toggleDiamondDrill() {
+        const pluginId = 'diamond-drill';
+
+        if (this.pluginLoader.isLoaded(pluginId)) {
+            // Show panel if loaded
+            this.pluginPanel.open();
+            this.pluginPanel.setTitle('Diamond Drill', '💎');
+            this.pluginPanel.setContent(`
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">💎</div>
+                    <p style="color: var(--accent, #FFD700); margin-bottom: 16px;">Diamond Drill Active</p>
+                    <button id="dd-analyze-btn" style="
+                        padding: 12px 24px;
+                        background: #FFD70020;
+                        border: 1px solid #FFD700;
+                        color: #FFD700;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    ">📊 Analyze Current Document</button>
+                </div>
+            `);
+
+            document.getElementById('dd-analyze-btn')?.addEventListener('click', () => {
+                this.analyzeCurrentDocument();
+            });
+        } else {
+            // Load the plugin
+            try {
+                this.pluginPanel.open();
+                this.pluginPanel.setTitle('Diamond Drill', '💎');
+                this.pluginPanel.showLoading('Loading Diamond Drill...');
+
+                await this.loadPlugin(pluginId);
+
+                this.notify.success('Diamond Drill loaded!');
+                this.toggleDiamondDrill(); // Recurse to show panel
+            } catch (err) {
+                this.pluginPanel.showError('Failed to load Diamond Drill');
+                console.error('Failed to load Diamond Drill:', err);
+            }
+        }
+    }
+
+    /**
+     * Analyze the current document with Diamond Drill
+     */
+    async analyzeCurrentDocument() {
+        const pluginId = 'diamond-drill';
+        const content = this.editor?.value || '';
+
+        if (!content.trim()) {
+            this.notify.error('No content to analyze');
+            return;
+        }
+
+        this.pluginPanel.open();
+        this.pluginPanel.setTitle('Diamond Drill', '💎');
+        this.pluginPanel.showLoading('Analyzing document...');
+
+        try {
+            // Ensure plugin is loaded
+            if (!this.pluginLoader.isLoaded(pluginId)) {
+                await this.loadPlugin(pluginId);
+            }
+
+            // Send analysis request
+            const result = await this.sendToPlugin(pluginId, 'analyze', {
+                files: ['current-document.md']
+            });
+
+            // Create a synthetic analysis for the current document
+            const lines = content.split('\n').length;
+            const words = content.split(/\s+/).filter(w => w).length;
+            const chars = content.length;
+
+            this.pluginPanel.showAnalysisResults({
+                files_analyzed: 1,
+                analyses: [{
+                    path: 'Current Document',
+                    size: new Blob([content]).size,
+                    file_type: 'md',
+                    line_count: lines,
+                    word_count: words,
+                    char_count: chars,
+                    is_binary: false
+                }]
+            });
+
+            this.notify.success('Analysis complete!');
+        } catch (err) {
+            this.pluginPanel.showError(`Analysis failed: ${err.message}`);
+            console.error('Analysis failed:', err);
+        }
+    }
+
+    /**
+     * Open the plugin storefront
+     */
+    openStorefront() {
+        this.storefront.open();
+    }
+
+    /**
+     * Get current theme (for theme sync)
+     * @returns {string}
+     */
+    getTheme() {
+        return this.ui?.currentTheme || 'dark';
+    }
+
+    /**
+     * Sync theme to plugin
+     * @param {string} pluginId
+     */
+    async syncThemeToPlugin(pluginId) {
+        if (!this.pluginLoader.isLoaded(pluginId)) return;
+
+        try {
+            await this.sendToPlugin(pluginId, 'set_theme', {
+                theme: this.getTheme()
+            });
+        } catch (err) {
+            console.warn('Failed to sync theme to plugin:', err);
+        }
+    }
+
+    /**
      * Clean up all resources and event listeners
      * Call this method when destroying the editor instance to prevent memory leaks
      */
@@ -706,6 +970,11 @@ class MarkdownEditor {
         // Stop all plugins
         if (this.pluginLoader) {
             this.pluginLoader.stopAll();
+        }
+
+        // Clean up plugin panel
+        if (this.pluginPanel) {
+            this.pluginPanel.destroy();
         }
     }
 
