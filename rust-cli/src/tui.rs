@@ -1,14 +1,15 @@
 //! TUI Module - Terminal User Interface with ratatui
 //!
-//! Provides interactive source/destination picker and analysis viewer.
-//! Features: vim navigation, help overlay, file preview, search filter, themes.
+//! Features: vim navigation, help overlay, file preview, search filter, themes,
+//! bookmarks, virtual scrolling, async preview loading.
 
 #![cfg(feature = "tui")]
 
 use std::io::{stdout, Read};
 use std::path::PathBuf;
 use std::fs::{self, File};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use crossterm::{
@@ -30,7 +31,11 @@ const PREVIEW_MAX_BYTES: usize = 4096;
 /// Event poll timeout in milliseconds
 const POLL_TIMEOUT_MS: u64 = 50;
 /// Maximum entries to load initially (lazy loading)
-const LAZY_LOAD_LIMIT: usize = 500;
+const LAZY_LOAD_LIMIT: usize = 1000;
+/// Maximum bookmarks
+const MAX_BOOKMARKS: usize = 9;
+/// Preview debounce delay in milliseconds
+const PREVIEW_DEBOUNCE_MS: u64 = 100;
 
 /// Color themes
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -111,7 +116,7 @@ impl FileFilter {
             FileFilter::All => true,
             FileFilter::Extension(ext) => {
                 if path.is_dir() {
-                    return true; // Always show directories
+                    return true;
                 }
                 path.extension()
                     .map(|e| e.to_string_lossy().to_lowercase() == ext.to_lowercase())
@@ -133,6 +138,22 @@ impl FileFilter {
 enum InputMode {
     Normal,
     Search,
+    BookmarkJump,  // Waiting for bookmark number
+}
+
+/// Bookmark entry
+#[derive(Debug, Clone)]
+struct Bookmark {
+    path: PathBuf,
+    name: String,
+}
+
+/// Preview state for async loading
+#[derive(Debug, Clone)]
+enum PreviewState {
+    Loading,
+    Ready(String),
+    None,
 }
 
 /// Application state
@@ -141,15 +162,14 @@ struct App {
     source: Option<String>,
     dest: Option<String>,
     current_dir: PathBuf,
-    all_entries: Vec<PathBuf>,      // All entries in directory
-    filtered_entries: Vec<PathBuf>, // Filtered view
+    all_entries: Vec<PathBuf>,
+    filtered_entries: Vec<PathBuf>,
     selected: usize,
     config: Config,
     message: Option<String>,
     show_help: bool,
-    preview_content: Option<String>,
-    scroll_offset: usize,
-    // v4 UX additions
+    preview_state: PreviewState,
+    // v4 UX
     theme: Theme,
     input_mode: InputMode,
     search_query: String,
@@ -159,6 +179,15 @@ struct App {
     // v5 Performance
     is_large_dir: bool,
     total_entries: usize,
+    // v6 Bookmarks
+    bookmarks: HashMap<usize, Bookmark>,
+    show_bookmarks: bool,
+    // v7 Virtual scrolling
+    viewport_height: usize,
+    scroll_offset: usize,
+    // v8 Async preview
+    last_selection_change: Instant,
+    preview_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -186,8 +215,7 @@ impl App {
             config,
             message: None,
             show_help: false,
-            preview_content: None,
-            scroll_offset: 0,
+            preview_state: PreviewState::None,
             theme: Theme::Dark,
             input_mode: InputMode::Normal,
             search_query: String::new(),
@@ -202,6 +230,12 @@ impl App {
             filter_index: 0,
             is_large_dir: is_large,
             total_entries: total,
+            bookmarks: HashMap::new(),
+            show_bookmarks: false,
+            viewport_height: 20,
+            scroll_offset: 0,
+            last_selection_change: Instant::now(),
+            preview_path: None,
         }
     }
 
@@ -213,7 +247,7 @@ impl App {
         self.apply_filters();
         self.selected = 0;
         self.scroll_offset = 0;
-        self.update_preview();
+        self.schedule_preview_update();
     }
 
     fn apply_filters(&mut self) {
@@ -221,11 +255,9 @@ impl App {
         self.filtered_entries = self.all_entries
             .iter()
             .filter(|p| {
-                // Apply file filter
                 if !self.file_filter.matches(p) {
                     return false;
                 }
-                // Apply search query
                 if query.is_empty() {
                     return true;
                 }
@@ -236,25 +268,36 @@ impl App {
             .cloned()
             .collect();
 
-        // Reset selection if out of bounds
         if self.selected >= self.filtered_entries.len() {
             self.selected = self.filtered_entries.len().saturating_sub(1);
         }
+        self.adjust_scroll();
     }
 
-    fn update_preview(&mut self) {
-        if let Some(path) = self.filtered_entries.get(self.selected) {
-            if path.is_file() {
-                self.preview_content = read_file_preview(path);
+    fn schedule_preview_update(&mut self) {
+        self.last_selection_change = Instant::now();
+        self.preview_state = PreviewState::Loading;
+        self.preview_path = self.filtered_entries.get(self.selected).cloned();
+    }
+
+    fn update_preview_if_ready(&mut self) {
+        // Debounce: only update preview after delay
+        if self.last_selection_change.elapsed() < Duration::from_millis(PREVIEW_DEBOUNCE_MS) {
+            return;
+        }
+
+        if let PreviewState::Loading = self.preview_state {
+            if let Some(ref path) = self.preview_path {
+                let content = if path.is_file() {
+                    read_file_preview(path).unwrap_or_else(|| "Unable to read file".to_string())
+                } else {
+                    let count = fs::read_dir(path).map(|rd| rd.count()).unwrap_or(0);
+                    format!("📁 Directory\n\n{} items\n\nPress Enter to navigate", count)
+                };
+                self.preview_state = PreviewState::Ready(content);
             } else {
-                let count = fs::read_dir(path).map(|rd| rd.count()).unwrap_or(0);
-                self.preview_content = Some(format!(
-                    "📁 Directory\n\n{} items\n\nPress Enter to navigate",
-                    count
-                ));
+                self.preview_state = PreviewState::None;
             }
-        } else {
-            self.preview_content = None;
         }
     }
 
@@ -304,20 +347,31 @@ impl App {
         } else {
             self.selected.saturating_sub((-delta) as usize)
         };
-        self.update_preview();
+        self.adjust_scroll();
+        self.schedule_preview_update();
+    }
+
+    fn adjust_scroll(&mut self) {
+        // Keep selected item visible in viewport
+        if self.selected < self.scroll_offset {
+            self.scroll_offset = self.selected;
+        } else if self.selected >= self.scroll_offset + self.viewport_height {
+            self.scroll_offset = self.selected.saturating_sub(self.viewport_height - 1);
+        }
     }
 
     fn goto_start(&mut self) {
         self.selected = 0;
         self.scroll_offset = 0;
-        self.update_preview();
+        self.schedule_preview_update();
     }
 
     fn goto_end(&mut self) {
         if !self.filtered_entries.is_empty() {
             self.selected = self.filtered_entries.len() - 1;
+            self.adjust_scroll();
         }
-        self.update_preview();
+        self.schedule_preview_update();
     }
 
     fn page_down(&mut self, page_size: usize) {
@@ -326,16 +380,24 @@ impl App {
             return;
         }
         self.selected = (self.selected + page_size).min(len - 1);
-        self.update_preview();
+        self.adjust_scroll();
+        self.schedule_preview_update();
     }
 
     fn page_up(&mut self, page_size: usize) {
         self.selected = self.selected.saturating_sub(page_size);
-        self.update_preview();
+        self.adjust_scroll();
+        self.schedule_preview_update();
     }
 
     fn toggle_help(&mut self) {
         self.show_help = !self.show_help;
+        self.show_bookmarks = false;
+    }
+
+    fn toggle_bookmarks(&mut self) {
+        self.show_bookmarks = !self.show_bookmarks;
+        self.show_help = false;
     }
 
     fn cycle_theme(&mut self) {
@@ -352,7 +414,7 @@ impl App {
         };
         self.apply_filters();
         self.message = Some(format!("🔍 Filter: {}", self.file_filter.label()));
-        self.update_preview();
+        self.schedule_preview_update();
     }
 
     fn enter_search_mode(&mut self) {
@@ -367,19 +429,91 @@ impl App {
     fn handle_search_input(&mut self, c: char) {
         self.search_query.push(c);
         self.apply_filters();
-        self.update_preview();
+        self.schedule_preview_update();
     }
 
     fn handle_search_backspace(&mut self) {
         self.search_query.pop();
         self.apply_filters();
-        self.update_preview();
+        self.schedule_preview_update();
     }
 
     fn clear_search(&mut self) {
         self.search_query.clear();
         self.apply_filters();
-        self.update_preview();
+        self.schedule_preview_update();
+    }
+
+    // Bookmark functions
+    fn add_bookmark(&mut self) {
+        let slot = self.next_free_bookmark_slot();
+        if let Some(slot) = slot {
+            let name = self.current_dir.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| self.current_dir.display().to_string());
+
+            self.bookmarks.insert(slot, Bookmark {
+                path: self.current_dir.clone(),
+                name,
+            });
+            self.message = Some(format!("📌 Bookmark {} set: {}", slot, self.current_dir.display()));
+        } else {
+            self.message = Some("⚠️ All bookmark slots full (1-9)".to_string());
+        }
+    }
+
+    fn next_free_bookmark_slot(&self) -> Option<usize> {
+        for i in 1..=MAX_BOOKMARKS {
+            if !self.bookmarks.contains_key(&i) {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    fn enter_bookmark_jump_mode(&mut self) {
+        if self.bookmarks.is_empty() {
+            self.message = Some("⚠️ No bookmarks set. Press 'm' to add one.".to_string());
+        } else {
+            self.input_mode = InputMode::BookmarkJump;
+            self.message = Some("Press 1-9 to jump to bookmark...".to_string());
+        }
+    }
+
+    fn jump_to_bookmark(&mut self, slot: usize) {
+        self.input_mode = InputMode::Normal;
+        if let Some(bookmark) = self.bookmarks.get(&slot).cloned() {
+            if bookmark.path.exists() {
+                self.current_dir = bookmark.path;
+                self.search_query.clear();
+                self.refresh_entries();
+                self.message = Some(format!("📍 Jumped to bookmark {}: {}", slot, bookmark.name));
+            } else {
+                self.message = Some(format!("⚠️ Bookmark {} path no longer exists", slot));
+            }
+        } else {
+            self.message = Some(format!("⚠️ No bookmark at slot {}", slot));
+        }
+    }
+
+    fn delete_bookmark(&mut self, slot: usize) {
+        if self.bookmarks.remove(&slot).is_some() {
+            self.message = Some(format!("🗑️ Bookmark {} deleted", slot));
+        }
+    }
+
+    fn go_home(&mut self) {
+        if let Ok(home) = std::env::var("HOME") {
+            self.current_dir = PathBuf::from(home);
+            self.search_query.clear();
+            self.refresh_entries();
+            self.message = Some("🏠 Jumped to home directory".to_string());
+        }
+    }
+
+    fn set_viewport_height(&mut self, height: usize) {
+        self.viewport_height = height.saturating_sub(2); // Account for borders
+        self.adjust_scroll();
     }
 }
 
@@ -392,7 +526,6 @@ fn read_file_preview(path: &PathBuf) -> Option<String> {
 
     let content = String::from_utf8_lossy(&buffer).to_string();
 
-    // Check if file is likely binary
     if content.chars().take(512).filter(|c| c.is_control() && *c != '\n' && *c != '\r' && *c != '\t').count() > 10 {
         let size = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         return Some(format!(
@@ -410,7 +543,7 @@ fn read_file_preview(path: &PathBuf) -> Option<String> {
     Some(truncated)
 }
 
-/// List directory with lazy loading for large directories
+/// List directory with lazy loading
 fn list_dir_lazy(path: &PathBuf, limit: usize) -> (Vec<PathBuf>, bool, usize) {
     let read_dir = match fs::read_dir(path) {
         Ok(rd) => rd,
@@ -429,7 +562,6 @@ fn list_dir_lazy(path: &PathBuf, limit: usize) -> (Vec<PathBuf>, bool, usize) {
 
     let is_large = total_count > limit;
 
-    // Sort: directories first, then by name
     entries.sort_by(|a, b| {
         match (a.is_dir(), b.is_dir()) {
             (true, false) => std::cmp::Ordering::Less,
@@ -453,7 +585,7 @@ pub async fn run(config: Config) -> Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     let mut app = App::new(config);
-    app.update_preview();
+    app.schedule_preview_update();
     let result = run_app(&mut terminal, &mut app).await;
 
     disable_raw_mode()?;
@@ -466,6 +598,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
     loop {
         let area = terminal.size()?;
         let page_size = (area.height as usize).saturating_sub(8);
+        app.set_viewport_height(area.height.saturating_sub(10) as usize);
+
+        // Update preview if debounce period passed
+        app.update_preview_if_ready();
 
         terminal.draw(|f| ui(f, app))?;
 
@@ -475,7 +611,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     continue;
                 }
 
-                // Help overlay intercepts all keys
+                // Help overlay
                 if app.show_help {
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc | KeyCode::Char('?') => {
@@ -486,7 +622,46 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     continue;
                 }
 
-                // Search mode input handling
+                // Bookmarks overlay
+                if app.show_bookmarks {
+                    match key.code {
+                        KeyCode::Char('B') | KeyCode::Esc => {
+                            app.show_bookmarks = false;
+                        }
+                        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
+                            let slot = c.to_digit(10).unwrap() as usize;
+                            app.show_bookmarks = false;
+                            app.jump_to_bookmark(slot);
+                        }
+                        KeyCode::Char('d') => {
+                            // Delete mode - next digit deletes
+                            app.message = Some("Press 1-9 to delete bookmark...".to_string());
+                        }
+                        _ => {}
+                    }
+                    continue;
+                }
+
+                // Bookmark jump mode
+                if app.input_mode == InputMode::BookmarkJump {
+                    match key.code {
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Normal;
+                            app.message = None;
+                        }
+                        KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
+                            let slot = c.to_digit(10).unwrap() as usize;
+                            app.jump_to_bookmark(slot);
+                        }
+                        _ => {
+                            app.input_mode = InputMode::Normal;
+                            app.message = Some("⚠️ Invalid bookmark slot".to_string());
+                        }
+                    }
+                    continue;
+                }
+
+                // Search mode
                 if app.input_mode == InputMode::Search {
                     match key.code {
                         KeyCode::Esc => app.exit_search_mode(),
@@ -510,6 +685,12 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
 
                     // Theme
                     KeyCode::Char('t') => app.cycle_theme(),
+
+                    // Bookmarks
+                    KeyCode::Char('m') => app.add_bookmark(),
+                    KeyCode::Char('\'') => app.enter_bookmark_jump_mode(),
+                    KeyCode::Char('B') => app.toggle_bookmarks(),
+                    KeyCode::Char('~') => app.go_home(),
 
                     // Navigation
                     KeyCode::Up | KeyCode::Char('k') => app.move_selection(-1),
@@ -579,7 +760,6 @@ async fn run_analysis(source: &str, dest: &str, config: &Config) -> Result<Strin
 fn ui(frame: &mut Frame, app: &App) {
     let theme = app.theme;
 
-    // Clear with background color
     let bg_block = Block::default().style(Style::default().bg(theme.bg()));
     frame.render_widget(bg_block, frame.area());
 
@@ -587,13 +767,13 @@ fn ui(frame: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),  // Header
-            Constraint::Length(1),  // Search bar (when active)
+            Constraint::Length(1),  // Search bar
             Constraint::Min(10),    // Content
             Constraint::Length(3),  // Status
         ])
         .split(frame.area());
 
-    // Header
+    // Header with bookmark count
     let title = match app.state {
         AppState::SelectSource => "📂 Select Source File",
         AppState::SelectDest => "📂 Select Destination",
@@ -602,9 +782,15 @@ fn ui(frame: &mut Frame, app: &App) {
         AppState::Error => "❌ Error",
     };
 
+    let bookmark_count = if app.bookmarks.is_empty() {
+        String::new()
+    } else {
+        format!(" | 📌{}", app.bookmarks.len())
+    };
+
     let header_text = format!(
-        "{} | Theme: {} | Filter: {} | ? for help",
-        title, theme.name(), app.file_filter.label()
+        "{} | {} | {}{} | ?",
+        title, theme.name(), app.file_filter.label(), bookmark_count
     );
 
     let header = Paragraph::new(header_text)
@@ -618,15 +804,19 @@ fn ui(frame: &mut Frame, app: &App) {
     // Search bar
     let search_style = if app.input_mode == InputMode::Search {
         Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    } else if app.input_mode == InputMode::BookmarkJump {
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme.dim())
     };
 
-    let search_text = if app.search_query.is_empty() {
+    let search_text = if app.input_mode == InputMode::BookmarkJump {
+        "🔖 Press 1-9 to jump to bookmark...".to_string()
+    } else if app.search_query.is_empty() {
         if app.input_mode == InputMode::Search {
             "Type to search...".to_string()
         } else {
-            "Press / to search".to_string()
+            "/ search | m bookmark | ' jump | ~ home".to_string()
         }
     } else {
         format!("🔍 {}", app.search_query)
@@ -641,21 +831,29 @@ fn ui(frame: &mut Frame, app: &App) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(main_chunks[2]);
 
-    // File list
-    let items: Vec<ListItem> = app.filtered_entries.iter().enumerate().map(|(i, path)| {
-        let icon = if path.is_dir() { "📁" } else { "📄" };
-        let name = path.file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| path.display().to_string());
+    // Virtual scrolling: only create visible items
+    let visible_start = app.scroll_offset;
+    let visible_end = (app.scroll_offset + app.viewport_height).min(app.filtered_entries.len());
 
-        let style = if i == app.selected {
-            Style::default().bg(theme.highlight()).fg(theme.fg()).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(theme.fg())
-        };
+    let items: Vec<ListItem> = app.filtered_entries[visible_start..visible_end]
+        .iter()
+        .enumerate()
+        .map(|(rel_idx, path)| {
+            let abs_idx = visible_start + rel_idx;
+            let icon = if path.is_dir() { "📁" } else { "📄" };
+            let name = path.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| path.display().to_string());
 
-        ListItem::new(format!("{} {}", icon, name)).style(style)
-    }).collect();
+            let style = if abs_idx == app.selected {
+                Style::default().bg(theme.highlight()).fg(theme.fg()).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.fg())
+            };
+
+            ListItem::new(format!("{} {}", icon, name)).style(style)
+        })
+        .collect();
 
     let position_info = if app.filtered_entries.is_empty() {
         "(empty)".to_string()
@@ -673,12 +871,20 @@ fn ui(frame: &mut Frame, app: &App) {
         .highlight_style(Style::default().bg(theme.highlight()).add_modifier(Modifier::BOLD))
         .highlight_symbol("▶ ");
 
+    // Adjust selection for virtual scroll offset
     let mut state = ListState::default();
-    state.select(Some(app.selected));
+    if app.selected >= visible_start && app.selected < visible_end {
+        state.select(Some(app.selected - visible_start));
+    }
     frame.render_stateful_widget(list, content_chunks[0], &mut state);
 
     // Preview pane
-    let preview_text = app.preview_content.as_deref().unwrap_or("No preview available");
+    let preview_text = match &app.preview_state {
+        PreviewState::Loading => "⏳ Loading preview...".to_string(),
+        PreviewState::Ready(content) => content.clone(),
+        PreviewState::None => "No preview available".to_string(),
+    };
+
     let preview = Paragraph::new(preview_text)
         .block(Block::default()
             .borders(Borders::ALL)
@@ -707,17 +913,20 @@ fn ui(frame: &mut Frame, app: &App) {
             .title("Status"));
     frame.render_widget(status_bar, main_chunks[3]);
 
-    // Help overlay
+    // Overlays
     if app.show_help {
         render_help_overlay(frame, theme);
+    }
+    if app.show_bookmarks {
+        render_bookmarks_overlay(frame, app, theme);
     }
 }
 
 fn render_help_overlay(frame: &mut Frame, theme: Theme) {
     let area = frame.area();
 
-    let help_width = 65;
-    let help_height = 24;
+    let help_width = 68;
+    let help_height = 28;
     let help_area = Rect {
         x: area.width.saturating_sub(help_width) / 2,
         y: area.height.saturating_sub(help_height) / 2,
@@ -740,18 +949,20 @@ fn render_help_overlay(frame: &mut Frame, theme: Theme) {
         Line::from("  PgDn/PgUp   Full page scroll"),
         Line::from(""),
         Line::from(Span::styled("Search & Filter", Style::default().add_modifier(Modifier::BOLD))),
-        Line::from("  /           Enter search mode (type to filter)"),
-        Line::from("  f           Cycle file type filter (*.rs, *.md, etc)"),
+        Line::from("  /           Enter search mode"),
+        Line::from("  f           Cycle file type filter"),
         Line::from("  c           Clear search query"),
+        Line::from(""),
+        Line::from(Span::styled("Bookmarks", Style::default().add_modifier(Modifier::BOLD))),
+        Line::from("  m           Add current directory to bookmarks"),
+        Line::from("  '           Jump to bookmark (then press 1-9)"),
+        Line::from("  B           Show/hide bookmarks panel"),
+        Line::from("  ~           Jump to home directory"),
         Line::from(""),
         Line::from(Span::styled("Actions", Style::default().add_modifier(Modifier::BOLD))),
         Line::from("  Enter/l     Select / Enter directory"),
         Line::from("  Backspace/h Go to parent directory"),
-        Line::from("  a           Analyze (when both selected)"),
-        Line::from("  r           Reset selection"),
-        Line::from("  t           Cycle theme (Dark/Light/Ocean)"),
-        Line::from("  ?           Toggle this help"),
-        Line::from("  q/Esc       Quit"),
+        Line::from("  a           Analyze | r Reset | t Theme | q Quit"),
     ];
 
     let help = Paragraph::new(help_text)
@@ -764,6 +975,55 @@ fn render_help_overlay(frame: &mut Frame, theme: Theme) {
         .alignment(Alignment::Left);
 
     frame.render_widget(help, help_area);
+}
+
+fn render_bookmarks_overlay(frame: &mut Frame, app: &App, theme: Theme) {
+    let area = frame.area();
+
+    let bm_width = 50;
+    let bm_height = 14;
+    let bm_area = Rect {
+        x: area.width.saturating_sub(bm_width) / 2,
+        y: area.height.saturating_sub(bm_height) / 2,
+        width: bm_width.min(area.width),
+        height: bm_height.min(area.height),
+    };
+
+    let overlay = Block::default().style(Style::default().bg(Color::Black));
+    frame.render_widget(overlay, area);
+
+    let mut lines = vec![
+        Line::from(Span::styled("📌 BOOKMARKS", Style::default().add_modifier(Modifier::BOLD).fg(theme.accent()))),
+        Line::from(""),
+    ];
+
+    if app.bookmarks.is_empty() {
+        lines.push(Line::from(Span::styled("  No bookmarks set", Style::default().fg(theme.dim()))));
+        lines.push(Line::from(""));
+        lines.push(Line::from("  Press 'm' to bookmark current directory"));
+    } else {
+        for i in 1..=MAX_BOOKMARKS {
+            if let Some(bookmark) = app.bookmarks.get(&i) {
+                lines.push(Line::from(vec![
+                    Span::styled(format!("  {} ", i), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                    Span::styled(&bookmark.name, Style::default().fg(theme.fg())),
+                ]));
+            }
+        }
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled("  Press 1-9 to jump | B to close", Style::default().fg(theme.dim()))));
+
+    let bookmarks = Paragraph::new(lines)
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Yellow))
+            .title("Bookmarks"))
+        .style(Style::default().bg(Color::Black).fg(Color::White))
+        .alignment(Alignment::Left);
+
+    frame.render_widget(bookmarks, bm_area);
 }
 
 #[cfg(test)]
@@ -879,7 +1139,6 @@ mod tests {
         assert!(filter.matches(&PathBuf::from("/foo/bar.rs")));
         assert!(!filter.matches(&PathBuf::from("/foo/bar.txt")));
 
-        // Directories always match
         let temp = tempfile::tempdir().unwrap();
         assert!(filter.matches(&temp.path().to_path_buf()));
     }
@@ -912,5 +1171,53 @@ mod tests {
         assert_eq!(entries.len(), 5);
         assert!(is_large);
         assert_eq!(total, 10);
+    }
+
+    #[test]
+    fn test_bookmarks() {
+        let config = Config::default();
+        let mut app = App::new(config);
+
+        assert!(app.bookmarks.is_empty());
+        app.add_bookmark();
+        assert_eq!(app.bookmarks.len(), 1);
+        assert!(app.bookmarks.contains_key(&1));
+
+        app.add_bookmark();
+        assert_eq!(app.bookmarks.len(), 2);
+        assert!(app.bookmarks.contains_key(&2));
+
+        app.delete_bookmark(1);
+        assert_eq!(app.bookmarks.len(), 1);
+        assert!(!app.bookmarks.contains_key(&1));
+    }
+
+    #[test]
+    fn test_virtual_scroll() {
+        let config = Config::default();
+        let mut app = App::new(config);
+        app.all_entries = (0..100).map(|i| PathBuf::from(format!("/file{}", i))).collect();
+        app.filtered_entries = app.all_entries.clone();
+        app.viewport_height = 10;
+
+        // Initially at top
+        assert_eq!(app.scroll_offset, 0);
+
+        // Move to item 15
+        app.selected = 15;
+        app.adjust_scroll();
+        assert!(app.scroll_offset > 0);
+        assert!(app.selected >= app.scroll_offset);
+        assert!(app.selected < app.scroll_offset + app.viewport_height);
+    }
+
+    #[test]
+    fn test_preview_state() {
+        let config = Config::default();
+        let mut app = App::new(config);
+
+        // Initial state should be Loading after schedule
+        app.schedule_preview_update();
+        assert!(matches!(app.preview_state, PreviewState::Loading));
     }
 }
