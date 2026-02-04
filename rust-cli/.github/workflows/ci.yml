@@ -50,7 +50,7 @@ jobs:
         run: cargo build --release --all-features
 
       - name: Unit tests
-        run: cargo test --lib --all-features
+        run: cargo test --all-features
 
       - name: Integration tests
         run: cargo test --test '*' --all-features
