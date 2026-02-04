@@ -200,7 +200,7 @@ class ErrorManager {
     }
 
     _generateId() {
-        return `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        return `err_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     }
 
     _getSessionId() {
@@ -209,7 +209,7 @@ class ErrorManager {
         try {
             let sessionId = window.sessionStorage.getItem('md-reader-session-id');
             if (!sessionId) {
-                sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
                 window.sessionStorage.setItem('md-reader-session-id', sessionId);
             }
             return sessionId;
