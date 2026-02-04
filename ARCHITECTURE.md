@@ -15,10 +15,24 @@ graph TB
         PREVIEW[Real-time Preview]
         HELP[Help System]
         FILES[File Operations]
+        SETTINGS[Settings Manager]
+    end
+
+    subgraph "Plugin System"
+        LOADER[Plugin Loader]:::plugin
+        REGISTRY[Plugin Registry]:::plugin
+        BRIDGE[Plugin Bridge API]:::plugin
+        STORE[Local Storefront]:::plugin
+        SANDBOX[Plugin Sandbox]:::plugin
+    end
+
+    subgraph "Plugins"
+        DD[Diamond Drill<br/>File Analyzer]:::plugin
+        FUTURE_PLUG[Future Plugins]:::future
     end
 
     subgraph "Testing & Quality Infrastructure"
-        TESTS[Test Suite<br/>132 Tests]
+        TESTS[Test Suite<br/>228 Tests]
         PERF[Performance Testing]
         BENCH[Benchmark Analysis]
         COV[Coverage Reporting]
@@ -97,6 +111,18 @@ graph TB
     UI --> PREVIEW
     UI --> HELP
     UI --> FILES
+    UI --> SETTINGS
+
+    %% Plugin System Connections
+    SETTINGS --> LOADER
+    LOADER --> REGISTRY
+    LOADER --> BRIDGE
+    STORE --> LOADER
+    BRIDGE --> SANDBOX
+    SANDBOX --> DD
+    SANDBOX -.-> FUTURE_PLUG
+    DD --> BRIDGE
+    BRIDGE --> EDITOR
 
     EDITOR --> TESTS
     PREVIEW --> TESTS
@@ -159,12 +185,14 @@ graph TB
     classDef future fill:#f9f9f9,stroke:#999,stroke-dasharray: 5 5,color:#666
     classDef current fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef critical fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef plugin fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 
-    class UI,EDITOR,PREVIEW,HELP,FILES current
+    class UI,EDITOR,PREVIEW,HELP,FILES,SETTINGS current
     class TESTS,PERF,BENCH,COV,LINT critical
     class WEBPACK,BABEL,DEV,PROD current
     class MONITOR,REGRESSION,METRICS,BASELINE critical
     class GHA,AUTO_TEST,DEPLOY,QUALITY current
+    class LOADER,REGISTRY,BRIDGE,STORE,SANDBOX,DD plugin
 ```
 
 ## 📊 System Components Detail
@@ -177,6 +205,23 @@ graph TB
 - **Live Preview** - Instant markdown rendering using Marked.js
 - **Help System** - Interactive markdown reference and examples
 - **File Operations** - Drag & drop, upload, save with error handling
+- **Settings Manager** - Theme, auto-save, edit mode toggle
+
+#### Plugin System (v4.1.0+)
+- **Plugin Loader** - Lazy-loads plugins on demand (WASM, IFrame, Worker, Native)
+- **Plugin Registry** - Tracks installed and active plugins with manifests
+- **Plugin Bridge** - IPC communication between core and plugins
+- **Local Storefront** - UI for browsing, installing, and configuring plugins
+- **Plugin Sandbox** - Security isolation with permission model
+
+#### Installed Plugins
+- **Diamond Drill** - Security-focused file analyzer with TUI/GUI modes (`rust-cli/`)
+  - File analysis and reporting
+  - Read-only enforcement
+  - Virtual scrolling for large directories
+  - Bookmark system for quick navigation
+
+> **📖 See [`PLUGIN-ARCHITECTURE.md`](./PLUGIN-ARCHITECTURE.md) for detailed plugin system design**
 
 #### Testing & Quality Infrastructure
 - **Test Suite** - 132 comprehensive tests across 9 categories
@@ -204,39 +249,52 @@ graph TB
 
 ### Future Roadmap Implementation
 
-#### Phase 1: Advanced Features (v3.2.0)
+#### Phase 1: Plugin System Foundation (v4.1.0) - In Progress
+- **Edit Mode Toggle** - Settings to disable editing (read-only viewer mode)
+- **Plugin Loader** - Lazy-load plugins on activation
+- **Plugin Registry** - Manifest parsing and plugin tracking
+- **Plugin Menu** - UI for plugin access
+- **Diamond Drill Integration** - First plugin demonstrating architecture
+
+#### Phase 2: Plugin Storefront (v4.2.0)
+- **Local Storefront UI** - Browse and manage installed plugins
+- **Plugin Configuration** - Per-plugin settings panel
+- **WASM Support** - WebAssembly plugins for browser-only operation
+- **Plugin Panel Slots** - Sidebar and panel integration
+
+#### Phase 3: Advanced Features (v4.3.0)
 - **Syntax Highlighting** - Code block highlighting with Prism.js
 - **Export Functionality** - HTML/PDF generation with custom styling
 - **Theme System** - Customizable UI themes and color schemes
 - **Advanced Search** - Full-text search with regex support
 - **Live Statistics** - Real-time word/character/reading time tracking
 
-#### Phase 2: Collaboration Platform (v3.5.0)
+#### Phase 4: Collaboration Platform (v4.5.0)
 - **Real-time Collaboration** - Multi-user editing with conflict resolution
 - **Document Sharing** - Secure document sharing with permissions
 - **Collaborative Comments** - Inline comments and discussions
 - **Version Control** - Git-like versioning for documents
 
-#### Phase 3: Cloud Infrastructure (v4.0.0)
+#### Phase 5: Cloud Infrastructure (v5.0.0)
 - **Cloud Sync Service** - Cross-device document synchronization
 - **Authentication System** - Secure user authentication and authorization
 - **Document Database** - Scalable document storage and retrieval
 - **API Gateway** - RESTful API for third-party integrations
 - **Content Delivery Network** - Global content distribution
 
-#### Phase 4: AI & Analytics (v4.2.0)
+#### Phase 6: AI & Analytics (v5.2.0)
 - **AI Writing Assistant** - Smart writing suggestions and improvements
 - **Writing Analytics** - Detailed writing pattern analysis
 - **Productivity Insights** - Personal productivity metrics and trends
 - **Smart Suggestions** - Context-aware content recommendations
 
-#### Phase 5: Multi-Platform (v4.5.0)
+#### Phase 7: Multi-Platform (v5.5.0)
 - **Mobile Applications** - Native iOS and Android apps
 - **Desktop Application** - Electron-based cross-platform desktop app
 - **Progressive Web App** - Offline-capable web application
 - **Browser Extensions** - Integration with popular browsers
 
-#### Phase 6: Enterprise Features (v5.0.0)
+#### Phase 8: Enterprise Features (v6.0.0)
 - **Single Sign-On** - Enterprise authentication integration
 - **Admin Dashboard** - Centralized administration interface
 - **Team Management** - Organization and team collaboration tools
