@@ -1,6 +1,7 @@
 //! Diamond Drill - Secure File Analyzer
 //!
 //! A blazing-fast, security-first file analyzer with read-only enforcement.
+//! Can run standalone (CLI/TUI/GUI) or as a plugin for MD Reader Pro.
 
 mod auth;
 mod config;
@@ -13,6 +14,8 @@ mod tui;
 
 #[cfg(feature = "gui")]
 mod gui;
+
+mod ipc;
 
 use clap::Parser;
 use tracing::info;
@@ -50,6 +53,10 @@ struct Cli {
     #[arg(long)]
     gui: bool,
 
+    /// Run in plugin mode (IPC via stdin/stdout)
+    #[arg(long)]
+    plugin_mode: bool,
+
     /// Config file path
     #[arg(short, long, default_value = "diamond.toml")]
     config: String,
@@ -61,10 +68,16 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    // Plugin mode skips auth guard (host handles auth)
+    if cli.plugin_mode {
+        init_logging(0); // Quiet mode for IPC
+        return ipc::run_plugin_server().await;
+    }
+
     // CRITICAL: Auth guard MUST be first - panics in prod if auth disabled
     let _auth_guard = AuthGuard::init()?;
-
-    let cli = Cli::parse();
 
     // Initialize logging
     init_logging(cli.verbose);

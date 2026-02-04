@@ -1,0 +1,79 @@
+{
+    "id": "diamond-drill",
+    "name": "Diamond Drill",
+    "version": "0.1.0",
+    "type": "native",
+    "description": "Security-focused file analyzer with read-only enforcement",
+    "author": "Diamond Forgemaster",
+    "homepage": "https://github.com/KHET-1/md-reader-pro",
+    "license": "MIT",
+
+    "capabilities": [
+        "file:analyze",
+        "file:report",
+        "file:browse",
+        "ui:panel",
+        "ui:sidebar"
+    ],
+
+    "entry": {
+        "native": {
+            "binary": "diamond",
+            "args": ["--plugin-mode"]
+        },
+        "wasm": "diamond_drill.wasm"
+    },
+
+    "permissions": [
+        "read:files",
+        "write:reports"
+    ],
+
+    "settings": {
+        "defaultView": {
+            "type": "select",
+            "label": "Default View",
+            "options": ["tui", "panel", "sidebar"],
+            "default": "panel"
+        },
+        "readOnlyEnforce": {
+            "type": "boolean",
+            "label": "Enforce Read-Only",
+            "default": true
+        },
+        "reportFormat": {
+            "type": "select",
+            "label": "Report Format",
+            "options": ["json", "markdown", "html"],
+            "default": "json"
+        },
+        "autoAnalyze": {
+            "type": "boolean",
+            "label": "Auto-analyze on file open",
+            "default": false
+        }
+    },
+
+    "actions": [
+        {
+            "id": "analyze",
+            "label": "Analyze File",
+            "shortcut": "Ctrl+Shift+D",
+            "icon": "search"
+        },
+        {
+            "id": "report",
+            "label": "Generate Report",
+            "shortcut": "Ctrl+Shift+R",
+            "icon": "file-text"
+        },
+        {
+            "id": "browse",
+            "label": "Browse Files",
+            "shortcut": "Ctrl+Shift+B",
+            "icon": "folder"
+        }
+    ],
+
+    "minHostVersion": "4.1.0"
+}
