@@ -15,7 +15,7 @@ mod tui;
 mod gui;
 
 use clap::Parser;
-use tracing::{info, error};
+use tracing::info;
 use anyhow::Result;
 
 use crate::auth::AuthGuard;

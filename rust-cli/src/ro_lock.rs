@@ -12,7 +12,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use thiserror::Error;
-use tracing::{info, warn, error, debug};
+use tracing::{info, warn, debug};
 
 /// Read-only lock errors
 #[derive(Error, Debug)]
@@ -169,10 +169,11 @@ impl ReadOnlyLock {
     async fn setup_ro_mount(&mut self) -> Result<(), RoLockError> {
         info!("Setting up read-only mount...");
 
-        // Create temporary mount point
-        let mount_point = tempfile::tempdir()
-            .map_err(|e| RoLockError::MountError(e.to_string()))?
-            .into_path();
+        // Create temporary mount point using std temp dir
+        let temp_name = format!("diamond_ro_{}", std::process::id());
+        let mount_point = std::env::temp_dir().join(temp_name);
+        fs::create_dir_all(&mount_point)
+            .map_err(|e| RoLockError::MountError(e.to_string()))?;
 
         let source = self.loop_device.as_ref()
             .map(|s| s.as_str())

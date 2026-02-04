@@ -7,12 +7,12 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::fs;
 use anyhow::Result;
-use tracing::debug;
+// Logging available if needed
 
 /// Select a source path interactively
 pub async fn select_source() -> Result<String> {
     println!("\n📂 Source Selection");
-    println!("─".repeat(40));
+    println!("{}", "─".repeat(40));
 
     let path = prompt_path("Enter source path (file or directory)")?;
 
@@ -28,7 +28,7 @@ pub async fn select_source() -> Result<String> {
 /// Select a destination path interactively
 pub async fn select_dest() -> Result<String> {
     println!("\n📂 Destination Selection");
-    println!("─".repeat(40));
+    println!("{}", "─".repeat(40));
 
     let path = prompt_path("Enter destination path")?;
 
