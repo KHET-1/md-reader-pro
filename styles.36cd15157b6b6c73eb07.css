@@ -234,6 +234,293 @@ body {
   .toolbar-btn { padding: 4px 8px; font-size: 10px; }
 }
 
+/* ============================================
+   App Background Layer with Etched Logo
+   ============================================ */
+.app-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(255, 215, 0, 0.02) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0a0a 0%, #000000 50%, #050505 100%);
+  overflow: hidden;
+}
+
+.app-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.01) 2px,
+      rgba(255, 255, 255, 0.01) 4px
+    );
+  pointer-events: none;
+}
+
+/* Etched Logo Watermark */
+.app-background-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  opacity: 0.03;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.app-background-logo-icon {
+  font-size: 120px;
+  background: linear-gradient(135deg, #333 0%, #1a1a1a 50%, #333 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5)) drop-shadow(-1px -1px 0 rgba(255,255,255,0.1));
+  line-height: 1;
+}
+
+.app-background-logo-text {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #333 0%, #1a1a1a 50%, #333 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.5)) drop-shadow(-1px -1px 0 rgba(255,255,255,0.05));
+  margin-top: 20px;
+}
+
+.app-background-logo-tagline {
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #222;
+  margin-top: 8px;
+  filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.3));
+}
+
+/* Click catcher for void areas */
+.app-click-catcher {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  cursor: default;
+}
+
+/* ============================================
+   Error Toast - Non-intrusive Error Display
+   ============================================ */
+.error-toast-container {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+  pointer-events: none;
+}
+
+.error-toast {
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-left: 3px solid #ef4444;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transform: translateX(120%);
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+}
+
+.error-toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.error-toast.hiding {
+  transform: translateX(120%);
+  opacity: 0;
+}
+
+.error-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.error-toast-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.error-toast-close {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.error-toast-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.error-toast-message {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.error-toast-meta {
+  font-size: 10px;
+  color: #666;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-toast-component {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Auto-dismiss progress bar */
+.error-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ef4444, #f87171);
+  border-radius: 0 0 0 8px;
+  animation: error-toast-countdown 5s linear forwards;
+}
+
+@keyframes error-toast-countdown {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* ============================================
+   Empty State / New Document Prompt
+   ============================================ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  animation: fadeIn 0.5s ease;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+  filter: grayscale(50%);
+}
+
+.empty-state-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.empty-state-description {
+  font-size: 14px;
+  max-width: 400px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.empty-state-btn {
+  padding: 10px 20px;
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-state-btn:hover {
+  background: rgba(42, 42, 42, 1);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.empty-state-btn.primary {
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-glow));
+  border-color: var(--accent-color);
+  color: #000;
+}
+
+.empty-state-btn.primary:hover {
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Animations and keyframes extracted */
 .status-indicator { animation: float 3s ease-in-out infinite; }
 @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-2px); } }
@@ -312,4 +599,4 @@ body {
 .upload-hint { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
 
 
-/*# sourceMappingURL=styles.cb4d9eba486a5a69fb8d.css.map*/
+/*# sourceMappingURL=styles.36cd15157b6b6c73eb07.css.map*/
