@@ -1,0 +1,76 @@
+[package]
+name = "diamond-drill"
+version = "0.1.0"
+edition = "2024"
+authors = ["Diamond Forgemaster <forge@diamond.dev>"]
+description = "Blazing-fast secure file analyzer with read-only enforcement"
+license = "MIT"
+repository = "https://github.com/KHET-1/md-reader-pro"
+keywords = ["security", "readonly", "analyzer", "tui", "gui"]
+categories = ["command-line-utilities", "filesystem"]
+
+[features]
+default = ["tui"]
+tui = ["ratatui", "crossterm"]
+gui = ["iced"]
+full = ["tui", "gui"]
+
+[[bin]]
+name = "diamond"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.44", features = ["full", "fs", "process"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# TUI
+ratatui = { version = "0.29", optional = true }
+crossterm = { version = "0.28", optional = true }
+
+# GUI
+iced = { version = "0.13", optional = true, features = ["tokio"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Security
+ring = "0.17"
+base64 = "0.22"
+
+# Filesystem
+walkdir = "2.5"
+notify = "7.0"
+
+# System
+nix = { version = "0.29", features = ["mount", "fs", "ioctl"] }
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3.14"
+assert_cmd = "2.0"
+predicates = "3.1"
+tokio-test = "0.4"
+pretty_assertions = "1.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
