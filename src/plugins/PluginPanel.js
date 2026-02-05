@@ -310,6 +310,275 @@ class PluginPanel {
     }
 
     /**
+     * Show deep analysis results (directory analysis)
+     * @param {Object} results - Deep analysis results from analyzer module
+     */
+    showDeepAnalysisResults(results) {
+        const { source_path, total_files, total_size, file_types, files } = results;
+
+        let html = `
+            <div style="margin-bottom: 16px;">
+                <div style="color: var(--accent, #FFD700); font-weight: bold; margin-bottom: 8px;">
+                    📂 Deep Analysis Report
+                </div>
+                <div style="font-size: 12px; color: #888;">
+                    Source: ${source_path || 'Unknown'}
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; color: #4caf50;">${total_files || 0}</div>
+                    <div style="font-size: 11px; color: #888;">Files</div>
+                </div>
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; color: #2196f3;">${this._formatSize(total_size || 0)}</div>
+                    <div style="font-size: 11px; color: #888;">Total Size</div>
+                </div>
+            </div>
+        `;
+
+        // File types breakdown
+        if (file_types && Object.keys(file_types).length > 0) {
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <div style="font-size: 12px; color: #fff; margin-bottom: 8px;">File Types</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            `;
+
+            for (const [ext, count] of Object.entries(file_types)) {
+                html += `
+                    <span style="
+                        background: rgba(255, 215, 0, 0.1);
+                        border: 1px solid #333;
+                        padding: 4px 8px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        color: #e0e0e0;
+                    ">.${ext} (${count})</span>
+                `;
+            }
+
+            html += '</div></div>';
+        }
+
+        // Export buttons
+        html += `
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button id="export-json-btn" style="
+                    flex: 1; padding: 8px; border: 1px solid #FFD700;
+                    background: transparent; color: #FFD700;
+                    border-radius: 6px; cursor: pointer; font-size: 12px;
+                ">📄 Export JSON</button>
+                <button id="export-md-btn" style="
+                    flex: 1; padding: 8px; border: 1px solid #4caf50;
+                    background: transparent; color: #4caf50;
+                    border-radius: 6px; cursor: pointer; font-size: 12px;
+                ">📝 Export MD</button>
+            </div>
+        `;
+
+        this.setContent(html);
+        this._lastAnalysisResults = results;
+
+        // Wire up export buttons
+        document.getElementById('export-json-btn')?.addEventListener('click', () => {
+            this.exportReport('json');
+        });
+        document.getElementById('export-md-btn')?.addEventListener('click', () => {
+            this.exportReport('markdown');
+        });
+    }
+
+    /**
+     * Show plugin settings UI
+     * @param {Object} currentSettings
+     * @param {Function} onSave
+     */
+    showSettings(currentSettings, onSave) {
+        const settings = currentSettings || {};
+
+        const html = `
+            <div style="padding: 8px 0;">
+                <h4 style="color: var(--accent, #FFD700); margin: 0 0 16px;">⚙️ Plugin Settings</h4>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: #e0e0e0; cursor: pointer;">
+                        <input type="checkbox" id="setting-auto-analyze" ${settings.autoAnalyze ? 'checked' : ''}>
+                        <span>Auto-analyze on file load</span>
+                    </label>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #888; font-size: 12px; margin-bottom: 4px;">
+                        Report Format
+                    </label>
+                    <select id="setting-report-format" style="
+                        width: 100%; padding: 8px; background: #252540;
+                        border: 1px solid #333; border-radius: 6px; color: #e0e0e0;
+                    ">
+                        <option value="json" ${settings.reportFormat === 'json' ? 'selected' : ''}>JSON</option>
+                        <option value="markdown" ${settings.reportFormat === 'markdown' ? 'selected' : ''}>Markdown</option>
+                        <option value="html" ${settings.reportFormat === 'html' ? 'selected' : ''}>HTML</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #888; font-size: 12px; margin-bottom: 4px;">
+                        Theme Sync
+                    </label>
+                    <select id="setting-theme" style="
+                        width: 100%; padding: 8px; background: #252540;
+                        border: 1px solid #333; border-radius: 6px; color: #e0e0e0;
+                    ">
+                        <option value="auto" ${settings.theme === 'auto' ? 'selected' : ''}>Auto (follow editor)</option>
+                        <option value="dark" ${settings.theme === 'dark' ? 'selected' : ''}>Dark</option>
+                        <option value="light" ${settings.theme === 'light' ? 'selected' : ''}>Light</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 24px;">
+                    <button id="settings-save-btn" style="
+                        flex: 1; padding: 10px; border: none;
+                        background: #FFD700; color: #000;
+                        border-radius: 6px; cursor: pointer; font-weight: bold;
+                    ">Save Settings</button>
+                    <button id="settings-cancel-btn" style="
+                        padding: 10px 16px; border: 1px solid #666;
+                        background: transparent; color: #888;
+                        border-radius: 6px; cursor: pointer;
+                    ">Cancel</button>
+                </div>
+            </div>
+        `;
+
+        this.setContent(html);
+
+        // Wire up save button
+        document.getElementById('settings-save-btn')?.addEventListener('click', () => {
+            const newSettings = {
+                autoAnalyze: document.getElementById('setting-auto-analyze')?.checked || false,
+                reportFormat: document.getElementById('setting-report-format')?.value || 'json',
+                theme: document.getElementById('setting-theme')?.value || 'auto'
+            };
+            if (onSave) onSave(newSettings);
+        });
+
+        document.getElementById('settings-cancel-btn')?.addEventListener('click', () => {
+            this.close();
+        });
+    }
+
+    /**
+     * Export analysis report
+     * @param {string} format - json, markdown, or html
+     */
+    exportReport(format = 'json') {
+        const results = this._lastAnalysisResults;
+        if (!results) {
+            console.warn('No analysis results to export');
+            return;
+        }
+
+        let content, filename, mimeType;
+
+        if (format === 'json') {
+            content = JSON.stringify(results, null, 2);
+            filename = 'analysis-report.json';
+            mimeType = 'application/json';
+        } else if (format === 'markdown') {
+            content = this._generateMarkdownReport(results);
+            filename = 'analysis-report.md';
+            mimeType = 'text/markdown';
+        } else {
+            content = this._generateHtmlReport(results);
+            filename = 'analysis-report.html';
+            mimeType = 'text/html';
+        }
+
+        // Download file
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Generate Markdown report
+     * @private
+     */
+    _generateMarkdownReport(results) {
+        let md = `# Analysis Report\n\n`;
+        md += `**Generated:** ${new Date().toISOString()}\n\n`;
+
+        if (results.source_path) {
+            md += `**Source:** ${results.source_path}\n\n`;
+        }
+
+        md += `## Summary\n\n`;
+        md += `| Metric | Value |\n`;
+        md += `|--------|-------|\n`;
+        md += `| Files Analyzed | ${results.total_files || results.files_analyzed || 0} |\n`;
+        md += `| Total Size | ${this._formatSize(results.total_size || 0)} |\n\n`;
+
+        if (results.file_types) {
+            md += `## File Types\n\n`;
+            for (const [ext, count] of Object.entries(results.file_types)) {
+                md += `- **.${ext}**: ${count} files\n`;
+            }
+            md += `\n`;
+        }
+
+        if (results.analyses || results.files) {
+            const files = results.analyses || results.files || [];
+            md += `## Files\n\n`;
+            for (const file of files) {
+                md += `### ${file.path}\n\n`;
+                md += `- Type: ${file.file_type}\n`;
+                md += `- Size: ${this._formatSize(file.size)}\n`;
+                if (file.line_count) md += `- Lines: ${file.line_count}\n`;
+                if (file.word_count) md += `- Words: ${file.word_count}\n`;
+                md += `\n`;
+            }
+        }
+
+        return md;
+    }
+
+    /**
+     * Generate HTML report
+     * @private
+     */
+    _generateHtmlReport(results) {
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <title>Analysis Report</title>
+    <style>
+        body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #e0e0e0; }
+        h1 { color: #FFD700; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 10px; border: 1px solid #333; text-align: left; }
+        th { background: #252540; }
+    </style>
+</head>
+<body>
+    <h1>📊 Analysis Report</h1>
+    <p>Generated: ${new Date().toISOString()}</p>
+    <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Files Analyzed</td><td>${results.total_files || results.files_analyzed || 0}</td></tr>
+        <tr><td>Total Size</td><td>${this._formatSize(results.total_size || 0)}</td></tr>
+    </table>
+    <pre>${JSON.stringify(results, null, 2)}</pre>
+</body>
+</html>`;
+    }
+
+    /**
      * Destroy the panel
      */
     destroy() {

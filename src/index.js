@@ -79,7 +79,7 @@ class MarkdownEditor {
             triggerFileInput: () => this.fileInput?.click(),
             notify: this.notify,
             showNotification: (m, t, d) => this.ui?.showNotification(m, t, d),
-            onContentLoaded: () => this.updatePreview(),
+            onContentLoaded: () => this._onContentLoaded(),
             focusEditor: () => this.editor?.focus()
         });
 
@@ -233,6 +233,19 @@ class MarkdownEditor {
         this._handleAutoSave();
     }
 
+    /**
+     * Called when file content is loaded
+     * @private
+     */
+    _onContentLoaded() {
+        this.updatePreview();
+
+        // Auto-analyze if enabled
+        if (this.settings.get('autoAnalyze') && this.pluginLoader.isLoaded('diamond-drill')) {
+            setTimeout(() => this.analyzeCurrentDocument(), 500);
+        }
+    }
+
     // === UI Setup (delegated) ===
     setupTabs() { this.ui.setupTabs(); }
     setMode(m) { this.ui.setMode(m); }
@@ -334,7 +347,9 @@ class MarkdownEditor {
         const menuItems = [
             { icon: '💎', label: 'Diamond Drill', action: () => this.toggleDiamondDrill() },
             { icon: '📊', label: 'Analyze Document', action: () => this.analyzeCurrentDocument() },
+            { icon: '📂', label: 'Deep Analysis', action: () => this.runDeepAnalysis() },
             { divider: true },
+            { icon: '⚙️', label: 'Plugin Settings', action: () => this.openPluginSettings() },
             { icon: '🏪', label: 'Plugin Storefront', action: () => this.openStorefront() },
             { icon: '📋', label: 'Toggle Panel', action: () => this.pluginPanel.toggle() }
         ];
@@ -923,6 +938,70 @@ class MarkdownEditor {
         } catch (err) {
             console.warn('Failed to sync theme to plugin:', err);
         }
+    }
+
+    /**
+     * Open plugin settings
+     * @param {string} pluginId
+     */
+    openPluginSettings(pluginId = 'diamond-drill') {
+        const currentSettings = this.settings.get(pluginId) || {};
+
+        this.pluginPanel.open();
+        this.pluginPanel.setTitle('Settings', '⚙️');
+        this.pluginPanel.showSettings(currentSettings, (newSettings) => {
+            // Save to settings
+            for (const [key, value] of Object.entries(newSettings)) {
+                this.settings.set(`${pluginId}.${key}`, value);
+            }
+
+            // Update global auto-analyze setting
+            if (newSettings.autoAnalyze !== undefined) {
+                this.settings.set('autoAnalyze', newSettings.autoAnalyze);
+            }
+
+            // Sync theme if changed
+            if (newSettings.theme && newSettings.theme !== 'auto') {
+                this.syncThemeToPlugin(pluginId);
+            }
+
+            this.notify.success('Settings saved!');
+            this.pluginPanel.close();
+        });
+    }
+
+    /**
+     * Run deep analysis (directory mode)
+     * @param {string} path - Path to analyze
+     */
+    async runDeepAnalysis(path = '.') {
+        const pluginId = 'diamond-drill';
+
+        this.pluginPanel.open();
+        this.pluginPanel.setTitle('Deep Analysis', '📂');
+        this.pluginPanel.showLoading('Running deep analysis...');
+
+        try {
+            if (!this.pluginLoader.isLoaded(pluginId)) {
+                await this.loadPlugin(pluginId);
+            }
+
+            const result = await this.sendToPlugin(pluginId, 'deep_analyze', { path });
+
+            this.pluginPanel.showDeepAnalysisResults(result);
+            this.notify.success('Deep analysis complete!');
+        } catch (err) {
+            this.pluginPanel.showError(`Deep analysis failed: ${err.message}`);
+            console.error('Deep analysis failed:', err);
+        }
+    }
+
+    /**
+     * Export current analysis report
+     * @param {string} format - json, markdown, html
+     */
+    exportAnalysisReport(format = 'json') {
+        this.pluginPanel.exportReport(format);
     }
 
     /**

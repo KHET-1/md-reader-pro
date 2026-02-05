@@ -26,10 +26,22 @@ const DEFAULT_SETTINGS = {
     // Preview settings
     syncScroll: true,         // Sync editor and preview scroll
 
+    // Analysis settings
+    autoAnalyze: false,       // Auto-analyze on file load
+
     // Plugin settings
     plugins: {
         enabled: [],          // List of enabled plugin IDs
         autoLoad: true        // Auto-load plugins on startup
+    },
+
+    // Diamond Drill settings
+    'diamond-drill': {
+        reportFormat: 'json',     // json, markdown, html
+        showLineNumbers: true,
+        showWordCount: true,
+        showCharCount: true,
+        theme: 'auto'             // auto, dark, light
     }
 };
 
