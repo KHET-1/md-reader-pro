@@ -19,6 +19,10 @@ class PluginPanel {
         // Callbacks
         this.onClose = options.onClose || (() => {});
         this.onPluginAction = options.onPluginAction || (() => {});
+
+        // v13b/c: Analysis history for batch export
+        this._analysisHistory = [];
+        this._maxHistory = 50;
     }
 
     /**
@@ -250,6 +254,10 @@ class PluginPanel {
      * @param {Object} results
      */
     showAnalysisResults(results) {
+        // v13c: Add to history
+        this._addToHistory(results);
+        this._lastAnalysisResults = results;
+
         const { files_analyzed, analyses } = results;
 
         let html = `
@@ -576,6 +584,262 @@ class PluginPanel {
     <pre>${JSON.stringify(results, null, 2)}</pre>
 </body>
 </html>`;
+    }
+
+    // === v13b: Batch Export ===
+
+    /**
+     * Export multiple analyses as a batch
+     * @param {string} format - json, markdown, html
+     * @param {number[]} indices - Indices of history items to export (all if empty)
+     */
+    batchExport(format = 'json', indices = []) {
+        const historyToExport = indices.length > 0
+            ? indices.map(i => this._analysisHistory[i]).filter(Boolean)
+            : this._analysisHistory;
+
+        if (historyToExport.length === 0) {
+            console.warn('No analysis history to export');
+            return;
+        }
+
+        const batchReport = {
+            batch_export: true,
+            exported_at: new Date().toISOString(),
+            total_analyses: historyToExport.length,
+            analyses: historyToExport
+        };
+
+        let content, filename, mimeType;
+
+        if (format === 'json') {
+            content = JSON.stringify(batchReport, null, 2);
+            filename = `batch-analysis-${Date.now()}.json`;
+            mimeType = 'application/json';
+        } else if (format === 'markdown') {
+            content = this._generateBatchMarkdown(batchReport);
+            filename = `batch-analysis-${Date.now()}.md`;
+            mimeType = 'text/markdown';
+        } else {
+            content = this._generateBatchHtml(batchReport);
+            filename = `batch-analysis-${Date.now()}.html`;
+            mimeType = 'text/html';
+        }
+
+        // Download file
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Generate batch markdown report
+     * @private
+     */
+    _generateBatchMarkdown(batchReport) {
+        let md = `# Batch Analysis Report\n\n`;
+        md += `**Exported:** ${batchReport.exported_at}\n`;
+        md += `**Total Analyses:** ${batchReport.total_analyses}\n\n`;
+        md += `---\n\n`;
+
+        batchReport.analyses.forEach((entry, idx) => {
+            md += `## Analysis #${idx + 1}\n\n`;
+            md += `**Time:** ${entry.timestamp}\n\n`;
+            md += this._generateMarkdownReport(entry.results);
+            md += `\n---\n\n`;
+        });
+
+        return md;
+    }
+
+    /**
+     * Generate batch HTML report
+     * @private
+     */
+    _generateBatchHtml(batchReport) {
+        const analysesHtml = batchReport.analyses.map((entry, idx) => `
+            <section style="margin: 20px 0; padding: 20px; border: 1px solid #333; border-radius: 8px;">
+                <h2>Analysis #${idx + 1}</h2>
+                <p style="color: #888;">Time: ${entry.timestamp}</p>
+                <pre style="background: #16162a; padding: 15px; border-radius: 4px; overflow-x: auto;">
+${JSON.stringify(entry.results, null, 2)}</pre>
+            </section>
+        `).join('');
+
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <title>Batch Analysis Report</title>
+    <style>
+        body { font-family: system-ui; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #e0e0e0; }
+        h1 { color: #FFD700; }
+        h2 { color: #4CAF50; }
+    </style>
+</head>
+<body>
+    <h1>📊 Batch Analysis Report</h1>
+    <p>Exported: ${batchReport.exported_at}</p>
+    <p>Total Analyses: ${batchReport.total_analyses}</p>
+    ${analysesHtml}
+</body>
+</html>`;
+    }
+
+    // === v13c: Analysis History ===
+
+    /**
+     * Add analysis to history
+     * @private
+     */
+    _addToHistory(results) {
+        const entry = {
+            id: Date.now(),
+            timestamp: new Date().toISOString(),
+            results: results
+        };
+
+        this._analysisHistory.unshift(entry);
+
+        // Trim to max history
+        if (this._analysisHistory.length > this._maxHistory) {
+            this._analysisHistory = this._analysisHistory.slice(0, this._maxHistory);
+        }
+    }
+
+    /**
+     * Get analysis history
+     * @returns {Array}
+     */
+    getHistory() {
+        return [...this._analysisHistory];
+    }
+
+    /**
+     * Clear analysis history
+     */
+    clearHistory() {
+        this._analysisHistory = [];
+    }
+
+    /**
+     * Show analysis history UI
+     */
+    showHistory() {
+        if (this._analysisHistory.length === 0) {
+            this.setContent(`
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+                    <p>No analysis history yet</p>
+                    <p style="font-size: 12px;">Analyze some files to build your history</p>
+                </div>
+            `);
+            return;
+        }
+
+        let html = `
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--accent, #FFD700); font-weight: bold;">
+                        📜 Analysis History
+                    </span>
+                    <span style="color: #888; font-size: 12px;">
+                        ${this._analysisHistory.length} entries
+                    </span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button id="batch-export-json" style="
+                    flex: 1; padding: 8px; border: 1px solid #FFD700;
+                    background: transparent; color: #FFD700;
+                    border-radius: 6px; cursor: pointer; font-size: 11px;
+                ">Export All JSON</button>
+                <button id="batch-export-md" style="
+                    flex: 1; padding: 8px; border: 1px solid #4caf50;
+                    background: transparent; color: #4caf50;
+                    border-radius: 6px; cursor: pointer; font-size: 11px;
+                ">Export All MD</button>
+                <button id="clear-history" style="
+                    padding: 8px 12px; border: 1px solid #ff6b6b;
+                    background: transparent; color: #ff6b6b;
+                    border-radius: 6px; cursor: pointer; font-size: 11px;
+                ">Clear</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+        `;
+
+        this._analysisHistory.forEach((entry, idx) => {
+            const results = entry.results;
+            const fileCount = results.files_analyzed || results.total_files || 1;
+            const time = new Date(entry.timestamp).toLocaleString();
+
+            html += `
+                <div class="history-item" data-idx="${idx}" style="
+                    background: rgba(255, 215, 0, 0.05);
+                    border: 1px solid #333;
+                    border-radius: 8px;
+                    padding: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <div style="font-weight: bold; color: #fff; font-size: 13px;">
+                                ${fileCount} file(s) analyzed
+                            </div>
+                            <div style="font-size: 11px; color: #888; margin-top: 2px;">
+                                ${time}
+                            </div>
+                        </div>
+                        <button class="history-view-btn" data-idx="${idx}" style="
+                            padding: 4px 8px; border: 1px solid #666;
+                            background: transparent; color: #888;
+                            border-radius: 4px; cursor: pointer; font-size: 10px;
+                        ">View</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+
+        this.setContent(html);
+
+        // Wire up batch export buttons
+        document.getElementById('batch-export-json')?.addEventListener('click', () => {
+            this.batchExport('json');
+        });
+        document.getElementById('batch-export-md')?.addEventListener('click', () => {
+            this.batchExport('markdown');
+        });
+        document.getElementById('clear-history')?.addEventListener('click', () => {
+            if (confirm('Clear all analysis history?')) {
+                this.clearHistory();
+                this.showHistory();
+            }
+        });
+
+        // Wire up view buttons
+        document.querySelectorAll('.history-view-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.idx, 10);
+                const entry = this._analysisHistory[idx];
+                if (entry) {
+                    this._lastAnalysisResults = entry.results;
+                    if (entry.results.source_path || entry.results.total_files) {
+                        this.showDeepAnalysisResults(entry.results);
+                    } else {
+                        this.showAnalysisResults(entry.results);
+                    }
+                }
+            });
+        });
     }
 
     /**

@@ -1,13 +1,21 @@
 /**
- * MD Reader Pro v4.1.0 - Cathedral Edition
+ * MD Reader Pro v4.2.0 - Cathedral Edition
  * Enterprise-grade markdown editor with live preview, auto-save, and undo/redo.
  * Now with Plugin System support!
+ *
+ * v13 Features:
+ * - File Drag Analysis: analyze dropped files before loading
+ * - Batch Export: export multiple analyses
+ * - Analysis History: track previous analyses
+ * - Plugin Hot Reload: reload plugins without restart
+ * - Custom Themes: user-defined color presets
+ * - EditorUI Brain System: modular subsystem architecture
  *
  * Architecture: Thin orchestrator composing EditorState, EditorIO, and EditorUI modules.
  * All cross-module communication flows through callbacks for testability.
  *
  * @module MarkdownEditor
- * @version 4.1.0
+ * @version 4.2.0
  */
 import AnimationManager from './utils/AnimationManager.js';
 import NotificationManager from './utils/NotificationManager.js';
@@ -30,7 +38,7 @@ import './styles/utilities.css';
  */
 class MarkdownEditor {
     constructor() {
-        this.version = '4.1.0';
+        this.version = '4.2.0';
         this.anim = new AnimationManager();
         this.notify = new NotificationManager();
 
@@ -97,7 +105,9 @@ class MarkdownEditor {
             onCopyToEditor: (t) => this.copyToEditor(t),
             onSetMode: (m) => this.setMode(m),
             onUpdatePreview: () => this.updatePreview(),
-            getEditorValue: () => this.editor?.value || ''
+            getEditorValue: () => this.editor?.value || '',
+            // v13a: Pre-analyze dropped files before loading
+            onFileDragAnalysis: (f) => this._showFileDragAnalysis(f)
         });
 
         // Legacy compatibility - expose state
@@ -349,6 +359,11 @@ class MarkdownEditor {
             { icon: '📊', label: 'Analyze Document', action: () => this.analyzeCurrentDocument() },
             { icon: '📂', label: 'Deep Analysis', action: () => this.runDeepAnalysis() },
             { divider: true },
+            { icon: '📜', label: 'Analysis History', action: () => this.showAnalysisHistory() },
+            { icon: '📦', label: 'Batch Export', action: () => this.batchExportAnalyses() },
+            { icon: '🔄', label: 'Hot Reload Plugin', action: () => this.hotReloadPlugin('diamond-drill') },
+            { divider: true },
+            { icon: '🎨', label: 'Theme Customizer', action: () => this.openThemeCustomizer() },
             { icon: '⚙️', label: 'Plugin Settings', action: () => this.openPluginSettings() },
             { icon: '🏪', label: 'Plugin Storefront', action: () => this.openStorefront() },
             { icon: '📋', label: 'Toggle Panel', action: () => this.pluginPanel.toggle() }
@@ -784,6 +799,45 @@ class MarkdownEditor {
     }
 
     /**
+     * v13d: Hot reload a plugin (unload + reload without restart)
+     * @param {string} pluginId - Plugin identifier
+     */
+    async hotReloadPlugin(pluginId) {
+        if (!this.pluginLoader.isLoaded(pluginId)) {
+            this.notify.error('Plugin not loaded');
+            return;
+        }
+
+        this.pluginPanel.open();
+        this.pluginPanel.setTitle('Hot Reload', '🔄');
+        this.pluginPanel.showLoading('Reloading plugin...');
+
+        try {
+            await this.pluginLoader.hotReload(pluginId);
+
+            // Sync theme after reload
+            await this.syncThemeToPlugin(pluginId);
+
+            this.pluginPanel.setContent(`
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                    <p style="color: #4CAF50; margin-bottom: 8px; font-weight: bold;">
+                        Plugin Reloaded Successfully
+                    </p>
+                    <p style="color: #888; font-size: 12px;">
+                        ${pluginId} has been hot-reloaded
+                    </p>
+                </div>
+            `);
+
+            this.notify.success('Plugin reloaded!');
+        } catch (err) {
+            this.pluginPanel.showError(`Hot reload failed: ${err.message}`);
+            console.error('Hot reload failed:', err);
+        }
+    }
+
+    /**
      * Plugin error callback
      * @private
      */
@@ -910,6 +964,198 @@ class MarkdownEditor {
     }
 
     /**
+     * v13a: Show file drag analysis modal before loading
+     * @param {File} file - The dropped file
+     * @returns {Promise<boolean>} - true to proceed with load, false to cancel
+     */
+    async _showFileDragAnalysis(file) {
+        return new Promise((resolve) => {
+            // Analyze the file
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                const content = e.target.result;
+                const lines = content.split('\n').length;
+                const words = content.split(/\s+/).filter(w => w).length;
+                const chars = content.length;
+                const ext = file.name.split('.').pop()?.toLowerCase() || 'txt';
+
+                // Create modal
+                const modal = document.createElement('div');
+                modal.id = 'file-drag-analysis-modal';
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.85);
+                    z-index: 10001;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    backdrop-filter: blur(4px);
+                `;
+
+                const content_html = `
+                    <div style="
+                        background: #1a1a2e;
+                        border: 2px solid #FFD700;
+                        border-radius: 16px;
+                        width: 90%;
+                        max-width: 500px;
+                        overflow: hidden;
+                        box-shadow: 0 20px 60px rgba(255, 215, 0, 0.2);
+                    ">
+                        <div style="
+                            padding: 20px 24px;
+                            border-bottom: 1px solid #333;
+                            background: #16162a;
+                        ">
+                            <h2 style="margin: 0; color: #FFD700; font-size: 18px; display: flex; align-items: center; gap: 10px;">
+                                <span>📋</span> File Analysis Preview
+                            </h2>
+                        </div>
+
+                        <div style="padding: 24px;">
+                            <div style="
+                                background: #252540;
+                                border-radius: 12px;
+                                padding: 20px;
+                                margin-bottom: 20px;
+                            ">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                                    <span style="font-size: 32px;">📄</span>
+                                    <div>
+                                        <h3 style="margin: 0; color: #fff; font-size: 16px;">${this._escapeHtml(file.name)}</h3>
+                                        <span style="color: #888; font-size: 12px;">${ext.toUpperCase()} file</span>
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                                    <div style="
+                                        background: #1a1a2e;
+                                        padding: 12px;
+                                        border-radius: 8px;
+                                        text-align: center;
+                                    ">
+                                        <div style="font-size: 20px; color: #FFD700; font-weight: bold;">${this._formatNumber(file.size)}</div>
+                                        <div style="font-size: 11px; color: #888;">Bytes</div>
+                                    </div>
+                                    <div style="
+                                        background: #1a1a2e;
+                                        padding: 12px;
+                                        border-radius: 8px;
+                                        text-align: center;
+                                    ">
+                                        <div style="font-size: 20px; color: #4CAF50; font-weight: bold;">${this._formatNumber(lines)}</div>
+                                        <div style="font-size: 11px; color: #888;">Lines</div>
+                                    </div>
+                                    <div style="
+                                        background: #1a1a2e;
+                                        padding: 12px;
+                                        border-radius: 8px;
+                                        text-align: center;
+                                    ">
+                                        <div style="font-size: 20px; color: #2196F3; font-weight: bold;">${this._formatNumber(words)}</div>
+                                        <div style="font-size: 11px; color: #888;">Words</div>
+                                    </div>
+                                    <div style="
+                                        background: #1a1a2e;
+                                        padding: 12px;
+                                        border-radius: 8px;
+                                        text-align: center;
+                                    ">
+                                        <div style="font-size: 20px; color: #9C27B0; font-weight: bold;">${this._formatNumber(chars)}</div>
+                                        <div style="font-size: 11px; color: #888;">Characters</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                                <button id="fda-cancel-btn" style="
+                                    padding: 10px 20px;
+                                    border: 1px solid #666;
+                                    background: transparent;
+                                    color: #888;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                ">Cancel</button>
+                                <button id="fda-load-btn" style="
+                                    padding: 10px 20px;
+                                    border: 1px solid #FFD700;
+                                    background: #FFD70020;
+                                    color: #FFD700;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    font-size: 14px;
+                                    font-weight: bold;
+                                ">Load File</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                modal.innerHTML = content_html;
+                document.body.appendChild(modal);
+
+                // Handle buttons
+                const cancelBtn = document.getElementById('fda-cancel-btn');
+                const loadBtn = document.getElementById('fda-load-btn');
+
+                const cleanup = () => {
+                    modal.remove();
+                };
+
+                cancelBtn?.addEventListener('click', () => {
+                    cleanup();
+                    resolve(false);
+                });
+
+                loadBtn?.addEventListener('click', () => {
+                    cleanup();
+                    resolve(true);
+                });
+
+                // Close on backdrop click
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        cleanup();
+                        resolve(false);
+                    }
+                });
+
+                // Close on Escape
+                const escHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        cleanup();
+                        document.removeEventListener('keydown', escHandler);
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+            };
+
+            reader.onerror = () => {
+                // On error, proceed with load
+                resolve(true);
+            };
+
+            reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Format number with commas
+     * @private
+     */
+    _formatNumber(num) {
+        if (num === undefined || num === null) return '0';
+        return num.toLocaleString();
+    }
+
+    /**
      * Open the plugin storefront
      */
     openStorefront() {
@@ -1002,6 +1248,317 @@ class MarkdownEditor {
      */
     exportAnalysisReport(format = 'json') {
         this.pluginPanel.exportReport(format);
+    }
+
+    /**
+     * v13c: Show analysis history
+     */
+    showAnalysisHistory() {
+        this.pluginPanel.open();
+        this.pluginPanel.setTitle('Analysis History', '📜');
+        this.pluginPanel.showHistory();
+    }
+
+    /**
+     * v13e: Open theme customizer
+     */
+    openThemeCustomizer() {
+        this.pluginPanel.open();
+        this.pluginPanel.setTitle('Theme Customizer', '🎨');
+
+        const presets = this.ui.getThemePresets();
+        const currentSettings = this.settings.get('customTheme') || {};
+        const currentPreset = currentSettings.preset || 'default';
+
+        let html = `
+            <div style="padding: 8px 0;">
+                <h4 style="color: var(--accent, #FFD700); margin: 0 0 16px;">🎨 Theme Presets</h4>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;">
+        `;
+
+        Object.entries(presets).forEach(([key, preset]) => {
+            const isSelected = key === currentPreset;
+            html += `
+                <button class="theme-preset-btn" data-preset="${key}" style="
+                    padding: 16px 12px;
+                    border: 2px solid ${isSelected ? preset.accent : '#333'};
+                    background: linear-gradient(135deg, ${preset.bgPrimary}, ${preset.bgSecondary});
+                    border-radius: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    transition: all 0.2s;
+                ">
+                    <div style="
+                        width: 24px;
+                        height: 24px;
+                        background: ${preset.accent};
+                        border-radius: 50%;
+                        margin: 0 auto 8px;
+                        box-shadow: 0 0 10px ${preset.accent}66;
+                    "></div>
+                    <div style="color: ${preset.textPrimary}; font-size: 12px; font-weight: bold;">
+                        ${preset.name}
+                    </div>
+                </button>
+            `;
+        });
+
+        html += `
+                </div>
+
+                <h4 style="color: var(--accent, #FFD700); margin: 0 0 12px;">🔧 Custom Colors</h4>
+
+                <div style="display: grid; gap: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label style="flex: 1; color: #888; font-size: 12px;">Accent Color</label>
+                        <input type="color" id="custom-accent" value="${currentSettings.colors?.accent || '#FFD700'}" style="
+                            width: 40px; height: 30px; border: none; border-radius: 4px; cursor: pointer;
+                        ">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label style="flex: 1; color: #888; font-size: 12px;">Background Primary</label>
+                        <input type="color" id="custom-bgPrimary" value="${currentSettings.colors?.bgPrimary || '#0a0a0a'}" style="
+                            width: 40px; height: 30px; border: none; border-radius: 4px; cursor: pointer;
+                        ">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label style="flex: 1; color: #888; font-size: 12px;">Text Primary</label>
+                        <input type="color" id="custom-textPrimary" value="${currentSettings.colors?.textPrimary || '#ffffff'}" style="
+                            width: 40px; height: 30px; border: none; border-radius: 4px; cursor: pointer;
+                        ">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button id="apply-custom-theme" style="
+                        flex: 1; padding: 10px; border: none;
+                        background: var(--accent, #FFD700); color: #000;
+                        border-radius: 6px; cursor: pointer; font-weight: bold;
+                    ">Apply Custom</button>
+                    <button id="reset-theme" style="
+                        padding: 10px 16px; border: 1px solid #666;
+                        background: transparent; color: #888;
+                        border-radius: 6px; cursor: pointer;
+                    ">Reset</button>
+                </div>
+            </div>
+        `;
+
+        this.pluginPanel.setContent(html);
+
+        // Wire up preset buttons
+        document.querySelectorAll('.theme-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const presetName = btn.dataset.preset;
+                this.ui.applyThemePreset(presetName);
+                this.settings.set('customTheme.preset', presetName);
+                this.settings.set('customTheme.enabled', true);
+                this.notify.success(`${presets[presetName].name} theme applied!`);
+                this.openThemeCustomizer(); // Refresh to show selection
+            });
+        });
+
+        // Wire up custom color application
+        document.getElementById('apply-custom-theme')?.addEventListener('click', () => {
+            const customColors = {
+                accent: document.getElementById('custom-accent')?.value || '#FFD700',
+                bgPrimary: document.getElementById('custom-bgPrimary')?.value || '#0a0a0a',
+                bgSecondary: this._darkenColor(document.getElementById('custom-bgPrimary')?.value || '#0a0a0a', 10),
+                bgTertiary: this._darkenColor(document.getElementById('custom-bgPrimary')?.value || '#0a0a0a', 20),
+                textPrimary: document.getElementById('custom-textPrimary')?.value || '#ffffff',
+                textSecondary: this._lightenColor(document.getElementById('custom-textPrimary')?.value || '#ffffff', 20),
+                textMuted: '#888888',
+                border: '#333333'
+            };
+
+            this.ui.applyCustomTheme(customColors);
+            this.settings.set('customTheme.colors', customColors);
+            this.settings.set('customTheme.preset', 'custom');
+            this.settings.set('customTheme.enabled', true);
+            this.notify.success('Custom theme applied!');
+        });
+
+        // Wire up reset button
+        document.getElementById('reset-theme')?.addEventListener('click', () => {
+            this.ui.resetToDefaultTheme();
+            this.settings.set('customTheme.preset', 'default');
+            this.settings.set('customTheme.enabled', false);
+            this.notify.success('Theme reset to default');
+            this.openThemeCustomizer(); // Refresh
+        });
+    }
+
+    /**
+     * Darken a hex color
+     * @private
+     */
+    _darkenColor(hex, percent) {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = Math.max((num >> 16) - amt, 0);
+        const G = Math.max((num >> 8 & 0x00FF) - amt, 0);
+        const B = Math.max((num & 0x0000FF) - amt, 0);
+        return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+    }
+
+    /**
+     * Lighten a hex color
+     * @private
+     */
+    _lightenColor(hex, percent) {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = Math.min((num >> 16) + amt, 255);
+        const G = Math.min((num >> 8 & 0x00FF) + amt, 255);
+        const B = Math.min((num & 0x0000FF) + amt, 255);
+        return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+    }
+
+    /**
+     * v13b: Batch export analyses
+     */
+    batchExportAnalyses() {
+        const history = this.pluginPanel.getHistory();
+        if (history.length === 0) {
+            this.notify.error('No analysis history to export');
+            return;
+        }
+
+        // Show format selection modal
+        this._showBatchExportModal();
+    }
+
+    /**
+     * Show batch export format selection modal
+     * @private
+     */
+    _showBatchExportModal() {
+        const modal = document.createElement('div');
+        modal.id = 'batch-export-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        `;
+
+        const historyCount = this.pluginPanel.getHistory().length;
+
+        modal.innerHTML = `
+            <div style="
+                background: #1a1a2e;
+                border: 2px solid #FFD700;
+                border-radius: 16px;
+                width: 90%;
+                max-width: 400px;
+                padding: 24px;
+                box-shadow: 0 20px 60px rgba(255, 215, 0, 0.2);
+            ">
+                <h2 style="margin: 0 0 16px; color: #FFD700; font-size: 18px;">
+                    📦 Batch Export
+                </h2>
+                <p style="color: #888; margin-bottom: 20px; font-size: 14px;">
+                    Export ${historyCount} analysis${historyCount !== 1 ? 'es' : ''} from history
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button id="batch-json" style="
+                        padding: 14px 20px;
+                        border: 1px solid #FFD700;
+                        background: #FFD70010;
+                        color: #FFD700;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        text-align: left;
+                    ">
+                        <strong>📄 JSON</strong>
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">Machine-readable format</div>
+                    </button>
+                    <button id="batch-md" style="
+                        padding: 14px 20px;
+                        border: 1px solid #4CAF50;
+                        background: #4CAF5010;
+                        color: #4CAF50;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        text-align: left;
+                    ">
+                        <strong>📝 Markdown</strong>
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">Documentation-friendly</div>
+                    </button>
+                    <button id="batch-html" style="
+                        padding: 14px 20px;
+                        border: 1px solid #2196F3;
+                        background: #2196F310;
+                        color: #2196F3;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        text-align: left;
+                    ">
+                        <strong>🌐 HTML</strong>
+                        <div style="font-size: 11px; color: #888; margin-top: 4px;">Shareable report</div>
+                    </button>
+                </div>
+
+                <button id="batch-cancel" style="
+                    margin-top: 16px;
+                    width: 100%;
+                    padding: 10px;
+                    border: 1px solid #666;
+                    background: transparent;
+                    color: #888;
+                    border-radius: 8px;
+                    cursor: pointer;
+                ">Cancel</button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const cleanup = () => modal.remove();
+
+        document.getElementById('batch-json')?.addEventListener('click', () => {
+            this.pluginPanel.batchExport('json');
+            cleanup();
+            this.notify.success('Batch export complete!');
+        });
+
+        document.getElementById('batch-md')?.addEventListener('click', () => {
+            this.pluginPanel.batchExport('markdown');
+            cleanup();
+            this.notify.success('Batch export complete!');
+        });
+
+        document.getElementById('batch-html')?.addEventListener('click', () => {
+            this.pluginPanel.batchExport('html');
+            cleanup();
+            this.notify.success('Batch export complete!');
+        });
+
+        document.getElementById('batch-cancel')?.addEventListener('click', cleanup);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) cleanup();
+        });
+
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                cleanup();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
     }
 
     /**

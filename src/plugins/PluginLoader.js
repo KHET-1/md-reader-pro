@@ -212,6 +212,42 @@ class PluginLoader {
     }
 
     /**
+     * v13d: Hot reload a plugin (unload + reload without restart)
+     * @param {string} pluginId - Plugin identifier
+     * @returns {Promise<PluginInstance>}
+     */
+    async hotReload(pluginId) {
+        console.log(`🔄 Hot reloading plugin: ${pluginId}`);
+
+        // Store current manifest in case we need to refresh it
+        const oldManifest = this.manifests.get(pluginId);
+
+        // Unload if currently loaded
+        if (this.instances.has(pluginId)) {
+            await this.unload(pluginId);
+        }
+
+        // Re-discover plugins to pick up any manifest changes
+        await this.discover();
+
+        // Check if plugin still exists after rediscovery
+        if (!this.manifests.has(pluginId)) {
+            // Restore old manifest if rediscovery failed to find it
+            if (oldManifest) {
+                this.manifests.set(pluginId, oldManifest);
+            } else {
+                throw new Error(`Plugin not found after rediscovery: ${pluginId}`);
+            }
+        }
+
+        // Reload the plugin
+        const instance = await this.load(pluginId);
+
+        console.log(`✅ Hot reload complete: ${pluginId}`);
+        return instance;
+    }
+
+    /**
      * Get a loaded plugin instance
      * @param {string} pluginId - Plugin identifier
      * @returns {PluginInstance|undefined}

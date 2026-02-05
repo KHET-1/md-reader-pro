@@ -9,11 +9,45 @@ import 'prismjs/components/prism-json.js';
 import 'prismjs/components/prism-markdown.js';
 
 /**
- * EditorUI - DOM setup, rendering, and UI interactions
- * Handles all browser/DOM operations
+ * EditorUI - Full Vision Brain System
+ *
+ * v13f Architecture:
+ * - Brain Core: Central state and coordination
+ * - Subsystems: Modular UI components with lifecycle hooks
+ * - Event Bus: Inter-subsystem communication
+ * - State Machine: UI mode transitions
+ *
+ * Subsystems:
+ * - Rendering: Preview, syntax highlighting
+ * - Input: Keyboard shortcuts, tabs, modes
+ * - Toolbar: Copy, export, theme, undo/redo
+ * - Feedback: Notifications, save indicator, stats
+ * - Layout: Help bar, panels, responsive
+ *
+ * @module EditorUI
+ * @version 2.0.0 (Brain System)
  */
 class EditorUI {
     constructor(options = {}) {
+        // === Brain Core: Central State ===
+        this._brainState = {
+            initialized: false,
+            mode: 'split',
+            theme: 'dark',
+            focused: false,
+            dirty: false,
+            subsystems: new Map()
+        };
+
+        // === Event Bus ===
+        this._eventBus = {
+            listeners: new Map(),
+            emit: (event, data) => this._emitEvent(event, data),
+            on: (event, handler) => this._addEventListener(event, handler),
+            off: (event, handler) => this._removeEventListener(event, handler)
+        };
+
+        // === DOM Elements ===
         this.editor = null;
         this.preview = null;
         this.fileInput = null;
@@ -26,10 +60,10 @@ class EditorUI {
         this.cachedElements = {};
         this.debounceTimer = null;
         this._copyButtonsInitialized = false;
-        
+
         // Track event listeners for cleanup
         this.eventListeners = [];
-        
+
         // Cache for DOM queries
         this.cachedTabs = null;
         this.cachedPanes = null;
@@ -52,6 +86,9 @@ class EditorUI {
         this.onSetMode = options.onSetMode || ((m) => this.setMode(m));
         this.onUpdatePreview = options.onUpdatePreview || (() => this.updatePreview());
         this.getEditorValue = options.getEditorValue || (() => '');
+
+        // v13a: File drag analysis callback - returns Promise<boolean> to proceed
+        this.onFileDragAnalysis = options.onFileDragAnalysis || null;
 
         // Theme
         this.currentTheme = localStorage.getItem('md-reader-theme') || 'dark';
@@ -79,6 +116,138 @@ class EditorUI {
             HELP_BAR_WIDTH: 400,
             DEBOUNCE_DELAY: 300
         };
+    }
+
+    // === Brain Core: Event Bus Implementation ===
+
+    /**
+     * Emit an event to all listeners
+     * @param {string} event - Event name
+     * @param {any} data - Event data
+     */
+    _emitEvent(event, data) {
+        const listeners = this._eventBus.listeners.get(event);
+        if (listeners) {
+            listeners.forEach(handler => {
+                try {
+                    handler(data);
+                } catch (err) {
+                    console.error(`Event handler error for ${event}:`, err);
+                }
+            });
+        }
+    }
+
+    /**
+     * Add event listener
+     * @param {string} event - Event name
+     * @param {Function} handler - Event handler
+     */
+    _addEventListener(event, handler) {
+        if (!this._eventBus.listeners.has(event)) {
+            this._eventBus.listeners.set(event, new Set());
+        }
+        this._eventBus.listeners.get(event).add(handler);
+    }
+
+    /**
+     * Remove event listener
+     * @param {string} event - Event name
+     * @param {Function} handler - Event handler
+     */
+    _removeEventListener(event, handler) {
+        const listeners = this._eventBus.listeners.get(event);
+        if (listeners) {
+            listeners.delete(handler);
+        }
+    }
+
+    // === Brain Core: Subsystem Management ===
+
+    /**
+     * Register a subsystem
+     * @param {string} name - Subsystem name
+     * @param {Object} config - Subsystem configuration
+     */
+    registerSubsystem(name, config = {}) {
+        this._brainState.subsystems.set(name, {
+            name,
+            enabled: config.enabled !== false,
+            initialized: false,
+            init: config.init || (() => {}),
+            destroy: config.destroy || (() => {}),
+            onModeChange: config.onModeChange || (() => {}),
+            onThemeChange: config.onThemeChange || (() => {})
+        });
+    }
+
+    /**
+     * Initialize all registered subsystems
+     */
+    initializeSubsystems() {
+        for (const [name, subsystem] of this._brainState.subsystems) {
+            if (subsystem.enabled && !subsystem.initialized) {
+                try {
+                    subsystem.init.call(this);
+                    subsystem.initialized = true;
+                    console.log(`✓ Subsystem initialized: ${name}`);
+                } catch (err) {
+                    console.error(`✗ Subsystem init failed: ${name}`, err);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get brain state
+     * @returns {Object}
+     */
+    getBrainState() {
+        return { ...this._brainState };
+    }
+
+    /**
+     * Update brain state
+     * @param {string} key - State key
+     * @param {any} value - New value
+     */
+    setBrainState(key, value) {
+        const oldValue = this._brainState[key];
+        this._brainState[key] = value;
+
+        // Emit state change event
+        this._emitEvent('stateChange', { key, oldValue, newValue: value });
+
+        // Notify subsystems of specific changes
+        if (key === 'mode') {
+            this._notifySubsystemsOfModeChange(value);
+        } else if (key === 'theme') {
+            this._notifySubsystemsOfThemeChange(value);
+        }
+    }
+
+    /**
+     * Notify subsystems of mode change
+     * @private
+     */
+    _notifySubsystemsOfModeChange(mode) {
+        for (const [, subsystem] of this._brainState.subsystems) {
+            if (subsystem.enabled && subsystem.initialized) {
+                subsystem.onModeChange.call(this, mode);
+            }
+        }
+    }
+
+    /**
+     * Notify subsystems of theme change
+     * @private
+     */
+    _notifySubsystemsOfThemeChange(theme) {
+        for (const [, subsystem] of this._brainState.subsystems) {
+            if (subsystem.enabled && subsystem.initialized) {
+                subsystem.onThemeChange.call(this, theme);
+            }
+        }
     }
 
     // === Environment Helpers ===
@@ -120,6 +289,9 @@ class EditorUI {
     // === Core Setup ===
 
     setupDOM() {
+        // Register core subsystems (v13f Brain System)
+        this._registerCoreSubsystems();
+
         this.editor = document.getElementById('markdown-editor');
         this.preview = document.getElementById('markdown-preview');
         this.fileInput = document.getElementById('file-input');
@@ -146,7 +318,62 @@ class EditorUI {
             }
         });
 
+        // Mark brain as initialized
+        this.setBrainState('initialized', true);
+        this._emitEvent('brain:ready', { timestamp: Date.now() });
+
         return true;
+    }
+
+    /**
+     * Register core subsystems (v13f Brain System)
+     * @private
+     */
+    _registerCoreSubsystems() {
+        // Rendering subsystem
+        this.registerSubsystem('rendering', {
+            init: () => {
+                this._emitEvent('subsystem:rendering:init', {});
+            },
+            onModeChange: (mode) => {
+                this._emitEvent('subsystem:rendering:modeChange', { mode });
+            }
+        });
+
+        // Input subsystem
+        this.registerSubsystem('input', {
+            init: () => {
+                this._emitEvent('subsystem:input:init', {});
+            }
+        });
+
+        // Toolbar subsystem
+        this.registerSubsystem('toolbar', {
+            init: () => {
+                this._emitEvent('subsystem:toolbar:init', {});
+            },
+            onThemeChange: (theme) => {
+                this._emitEvent('subsystem:toolbar:themeChange', { theme });
+            }
+        });
+
+        // Feedback subsystem
+        this.registerSubsystem('feedback', {
+            init: () => {
+                this._emitEvent('subsystem:feedback:init', {});
+            }
+        });
+
+        // Layout subsystem
+        this.registerSubsystem('layout', {
+            init: () => {
+                this._emitEvent('subsystem:layout:init', {});
+            },
+            onModeChange: (mode) => {
+                // Layout adjusts for different modes
+                this._emitEvent('subsystem:layout:modeChange', { mode });
+            }
+        });
     }
 
     setupEventListeners() {
@@ -181,6 +408,30 @@ class EditorUI {
         const uploadArea = this.uploadArea;
         const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
 
+        // v13a: Handle file drop with optional pre-analysis
+        const handleDrop = async (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length === 0) return;
+
+            const file = files[0];
+
+            // If drag analysis is enabled, run it first
+            if (this.onFileDragAnalysis) {
+                try {
+                    const shouldProceed = await this.onFileDragAnalysis(file);
+                    if (!shouldProceed) {
+                        // User cancelled after seeing analysis
+                        return;
+                    }
+                } catch (err) {
+                    console.error('File drag analysis error:', err);
+                    // Proceed with load on error
+                }
+            }
+
+            this.onFileSelect(file);
+        };
+
         const handlers = {
             'dragenter': [preventDefaults, () => uploadArea.classList.add('drag-over')],
             'dragover': [preventDefaults, () => uploadArea.classList.add('drag-over')],
@@ -188,10 +439,7 @@ class EditorUI {
             'drop': [
                 preventDefaults,
                 () => uploadArea.classList.remove('drag-over'),
-                (e) => {
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) this.onFileSelect(files[0]);
-                }
+                handleDrop
             ]
         };
 
@@ -304,6 +552,10 @@ class EditorUI {
     }
 
     setMode(mode) {
+        // Update brain state (v13f)
+        this.setBrainState('mode', mode);
+        this._emitEvent('mode:change', { mode, previousMode: this._brainState.mode });
+
         // Use cached tabs instead of repeated querySelectorAll
         const tabs = this.cachedTabs || document.querySelectorAll('.tab');
         tabs.forEach(t => {
@@ -316,7 +568,7 @@ class EditorUI {
         });
 
         const container = this.getCachedElement('editor-container');
-        
+
         // Cache panes for better performance
         if (!this.cachedPanes) {
             this.cachedPanes = {
@@ -324,13 +576,13 @@ class EditorUI {
                 preview: container?.querySelector('.preview-pane')
             };
         }
-        
+
         const editorPane = this.cachedPanes.editor;
         const previewPane = this.cachedPanes.preview;
 
         const show = (el) => { if (el) el.style.display = 'flex'; };
         const hide = (el) => { if (el) el.style.display = 'none'; };
-        
+
         // Track display state to avoid getComputedStyle
         const isHidden = (el) => !el || el.style.display === 'none';
 
@@ -647,6 +899,10 @@ class EditorUI {
         this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('md-reader-theme', this.currentTheme);
 
+        // Update brain state (v13f)
+        this.setBrainState('theme', this.currentTheme);
+        this._emitEvent('theme:change', { theme: this.currentTheme });
+
         const themeBtn = document.getElementById('theme-toggle');
         if (themeBtn) {
             themeBtn.innerHTML = this.currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
@@ -658,6 +914,129 @@ class EditorUI {
             'success',
             1500
         );
+    }
+
+    // === v13e: Custom Theme System ===
+
+    /**
+     * Theme presets
+     */
+    static THEME_PRESETS = {
+        default: {
+            name: 'Default Gold',
+            accent: '#FFD700',
+            bgPrimary: '#0a0a0a',
+            bgSecondary: '#111111',
+            bgTertiary: '#1a1a1a',
+            textPrimary: '#ffffff',
+            textSecondary: '#cccccc',
+            textMuted: '#888888',
+            border: '#333333'
+        },
+        ocean: {
+            name: 'Ocean Blue',
+            accent: '#00d4ff',
+            bgPrimary: '#0a1929',
+            bgSecondary: '#0d2137',
+            bgTertiary: '#132f4c',
+            textPrimary: '#ffffff',
+            textSecondary: '#b2bac2',
+            textMuted: '#6b7a8a',
+            border: '#1e4976'
+        },
+        forest: {
+            name: 'Forest Green',
+            accent: '#4CAF50',
+            bgPrimary: '#0a1a0a',
+            bgSecondary: '#0f2a0f',
+            bgTertiary: '#1a3a1a',
+            textPrimary: '#e8f5e9',
+            textSecondary: '#a5d6a7',
+            textMuted: '#66bb6a',
+            border: '#2e5a2e'
+        },
+        sunset: {
+            name: 'Sunset Orange',
+            accent: '#FF6B35',
+            bgPrimary: '#1a0f0a',
+            bgSecondary: '#2a1a14',
+            bgTertiary: '#3a2820',
+            textPrimary: '#fff3e0',
+            textSecondary: '#ffcc80',
+            textMuted: '#ff9800',
+            border: '#5d4037'
+        },
+        midnight: {
+            name: 'Midnight Purple',
+            accent: '#9C27B0',
+            bgPrimary: '#0d0a14',
+            bgSecondary: '#150f20',
+            bgTertiary: '#1f1830',
+            textPrimary: '#f3e5f5',
+            textSecondary: '#ce93d8',
+            textMuted: '#ab47bc',
+            border: '#4a148c'
+        },
+        rose: {
+            name: 'Rose Pink',
+            accent: '#E91E63',
+            bgPrimary: '#140a0d',
+            bgSecondary: '#200f14',
+            bgTertiary: '#30181f',
+            textPrimary: '#fce4ec',
+            textSecondary: '#f48fb1',
+            textMuted: '#ec407a',
+            border: '#880e4f'
+        }
+    };
+
+    /**
+     * Apply a custom theme
+     * @param {Object} themeColors - Theme color object
+     */
+    applyCustomTheme(themeColors) {
+        const root = document.documentElement;
+
+        root.style.setProperty('--accent-color', themeColors.accent);
+        root.style.setProperty('--accent-glow', `${themeColors.accent}66`);
+        root.style.setProperty('--bg-primary', themeColors.bgPrimary);
+        root.style.setProperty('--bg-secondary', themeColors.bgSecondary);
+        root.style.setProperty('--bg-tertiary', themeColors.bgTertiary);
+        root.style.setProperty('--text-primary', themeColors.textPrimary);
+        root.style.setProperty('--text-secondary', themeColors.textSecondary);
+        root.style.setProperty('--text-muted', themeColors.textMuted);
+        root.style.setProperty('--border-color', themeColors.border);
+
+        // Also update body background
+        document.body.style.background = `linear-gradient(135deg, ${themeColors.bgPrimary} 0%, ${themeColors.bgSecondary} 100%)`;
+    }
+
+    /**
+     * Apply a theme preset by name
+     * @param {string} presetName - Preset name from THEME_PRESETS
+     */
+    applyThemePreset(presetName) {
+        const preset = EditorUI.THEME_PRESETS[presetName];
+        if (preset) {
+            this.applyCustomTheme(preset);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Reset to default theme
+     */
+    resetToDefaultTheme() {
+        this.applyThemePreset('default');
+    }
+
+    /**
+     * Get all available theme presets
+     * @returns {Object}
+     */
+    getThemePresets() {
+        return EditorUI.THEME_PRESETS;
     }
 
     // === Keyboard Shortcuts Modal ===

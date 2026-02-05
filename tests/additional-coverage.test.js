@@ -230,7 +230,7 @@ describe('MarkdownEditor - Additional Coverage', () => {
 
   describe('Version Information', () => {
     test('should have version number', () => {
-      expect(editor.version).toBe('4.1.0');
+      expect(editor.version).toBe('4.2.0');
       expect(typeof editor.version).toBe('string');
     });
   });

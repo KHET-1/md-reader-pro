@@ -42,6 +42,22 @@ const DEFAULT_SETTINGS = {
         showWordCount: true,
         showCharCount: true,
         theme: 'auto'             // auto, dark, light
+    },
+
+    // v13e: Custom theme settings
+    customTheme: {
+        enabled: false,
+        preset: 'default',        // default, ocean, forest, sunset, midnight, custom
+        colors: {
+            accent: '#FFD700',
+            bgPrimary: '#0a0a0a',
+            bgSecondary: '#111111',
+            bgTertiary: '#1a1a1a',
+            textPrimary: '#ffffff',
+            textSecondary: '#cccccc',
+            textMuted: '#888888',
+            border: '#333333'
+        }
     }
 };
 
