@@ -22,32 +22,63 @@ Your role is to maintain code quality, extend functionality, and ensure the edit
 
 ---
 
+## ARCHITECTURE OVERVIEW
+
+The codebase uses a **modular composition pattern**. The main `MarkdownEditor` class is a thin orchestrator that delegates to specialized modules:
+
+```
+MarkdownEditor (orchestrator)
+    ├── EditorState   → Pure state management with callbacks
+    ├── EditorIO      → File I/O, persistence, export
+    ├── EditorUI      → DOM setup, rendering, interactions
+    └── Utilities
+        ├── AnimationManager      → RAF-based animations
+        ├── NotificationManager   → Toast notifications
+        └── ErrorManager          → Error capture & storage
+```
+
+**Communication Pattern**: All cross-module communication flows through dependency-injected callbacks. No direct DOM dependencies in state module. Environment checks (`isBrowser()`, `isTestEnvironment()`) guard browser-only code.
+
+---
+
 ## DIRECTORY MAP
 
 ```
 src/
-├── index.html          # Main template with CSP headers
-├── index.js            # MarkdownEditor class (~3500 lines)
-├── styles/             # Modular CSS (6 files)
-│   ├── variables.css   # CSS custom properties
-│   ├── base.css        # Typography, resets
-│   ├── layout.css      # Split-pane, responsive
-│   ├── components.css  # Buttons, tabs, forms
-│   ├── animations.css  # Keyframes, transitions
-│   └── utilities.css   # Helper classes
+├── index.html              # Main template with CSP headers
+├── index.js                # MarkdownEditor orchestrator (~580 lines)
+├── core/
+│   └── EditorState.js      # Pure state management (~116 lines)
+├── io/
+│   └── EditorIO.js         # File I/O operations (~318 lines)
+├── ui/
+│   └── EditorUI.js         # DOM & UI rendering (~791 lines)
+├── styles/                 # Modular CSS (6 files)
+│   ├── variables.css       # CSS custom properties
+│   ├── base.css            # Typography, resets
+│   ├── layout.css          # Split-pane, responsive
+│   ├── components.css      # Buttons, tabs, forms
+│   ├── animations.css      # Keyframes, transitions
+│   └── utilities.css       # Helper classes
 └── utils/
-    ├── AnimationManager.js    # RAF-based animations
-    └── NotificationManager.js # Toast system
+    ├── AnimationManager.js     # RAF-based animations (~196 lines)
+    ├── ErrorManager.js         # Error handling & storage (~307 lines)
+    └── NotificationManager.js  # Toast system (~404 lines)
 
 tests/
-├── setup.js            # Jest config, mocks
-├── test-utils.js       # Shared helpers
-├── *.test.js           # Jest unit tests (jsdom env)
-├── e2e/                # Playwright E2E tests
-└── __mocks__/          # Style mocks
+├── setup.js                # Jest config, mocks
+├── test-utils.js           # Shared helpers
+├── *.test.js               # Jest unit tests (23 files, jsdom env)
+├── e2e/                    # Playwright E2E tests (5 spec files)
+│   ├── comprehensive-e2e.spec.cjs
+│   ├── file-upload-verification.spec.cjs
+│   ├── performance-e2e.spec.cjs
+│   ├── production-coverage.spec.cjs
+│   └── production-coverage-simple.spec.cjs
+└── __mocks__/              # Style mocks
 
-scripts/                # Build, deploy, perf tools
-.github/workflows/      # CI/CD pipelines
+scripts/                    # Build, deploy, perf tools
+.github/workflows/          # CI/CD pipelines
 ```
 
 ---
@@ -55,14 +86,31 @@ scripts/                # Build, deploy, perf tools
 ## COMMANDS (MEMORIZE)
 
 ```bash
-npm test                    # Run Jest unit tests
-npm run lint                # ESLint with autofix
-npm run build               # Production webpack build
-npm run dev                 # Dev server (port 3000, HMR)
-npm run test:coverage       # Coverage report
-npm run test:e2e            # Playwright E2E tests
-npm run validate            # lint + test + build (pre-commit)
-npm run performance:monitor # Full perf suite
+# Development
+npm run dev                     # Dev server (port 3000, HMR)
+npm run build                   # Production webpack build
+npm run lint                    # ESLint with autofix
+
+# Testing
+npm test                        # Run Jest unit tests
+npm run test:watch              # Watch mode
+npm run test:coverage           # Coverage report
+npm run test:performance        # Performance tests only
+npm run test:benchmarks         # Benchmark tests only
+npm run test:all                # Unit + perf + benchmarks
+npm run test:e2e                # Playwright E2E tests
+npm run test:e2e:headed         # E2E with visible browser
+npm run test:e2e:ui             # Playwright UI mode
+
+# Validation
+npm run validate                # lint + test + build (pre-commit)
+npm run validate:full           # lint + test:all + build
+npm run validate:production     # Full validation + E2E
+
+# Performance
+npm run performance:monitor     # Full perf suite
+npm run performance:regression  # Check for regressions
+npm run performance:budget      # Check bundle budgets
 ```
 
 ---
@@ -77,13 +125,30 @@ npm run performance:monitor # Full perf suite
 | Syntax Highlighting | Prism.js | 1.30.0 |
 | Bundler | Webpack | 5.102.1 |
 | Unit Tests | Jest | 30.2.0 |
-| E2E Tests | Playwright | 1.56.1 |
+| E2E Tests | Playwright | 1.58.1 |
 
 ---
 
 ## CODING STANDARDS
 
-### Class Structure
+### Module Structure
+```javascript
+// Each module follows this pattern
+class EditorState {
+    constructor(options = {}) {
+        this.callbacks = options.callbacks || {};
+        // Initialize state
+    }
+
+    // Pure methods that don't touch DOM
+    updateState(newState) {
+        this.state = { ...this.state, ...newState };
+        this.callbacks.onStateChange?.(this.state);
+    }
+}
+```
+
+### Orchestrator Pattern
 ```javascript
 class MarkdownEditor {
     static get CONSTANTS() {
@@ -95,6 +160,14 @@ class MarkdownEditor {
             AUTO_SAVE_INTERVAL: 60000
         };
     }
+
+    constructor() {
+        // Compose modules with dependency injection
+        this.state = new EditorState({ callbacks: { ... } });
+        this.io = new EditorIO({ callbacks: { ... } });
+        this.ui = new EditorUI({ callbacks: { ... } });
+    }
+
     isBrowser() { return typeof window !== 'undefined'; }
     isTestEnvironment() { return typeof jest !== 'undefined'; }
 }
@@ -126,14 +199,20 @@ const cleanHtml = DOMPurify.sanitize(rawHtml, {
 this.preview.innerHTML = cleanHtml;
 ```
 
-### Error Pattern
+### Error Handling Pattern
 ```javascript
+// Use ErrorManager for persistent error tracking
+this.errorManager = new ErrorManager({
+    maxErrors: 100,
+    maxAgeDays: 7,
+    onError: (error) => this.notify.error(error.message)
+});
+
 try {
     await operation();
     this.notify.success('Done!');
 } catch (err) {
-    console.error('Op failed:', err);
-    this.notify.error('Failed: ' + err.message);
+    this.errorManager.capture(err, { context: 'operation' });
 }
 ```
 
@@ -149,16 +228,23 @@ for (let i = 0; i < 100; i++) {
 
 // Bad: eval or innerHTML with unsanitized content
 element.innerHTML = userContent; // XSS vulnerability
+
+// Bad: Direct module coupling
+this.ui.someMethod(); // From state module - use callbacks instead
 ```
 
 ---
 
 ## COVERAGE THRESHOLDS
 
-- **Branches**: 64%
-- **Functions**: 76%
-- **Lines**: 78%
-- **Statements**: 74%
+| Metric | Threshold |
+|--------|-----------|
+| **Branches** | 64% |
+| **Functions** | 75% |
+| **Lines** | 77% |
+| **Statements** | 74% |
+
+Current coverage is approximately 85% overall with 440+ tests.
 
 ---
 
@@ -181,31 +267,37 @@ element.innerHTML = userContent; // XSS vulnerability
 
 | File | Purpose |
 |------|---------|
-| `src/index.js` | Main editor class, all features |
+| `src/index.js` | Main orchestrator, composes all modules |
+| `src/core/EditorState.js` | Pure state management |
+| `src/io/EditorIO.js` | File I/O, localStorage, exports |
+| `src/ui/EditorUI.js` | DOM setup, rendering, interactions |
 | `src/utils/AnimationManager.js` | fadeIn/fadeOut animations |
 | `src/utils/NotificationManager.js` | Toast notifications |
+| `src/utils/ErrorManager.js` | Error capture, storage, cleanup |
 | `jest.config.cjs` | Test config, thresholds |
-| `eslint.config.mjs` | Lint rules (flat config) |
+| `eslint.config.mjs` | Lint rules (ESLint 9 flat config) |
 | `webpack.config.cjs` | Build config |
+| `playwright.config.js` | E2E test config |
 | `tests/setup.js` | Test mocks and setup |
 
 ---
 
 ## FEATURE LOCATIONS
 
-| Feature | Location |
-|---------|----------|
-| Markdown parsing | `updatePreview()` |
-| File upload | `loadFile()`, `readFile()` |
-| Drag & drop | `setupDragAndDrop()` |
-| Keyboard shortcuts | `handleKeyboardShortcuts()` |
-| Auto-save | `setupAutoSave()`, localStorage |
-| Undo/Redo | `setupUndoRedo()`, history array |
-| Stats | `updateStats()` |
-| Theme toggle | `toggleTheme()` |
-| Export HTML | `exportAsHTML()` |
-| Notifications | NotificationManager class |
-| Animations | AnimationManager class |
+| Feature | Module | Method/Location |
+|---------|--------|-----------------|
+| Markdown parsing | EditorUI | `updatePreview()` |
+| File upload | EditorIO | `loadFile()`, `readFile()` |
+| Drag & drop | EditorUI | `setupDragAndDrop()` |
+| Keyboard shortcuts | EditorUI | `handleKeyboardShortcuts()` |
+| Auto-save | EditorIO | `setupAutoSave()`, localStorage |
+| Undo/Redo | EditorState | `setupUndoRedo()`, history array |
+| Stats | EditorUI | `updateStats()` |
+| Theme toggle | EditorUI | `toggleTheme()` |
+| Export HTML | EditorIO | `exportAsHTML()` |
+| Notifications | NotificationManager | Toast system |
+| Animations | AnimationManager | RAF-based fadeIn/fadeOut |
+| Error tracking | ErrorManager | Capture, store, cleanup |
 
 ---
 
@@ -217,7 +309,10 @@ element.innerHTML = userContent; // XSS vulnerability
 4. Help bar has click-outside-to-close logic
 5. Auto-save uses localStorage with 30s debounce
 6. marked.js v17+ (sanitize/mangle options deprecated)
-7. ESLint 9 flat config format
+7. ESLint 9 flat config format (not legacy .eslintrc)
+8. Modules communicate via callbacks, not direct coupling
+9. ErrorManager uses localStorage with automatic daily cleanup
+10. E2E tests use `.spec.cjs` extension (CommonJS for Playwright)
 
 ---
 
@@ -253,6 +348,8 @@ element.innerHTML = userContent; // XSS vulnerability
 - Breaking existing test coverage
 - Introducing performance regressions
 - Bypassing security sanitization
+- Direct module coupling (use callbacks instead)
+- Ignoring ErrorManager for error tracking
 
 ---
 
@@ -264,6 +361,9 @@ npm run validate  # Runs lint, test, build
 
 # If coverage fails
 npm run test:coverage  # Check current coverage
+
+# Full validation with E2E
+npm run validate:production
 ```
 
 ---
@@ -271,13 +371,34 @@ npm run test:coverage  # Check current coverage
 ## PROJECT CONTEXT
 
 This project has a strong foundation:
-- **228 tests** with 94.7% coverage
+- **440+ tests** with ~85% statement coverage
+- **Modular architecture** with clear separation of concerns
 - **Production-deployed** on GitHub Pages
 - **Performance-monitored** with statistical analysis
 - **Security-hardened** with DOMPurify and CSP
-- Single MarkdownEditor class handles everything
+- **Error tracking** with persistent localStorage storage
 - Uses ES6 modules (`type: "module"` in package.json)
+
+### Module Responsibilities
+- **EditorState**: Pure state, history, undo/redo (no DOM)
+- **EditorIO**: File loading, saving, export, persistence
+- **EditorUI**: All DOM interactions, rendering, events
+- **Orchestrator**: Wires modules together with callbacks
 
 ---
 
-*Last updated: v4.0.0 | Optimized for Claude Code context loading*
+## CI/CD WORKFLOWS
+
+Located in `.github/workflows/`:
+
+| Workflow | Purpose |
+|----------|---------|
+| `ci-cd.yml` | Main pipeline: lint → test → build → deploy |
+| `codeql.yml` | Security analysis (CodeQL) |
+| `eslint.yml` | Static analysis with SARIF reports |
+| `performance.yml` | Performance benchmarking |
+| `close-stale-prs.yml` | Auto-close inactive PRs |
+
+---
+
+*Last updated: v4.0.0 | Reflects modular architecture refactor*
