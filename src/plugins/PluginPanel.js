@@ -8,6 +8,8 @@
  * @version 1.0.0
  */
 
+import DOMPurify from 'dompurify';
+
 class PluginPanel {
     constructor(options = {}) {
         this.container = null;
@@ -23,6 +25,14 @@ class PluginPanel {
         // v13b/c: Analysis history for batch export
         this._analysisHistory = [];
         this._maxHistory = 50;
+
+        // DOMPurify configuration for sanitizing plugin-provided content
+        this.sanitizeConfig = {
+            ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'button',
+                          'label', 'input', 'select', 'option', 'style'],
+            ALLOWED_ATTR: ['style', 'class', 'id', 'type', 'checked', 'selected',
+                          'value', 'data-idx']
+        };
     }
 
     /**
@@ -169,35 +179,44 @@ class PluginPanel {
     }
 
     /**
-     * Set the panel title
+     * Set the panel title (sanitized for security)
      * @param {string} title
      * @param {string} icon
      */
     setTitle(title, icon = '🔌') {
         if (this.titleEl) {
-            this.titleEl.innerHTML = `${icon} ${title}`;
+            // Sanitize title to prevent XSS
+            const sanitizedTitle = DOMPurify.sanitize(`${icon} ${title}`, {
+                ALLOWED_TAGS: ['span'],
+                ALLOWED_ATTR: []
+            });
+            this.titleEl.innerHTML = sanitizedTitle;
         }
     }
 
     /**
-     * Set content as HTML
+     * Set content as HTML (sanitized for security)
      * @param {string} html
      */
     setContent(html) {
         if (this.contentArea) {
-            this.contentArea.innerHTML = html;
+            // Sanitize HTML to prevent XSS attacks from plugin-provided content
+            const sanitizedHtml = DOMPurify.sanitize(html, this.sanitizeConfig);
+            this.contentArea.innerHTML = sanitizedHtml;
         }
     }
 
     /**
-     * Append content
+     * Append content (sanitized for security)
      * @param {HTMLElement|string} content
      */
     appendContent(content) {
         if (!this.contentArea) return;
 
         if (typeof content === 'string') {
-            this.contentArea.insertAdjacentHTML('beforeend', content);
+            // Sanitize HTML to prevent XSS attacks
+            const sanitizedContent = DOMPurify.sanitize(content, this.sanitizeConfig);
+            this.contentArea.insertAdjacentHTML('beforeend', sanitizedContent);
         } else {
             this.contentArea.appendChild(content);
         }
