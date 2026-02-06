@@ -70,7 +70,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Plugin mode skips auth guard (host handles auth)
+    // Plugin mode has its own auth guard (requires PLUGIN_AUTH_TOKEN from host)
     if cli.plugin_mode {
         init_logging(0); // Quiet mode for IPC
         return ipc::run_plugin_server().await;
