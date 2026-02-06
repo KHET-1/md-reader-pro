@@ -6,9 +6,11 @@
 
 - **🔐 Production Auth Fail-Safe**: Panics if `DISABLE_AUTH=true` in production
 - **🔒 Read-Only Lock**: Multi-layer enforcement (losetup, mount, File::open)
+- **🛡️ Path Validation**: Prevents traversal attacks and enforces user-selected directories
 - **📂 Source/Dest Picker**: Interactive CLI, TUI (ratatui), and GUI (iced)
 - **📊 File Analysis**: Fast parallel scanning with checksum support
 - **📤 JSON Export**: Structured output for downstream processing
+- **🔌 Plugin Mode**: IPC server for MD Reader Pro integration
 
 ## Quick Start
 
@@ -72,6 +74,39 @@ Any write attempt triggers a **panic**:
 ║  Write operations are not permitted.                         ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
+
+### Path Validation & Security
+
+When running as a plugin via IPC, Diamond Drill implements comprehensive path validation:
+
+**Security Features:**
+- ✅ Path traversal detection (`../` sequences)
+- ✅ Allowlist enforcement (user-selected directories only)
+- ✅ Symlink validation (prevents restricted area access)
+- ✅ Canonical path resolution
+
+**IPC Security Protocol:**
+
+```javascript
+// Host configures allowed directories
+{
+    "action": "set_allowed_dirs",
+    "payload": {
+        "directories": ["/home/user/documents"]
+    }
+}
+
+// All file operations are validated
+{
+    "action": "analyze",
+    "payload": {
+        "files": ["/home/user/documents/file.md"]  // ✓ Allowed
+        // files": ["../etc/passwd"]  // ✗ Blocked
+    }
+}
+```
+
+See [SECURITY.md](./SECURITY.md) for detailed security documentation.
 
 ## Configuration
 
