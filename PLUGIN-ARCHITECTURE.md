@@ -391,6 +391,68 @@ const settings = {
 | `system:exec` | Execute system commands | **High** |
 | `network:fetch` | Make network requests | **Medium** |
 
+### Path Validation and Security
+
+Diamond Drill implements strict path validation to prevent security vulnerabilities:
+
+#### Security Checks
+
+1. **Path Traversal Prevention**: Automatically rejects paths containing `..` sequences
+2. **Canonical Path Resolution**: All paths are canonicalized to resolve symlinks and get absolute paths
+3. **User-Selected Directory Allowlist**: When configured, only files within user-selected directories can be accessed
+4. **Symlink Validation**: Symlinks are resolved and the target path is validated against the allowlist
+
+#### Implementation
+
+The `path_validator` module provides these security functions:
+
+```rust
+// Validate a single path
+pub fn validate_path<P: AsRef<Path>>(path: P) -> Result<PathBuf>
+
+// Validate multiple paths at once
+pub fn validate_paths<P: AsRef<Path>>(paths: &[P]) -> Result<Vec<PathBuf>>
+
+// Manage allowlist
+pub fn add_allowed_directory<P: AsRef<Path>>(path: P) -> Result<()>
+pub fn clear_allowed_directories() -> Result<()>
+```
+
+#### IPC Security Actions
+
+The plugin exposes these security-related IPC actions:
+
+- `set_allowed_directories`: Replace the allowlist with a new set of directories
+- `add_allowed_directory`: Add a single directory to the allowlist
+- `clear_allowed_directories`: Clear the allowlist (allows all accessible paths)
+
+#### Usage Example
+
+```javascript
+// Host sets allowed directories before allowing file analysis
+await plugin.send({
+    action: "set_allowed_directories",
+    payload: {
+        directories: ["/home/user/documents", "/home/user/projects"]
+    }
+});
+
+// Now file analysis is restricted to these directories
+await plugin.send({
+    action: "analyze",
+    payload: {
+        files: ["/home/user/documents/file.md"]  // ✓ Allowed
+    }
+});
+
+await plugin.send({
+    action: "analyze",
+    payload: {
+        files: ["/etc/passwd"]  // ✗ Rejected - not in allowlist
+    }
+});
+```
+
 ### Sandbox Enforcement
 
 ```javascript

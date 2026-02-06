@@ -9,6 +9,7 @@ use tracing::debug;
 
 use crate::analyzer;
 use crate::config::Config;
+use crate::path_validator;
 
 /// Incoming message from host
 #[derive(Debug, Deserialize)]
@@ -135,6 +136,9 @@ async fn handle_message(msg: PluginMessage) -> PluginResponse {
         "browse" => handle_browse(msg.id, msg.payload).await,
         "set_theme" => handle_set_theme(msg.id, msg.payload),
         "get_capabilities" => handle_capabilities(msg.id),
+        "set_allowed_directories" => handle_set_allowed_directories(msg.id, msg.payload),
+        "add_allowed_directory" => handle_add_allowed_directory(msg.id, msg.payload),
+        "clear_allowed_directories" => handle_clear_allowed_directories(msg.id),
         "shutdown" => handle_shutdown(msg.id),
         _ => PluginResponse::error(
             msg.id,
@@ -157,16 +161,27 @@ async fn handle_analyze(id: String, payload: serde_json::Value) -> PluginRespons
         return PluginResponse::error(id, "No files provided".to_string());
     }
 
+    // Validate all paths first
+    let validated_paths = match path_validator::validate_paths(&files) {
+        Ok(paths) => paths,
+        Err(e) => {
+            return PluginResponse::error(
+                id,
+                format!("Path validation failed: {}", e),
+            );
+        }
+    };
+
     let mut analyses = Vec::new();
     let config = Config::default();
 
-    for path in &files {
-        match analyze_file(path, &config).await {
+    for path in &validated_paths {
+        match analyze_file(path.to_str().unwrap_or(""), &config).await {
             Ok(analysis) => analyses.push(analysis),
             Err(e) => {
                 return PluginResponse::error(
                     id,
-                    format!("Failed to analyze {}: {}", path, e),
+                    format!("Failed to analyze {}: {}", path.display(), e),
                 );
             }
         }
@@ -182,14 +197,18 @@ async fn handle_analyze(id: String, payload: serde_json::Value) -> PluginRespons
 }
 
 async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
-    let metadata = tokio::fs::metadata(path).await?;
+    // Validate path for security
+    let validated_path = path_validator::validate_path(path)?;
+    let path_str = validated_path.to_string_lossy();
+    
+    let metadata = tokio::fs::metadata(&validated_path).await?;
     let file_type = if metadata.is_dir() {
         "directory".to_string()
     } else if metadata.is_symlink() {
         "symlink".to_string()
     } else {
         // Try to detect by extension
-        std::path::Path::new(path)
+        validated_path
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase())
@@ -210,7 +229,7 @@ async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
 
     // Read file for text analysis if not too large
     let (line_count, word_count, is_binary) = if metadata.is_file() && metadata.len() < 10_000_000 {
-        match tokio::fs::read(path).await {
+        match tokio::fs::read(&validated_path).await {
             Ok(content) => {
                 let is_binary = content.iter().take(8192).any(|&b| b == 0);
                 if is_binary {
@@ -229,7 +248,7 @@ async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
     };
 
     Ok(FileAnalysis {
-        path: path.to_string(),
+        path: path_str.to_string(),
         size: metadata.len(),
         file_type,
         permissions,
@@ -278,9 +297,17 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
         .and_then(|p| p.as_str())
         .unwrap_or(".");
 
+    // Validate path for security
+    let validated_path = match path_validator::validate_path(path) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Invalid path: {}", e));
+        }
+    };
+
     let mut entries = Vec::new();
 
-    match tokio::fs::read_dir(path).await {
+    match tokio::fs::read_dir(&validated_path).await {
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
                 let name = entry.file_name().to_string_lossy().to_string();
@@ -304,7 +331,7 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
     PluginResponse::success(
         id,
         serde_json::json!({
-            "path": path,
+            "path": validated_path.to_string_lossy(),
             "entries": entries
         }),
     )
@@ -317,9 +344,17 @@ async fn handle_deep_analyze(id: String, payload: serde_json::Value) -> PluginRe
         None => return PluginResponse::error(id, "Missing 'path' in payload".to_string()),
     };
 
+    // Validate path for security
+    let validated_path = match path_validator::validate_path(path) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Invalid path: {}", e));
+        }
+    };
+
     let config = Config::default();
 
-    match analyzer::analyze(path, &config).await {
+    match analyzer::analyze(validated_path.to_str().unwrap_or(path), &config).await {
         Ok(results) => {
             PluginResponse::success(id, serde_json::to_value(results).unwrap_or_default())
         }
@@ -369,11 +404,16 @@ fn handle_capabilities(id: String) -> PluginResponse {
     PluginResponse::success(
         id,
         serde_json::json!({
-            "actions": ["ping", "analyze", "deep_analyze", "report", "browse", "set_theme", "shutdown"],
+            "actions": [
+                "ping", "analyze", "deep_analyze", "report", "browse", 
+                "set_theme", "set_allowed_directories", "add_allowed_directory", 
+                "clear_allowed_directories", "shutdown"
+            ],
             "version": env!("CARGO_PKG_VERSION"),
             "features": {
                 "tui": cfg!(feature = "tui"),
-                "gui": cfg!(feature = "gui")
+                "gui": cfg!(feature = "gui"),
+                "path_validation": true
             }
         }),
     )
@@ -382,6 +422,83 @@ fn handle_capabilities(id: String) -> PluginResponse {
 fn handle_shutdown(id: String) -> PluginResponse {
     // In real impl, would set a flag to exit gracefully
     PluginResponse::success(id, serde_json::json!({ "shutdown": "acknowledged" }))
+}
+
+/// Handle setting allowed directories (replaces existing list)
+fn handle_set_allowed_directories(id: String, payload: serde_json::Value) -> PluginResponse {
+    let directories: Vec<String> = match payload.get("directories") {
+        Some(dirs) => match serde_json::from_value(dirs.clone()) {
+            Ok(d) => d,
+            Err(e) => {
+                return PluginResponse::error(id, format!("Invalid directories format: {}", e));
+            }
+        },
+        None => {
+            return PluginResponse::error(id, "Missing 'directories' in payload".to_string());
+        }
+    };
+
+    // Clear existing directories
+    if let Err(e) = path_validator::clear_allowed_directories() {
+        return PluginResponse::error(id, format!("Failed to clear directories: {}", e));
+    }
+
+    // Add new directories
+    let mut added = Vec::new();
+    let mut failed = Vec::new();
+
+    for dir in directories {
+        match path_validator::add_allowed_directory(&dir) {
+            Ok(_) => added.push(dir),
+            Err(e) => failed.push(serde_json::json!({
+                "path": dir,
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    PluginResponse::success(
+        id,
+        serde_json::json!({
+            "added": added,
+            "failed": failed,
+            "total": added.len()
+        }),
+    )
+}
+
+/// Handle adding a single allowed directory
+fn handle_add_allowed_directory(id: String, payload: serde_json::Value) -> PluginResponse {
+    let directory = match payload.get("directory").and_then(|d| d.as_str()) {
+        Some(d) => d,
+        None => {
+            return PluginResponse::error(id, "Missing 'directory' in payload".to_string());
+        }
+    };
+
+    match path_validator::add_allowed_directory(directory) {
+        Ok(_) => PluginResponse::success(
+            id,
+            serde_json::json!({
+                "directory": directory,
+                "added": true
+            }),
+        ),
+        Err(e) => PluginResponse::error(id, format!("Failed to add directory: {}", e)),
+    }
+}
+
+/// Handle clearing all allowed directories
+fn handle_clear_allowed_directories(id: String) -> PluginResponse {
+    match path_validator::clear_allowed_directories() {
+        Ok(_) => PluginResponse::success(
+            id,
+            serde_json::json!({
+                "cleared": true
+            }),
+        ),
+        Err(e) => PluginResponse::error(id, format!("Failed to clear directories: {}", e)),
+    }
 }
 
 /// Simple timestamp without chrono dependency

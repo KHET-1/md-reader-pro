@@ -58,6 +58,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Security
 ring = "0.17"
 base64 = "0.22"
+lazy_static = "1.5"
 
 # Filesystem
 walkdir = "2.5"
