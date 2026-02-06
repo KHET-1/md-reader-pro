@@ -38,6 +38,7 @@ impl PathValidator {
     }
 
     /// Create a path validator with specific allowed base directories
+    #[allow(dead_code)] // Reserved for future use when base directory restrictions are needed
     pub fn with_allowed_bases(bases: Vec<PathBuf>) -> Result<Self> {
         // Canonicalize all base paths
         let canonical_bases: Result<Vec<PathBuf>> = bases
