@@ -391,6 +391,43 @@ const settings = {
 | `system:exec` | Execute system commands | **High** |
 | `network:fetch` | Make network requests | **Medium** |
 
+### Path Validation (Native Plugins)
+
+All file operations in native plugins (e.g., Diamond Drill) enforce strict path validation:
+
+#### Security Checks
+1. **Path Traversal Prevention**: Blocks `../` sequences and other traversal attempts
+2. **Path Canonicalization**: Resolves symlinks to their real paths for validation
+3. **Restricted Directory Protection**: Denies access to sensitive system directories:
+   - `/etc/shadow`, `/etc/passwd`, `/etc/sudoers`
+   - `/root`, `/proc`, `/sys`, `/dev`, `/boot`
+   - `/var/log`
+4. **Optional Base Directory Enforcement**: Can restrict access to specific user-selected directories
+
+#### Implementation (Rust)
+
+```rust
+// Path validator in Diamond Drill
+use path_validator::PathValidator;
+
+async fn analyze_file(path: &str) -> Result<FileAnalysis> {
+    // Validate path for security
+    let validator = PathValidator::new();
+    let validated_path = validator.validate_read_path(path)?;
+    
+    // Use validated, canonicalized path for operations
+    let metadata = tokio::fs::metadata(&validated_path).await?;
+    // ... rest of analysis
+}
+```
+
+#### Test Coverage
+- Path traversal detection
+- Symlink resolution and validation
+- Restricted directory access prevention
+- Allowed base directory enforcement
+- Non-existent path handling
+
 ### Sandbox Enforcement
 
 ```javascript
