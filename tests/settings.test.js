@@ -458,6 +458,9 @@ describe('Settings', () => {
         });
 
         test('should not duplicate plugins', () => {
+            // Start fresh
+            settings.settings.plugins.enabled = [];
+            
             settings.enablePlugin('plugin1');
             settings.enablePlugin('plugin1');
 
@@ -466,28 +469,21 @@ describe('Settings', () => {
         });
 
         test('should save after enabling', () => {
-            // Reset storage mock
+            // Start with empty list
+            settings.settings.plugins.enabled = [];
             mockStorage.setItem.mockClear();
             
-            // Access the plugins.enabled array directly to modify it
-            const enabled = settings.settings.plugins.enabled;
-            if (!enabled.includes('plugin1')) {
-                enabled.push('plugin1');
-            }
-            settings._save();
+            settings.enablePlugin('plugin1');
 
             expect(mockStorage.setItem).toHaveBeenCalled();
         });
 
         test('should call onChange callback', () => {
+            // Start with empty list
+            settings.settings.plugins.enabled = [];
             mockOnChange.mockClear();
             
-            // Access the plugins.enabled array directly to modify it
-            const enabled = settings.settings.plugins.enabled;
-            if (!enabled.includes('plugin1')) {
-                enabled.push('plugin1');
-            }
-            settings.onChange('plugins.enabled', enabled);
+            settings.enablePlugin('plugin1');
 
             expect(mockOnChange).toHaveBeenCalledWith(
                 'plugins.enabled',

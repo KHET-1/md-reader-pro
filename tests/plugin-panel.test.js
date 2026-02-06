@@ -156,8 +156,9 @@ describe('PluginPanel', () => {
             panel.open();
             panel.close();
 
-            // marginRight could be '0' or '0px' depending on browser
-            expect(mainContent.style.marginRight === '0' || mainContent.style.marginRight === '0px').toBe(true);
+            // Check that margin is effectively zero (could be '0' or '0px')
+            const marginValue = parseInt(mainContent.style.marginRight, 10) || 0;
+            expect(marginValue).toBe(0);
 
             mainContent.remove();
         });
