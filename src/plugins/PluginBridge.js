@@ -19,6 +19,7 @@ function generateMessageId() {
 /**
  * Generate secure random token for plugin authentication
  * @returns {string} - 64-character hex token
+ * @throws {Error} - If secure random generation is unavailable
  */
 function generateAuthToken() {
     // Generate 32 random bytes (256 bits) for strong security
@@ -30,10 +31,8 @@ function generateAuthToken() {
         const crypto = require('crypto');
         return crypto.randomBytes(32).toString('hex');
     } else {
-        // Fallback for environments without crypto (not secure, but better than nothing)
-        for (let i = 0; i < array.length; i++) {
-            array[i] = Math.floor(Math.random() * 256);
-        }
+        // No secure crypto available - fail securely
+        throw new Error('Secure random number generation unavailable. Cannot generate authentication token.');
     }
     return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
 }

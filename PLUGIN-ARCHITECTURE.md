@@ -417,6 +417,84 @@ class PluginSandbox {
 }
 ```
 
+### Plugin Mode Authentication
+
+**Problem**: When running in plugin mode (`--plugin-mode`), the Diamond Drill binary communicates via stdin/stdout IPC. Without authentication, any process that can spawn the binary could bypass the standard authentication guard.
+
+**Solution**: Token-based authentication between host and plugin.
+
+#### How It Works
+
+1. **Token Generation** (Host side - `PluginBridge.js`):
+   ```javascript
+   // Generate 256-bit secure random token
+   function generateAuthToken() {
+       const crypto = require('crypto');
+       return crypto.randomBytes(32).toString('hex'); // 64 hex chars
+   }
+   
+   // Pass token to plugin via environment variable
+   const env = {
+       ...process.env,
+       PLUGIN_AUTH_TOKEN: this.authToken
+   };
+   spawn(this.binary, this.args, { env });
+   ```
+
+2. **Token Verification** (Plugin side - `ipc.rs`):
+   ```rust
+   pub async fn run_plugin_server() -> Result<()> {
+       // SECURITY: Verify auth token before processing any messages
+       verify_plugin_auth_token()?;
+       
+       // Continue with IPC server...
+   }
+   
+   fn verify_plugin_auth_token() -> Result<()> {
+       let token = env::var("PLUGIN_AUTH_TOKEN")
+           .context("Plugin mode requires PLUGIN_AUTH_TOKEN")?;
+       
+       // Validate length (min 64 hex chars = 256 bits)
+       if token.len() < 64 {
+           bail!("Token too short");
+       }
+       
+       // Validate format (hex only)
+       if !token.chars().all(|c| c.is_ascii_hexdigit()) {
+           bail!("Invalid token format");
+       }
+       
+       Ok(())
+   }
+   ```
+
+#### Security Properties
+
+- **256-bit entropy**: Token provides strong cryptographic security
+- **Single-use**: Each plugin spawn gets a unique token
+- **Environment-isolated**: Token passed via environment variable, not visible to other processes
+- **Format validation**: Ensures token meets minimum security requirements
+- **Fail-secure**: Plugin refuses to start without valid token
+
+#### Example Attack Prevention
+
+**Before (vulnerable)**:
+```bash
+# Any process could spawn plugin and bypass auth
+./diamond --plugin-mode < malicious_commands.json
+```
+
+**After (secure)**:
+```bash
+# Fails without valid token
+./diamond --plugin-mode
+# Error: PLUGIN_AUTH_TOKEN environment variable not set
+
+# Only host with valid token can spawn plugin
+PLUGIN_AUTH_TOKEN="abc123..." ./diamond --plugin-mode
+# Verifies token before processing any commands
+```
+
 ---
 
 ## File Structure (Complete)

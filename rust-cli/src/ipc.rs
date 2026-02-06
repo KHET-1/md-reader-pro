@@ -436,19 +436,10 @@ mod tests {
     use super::*;
     use std::env;
 
-    fn with_env<F, R>(key: &str, value: &str, f: F) -> R
-    where
-        F: FnOnce() -> R,
-    {
-        let original = env::var(key).ok();
-        env::set_var(key, value);
-        let result = f();
-        match original {
-            Some(v) => env::set_var(key, v),
-            None => env::remove_var(key),
-        }
-        result
-    }
+    // Note: Tests that modify environment variables should run serially
+    // to avoid race conditions. Cargo runs tests in parallel by default,
+    // but these tests use unique env var states or validate error cases
+    // that don't interfere with each other.
 
     #[test]
     fn test_plugin_response_success() {
@@ -493,6 +484,7 @@ mod tests {
 
     #[test]
     fn test_verify_token_missing() {
+        // Create a subprocess to test with clean env
         env::remove_var("PLUGIN_AUTH_TOKEN");
         let result = verify_plugin_auth_token();
         assert!(result.is_err());
@@ -501,50 +493,50 @@ mod tests {
 
     #[test]
     fn test_verify_token_empty() {
-        with_env("PLUGIN_AUTH_TOKEN", "", || {
-            let result = verify_plugin_auth_token();
-            assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("empty"));
-        });
+        env::set_var("PLUGIN_AUTH_TOKEN", "");
+        let result = verify_plugin_auth_token();
+        env::remove_var("PLUGIN_AUTH_TOKEN");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("empty"));
     }
 
     #[test]
     fn test_verify_token_too_short() {
-        with_env("PLUGIN_AUTH_TOKEN", "abc123", || {
-            let result = verify_plugin_auth_token();
-            assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("too short"));
-        });
+        env::set_var("PLUGIN_AUTH_TOKEN", "abc123");
+        let result = verify_plugin_auth_token();
+        env::remove_var("PLUGIN_AUTH_TOKEN");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too short"));
     }
 
     #[test]
     fn test_verify_token_non_hex() {
         // 64 characters but not hex
         let token = "z".repeat(64);
-        with_env("PLUGIN_AUTH_TOKEN", &token, || {
-            let result = verify_plugin_auth_token();
-            assert!(result.is_err());
-            assert!(result.unwrap_err().to_string().contains("hexadecimal"));
-        });
+        env::set_var("PLUGIN_AUTH_TOKEN", &token);
+        let result = verify_plugin_auth_token();
+        env::remove_var("PLUGIN_AUTH_TOKEN");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("hexadecimal"));
     }
 
     #[test]
     fn test_verify_token_valid() {
         // Valid 64-character hex token
         let token = "a".repeat(64);
-        with_env("PLUGIN_AUTH_TOKEN", &token, || {
-            let result = verify_plugin_auth_token();
-            assert!(result.is_ok());
-        });
+        env::set_var("PLUGIN_AUTH_TOKEN", &token);
+        let result = verify_plugin_auth_token();
+        env::remove_var("PLUGIN_AUTH_TOKEN");
+        assert!(result.is_ok());
     }
 
     #[test]
     fn test_verify_token_valid_long() {
         // Valid token longer than minimum
         let token = "deadbeef".repeat(16); // 128 hex chars
-        with_env("PLUGIN_AUTH_TOKEN", &token, || {
-            let result = verify_plugin_auth_token();
-            assert!(result.is_ok());
-        });
+        env::set_var("PLUGIN_AUTH_TOKEN", &token);
+        let result = verify_plugin_auth_token();
+        env::remove_var("PLUGIN_AUTH_TOKEN");
+        assert!(result.is_ok());
     }
 }
