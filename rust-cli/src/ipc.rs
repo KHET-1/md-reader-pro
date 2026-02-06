@@ -9,6 +9,7 @@ use tracing::debug;
 
 use crate::analyzer;
 use crate::config::Config;
+use crate::path_validator::PathValidator;
 
 /// Incoming message from host
 #[derive(Debug, Deserialize)]
@@ -182,14 +183,21 @@ async fn handle_analyze(id: String, payload: serde_json::Value) -> PluginRespons
 }
 
 async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
-    let metadata = tokio::fs::metadata(path).await?;
+    // Validate path for security
+    let validator = PathValidator::new();
+    let validated_path = validator.validate_read_path(path)?;
+    
+    // Use the validated, canonicalized path for all operations
+    let path_str = validated_path.to_string_lossy();
+    
+    let metadata = tokio::fs::metadata(&validated_path).await?;
     let file_type = if metadata.is_dir() {
         "directory".to_string()
     } else if metadata.is_symlink() {
         "symlink".to_string()
     } else {
         // Try to detect by extension
-        std::path::Path::new(path)
+        validated_path
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase())
@@ -210,7 +218,7 @@ async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
 
     // Read file for text analysis if not too large
     let (line_count, word_count, is_binary) = if metadata.is_file() && metadata.len() < 10_000_000 {
-        match tokio::fs::read(path).await {
+        match tokio::fs::read(&validated_path).await {
             Ok(content) => {
                 let is_binary = content.iter().take(8192).any(|&b| b == 0);
                 if is_binary {
@@ -229,7 +237,7 @@ async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
     };
 
     Ok(FileAnalysis {
-        path: path.to_string(),
+        path: path_str.to_string(),
         size: metadata.len(),
         file_type,
         permissions,
@@ -278,9 +286,18 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
         .and_then(|p| p.as_str())
         .unwrap_or(".");
 
+    // Validate path for security
+    let validator = PathValidator::new();
+    let validated_path = match validator.validate_browse_path(path) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Invalid path: {}", e));
+        }
+    };
+
     let mut entries = Vec::new();
 
-    match tokio::fs::read_dir(path).await {
+    match tokio::fs::read_dir(&validated_path).await {
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
                 let name = entry.file_name().to_string_lossy().to_string();
@@ -304,7 +321,7 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
     PluginResponse::success(
         id,
         serde_json::json!({
-            "path": path,
+            "path": validated_path.to_string_lossy(),
             "entries": entries
         }),
     )
@@ -317,9 +334,18 @@ async fn handle_deep_analyze(id: String, payload: serde_json::Value) -> PluginRe
         None => return PluginResponse::error(id, "Missing 'path' in payload".to_string()),
     };
 
+    // Validate path for security
+    let validator = PathValidator::new();
+    let validated_path = match validator.validate_read_path(path) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Invalid path: {}", e));
+        }
+    };
+
     let config = Config::default();
 
-    match analyzer::analyze(path, &config).await {
+    match analyzer::analyze(validated_path.to_str().unwrap_or(path), &config).await {
         Ok(results) => {
             PluginResponse::success(id, serde_json::to_value(results).unwrap_or_default())
         }
@@ -436,5 +462,55 @@ mod tests {
         assert!(resp.success);
         let data = resp.data.unwrap();
         assert!(data.get("actions").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_valid_path() {
+        use tempfile::NamedTempFile;
+        use std::io::Write;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        write!(temp_file, "Hello world\nLine two").unwrap();
+
+        let config = Config::default();
+        let result = analyze_file(temp_file.path().to_str().unwrap(), &config).await;
+
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert_eq!(analysis.line_count, Some(2));
+        assert_eq!(analysis.word_count, Some(4));
+        assert!(!analysis.is_binary);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_path_traversal() {
+        let config = Config::default();
+        let result = analyze_file("../../../etc/passwd", &config).await;
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("traversal") || err_msg.contains("does not exist"));
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_nonexistent() {
+        let config = Config::default();
+        let result = analyze_file("/nonexistent/path/xyz123", &config).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("does not exist"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_browse_path_traversal() {
+        let payload = serde_json::json!({
+            "path": "../../../etc"
+        });
+
+        let resp = handle_browse("browse-test".to_string(), payload).await;
+        assert!(!resp.success);
+        assert!(resp.error.is_some());
+        let err_msg = resp.error.unwrap();
+        assert!(err_msg.contains("Invalid path") || err_msg.contains("traversal"));
     }
 }
