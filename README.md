@@ -22,6 +22,13 @@ A modern, fully-featured markdown editor built with cutting-edge web technologie
 - 🛡️ **Error Handling** - Robust error recovery and edge case management
 - 📈 **Benchmark Standards** - P95/P99 percentile performance validation
 
+### Plugin System
+- 🔌 **Extensible Architecture** - Plugin system with lazy-loading support
+- 🏪 **Local Storefront** - Browse and manage installed plugins
+- 💎 **Diamond Drill** - First plugin: security-focused file analyzer
+- 🔒 **Sandboxed Execution** - Plugins run in isolated environments
+- ⚙️ **Edit Mode Toggle** - Switch between editor and viewer modes
+
 ### Developer Experience
 - 🔧 **Modern Tooling** - Webpack 5, Babel, ESLint with flat config
 - 🔄 **Hot Module Replacement** - Fast development with live reloading
@@ -103,7 +110,17 @@ The application will be available at `http://localhost:3000`
 md-reader-pro/
 ├── src/
 │   ├── index.html          # Main HTML template with professional styling
-│   └── index.js            # MarkdownEditor class with full functionality
+│   ├── index.js            # MarkdownEditor class with full functionality
+│   ├── styles/             # Modular CSS (variables, base, layout, etc.)
+│   ├── utils/              # AnimationManager, NotificationManager
+│   └── plugins/            # Plugin system (Loader, Registry, Bridge)
+├── rust-cli/               # Diamond Drill plugin (Rust)
+│   ├── src/
+│   │   ├── main.rs         # CLI entry point
+│   │   ├── tui.rs          # Terminal UI with ratatui
+│   │   ├── analyzer.rs     # File analysis engine
+│   │   └── ...             # auth, config, picker, ro_lock
+│   └── Cargo.toml          # Rust dependencies
 ├── tests/
 │   ├── setup.js            # Test environment configuration
 │   ├── test-utils.js       # Shared testing utilities
@@ -128,6 +145,7 @@ md-reader-pro/
 ├── babel.config.cjs        # Babel transpilation settings
 ├── PERFORMANCE.md          # Performance testing documentation
 ├── ARCHITECTURE.md         # Complete system architecture with Mermaid diagrams
+├── PLUGIN-ARCHITECTURE.md  # Plugin system design document
 ├── SERVICES.md             # Current services and components map
 └── package.json            # Dependencies and scripts
 ```
@@ -184,10 +202,18 @@ The complete system architecture is documented in multiple comprehensive documen
 
 **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** - High-level system design with Mermaid diagrams:
 - **Current Implementation** - All existing systems and their connections
+- **Plugin System** - Plugin loader, registry, bridge, and storefront
 - **Future Roadmap** - Planned features and system expansions (shown with dashed lines)
 - **Data Flow** - How information moves through the system
 - **Scalability Plans** - Enterprise-grade scaling considerations
 - **Security Architecture** - Current and planned security measures
+
+**[`PLUGIN-ARCHITECTURE.md`](./PLUGIN-ARCHITECTURE.md)** - Plugin system design document:
+- **Plugin Types** - WASM, IFrame, Worker, and Native plugins
+- **Diamond Drill Integration** - First plugin implementation
+- **Local Storefront** - Plugin discovery and management
+- **Communication Protocol** - IPC and message formats
+- **Security Model** - Permissions and sandbox enforcement
 
 **[`SERVICES.md`](./SERVICES.md)** - Detailed current services and components:
 - **Service Responsibilities** - Detailed breakdown of each service
@@ -321,7 +347,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🎯 Roadmap
 
-### ✅ Completed (v3.0.0)
+### ✅ Completed (v4.0.0)
 - ✅ **Enterprise Testing Framework** - 94.7% coverage with E2E validation
 - ✅ **Performance Benchmarking** - Statistical analysis and regression detection
 - ✅ **Production Validation** - Playwright E2E tests for production-only code
@@ -331,23 +357,31 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - ✅ **Accessibility Features** - ARIA labels and keyboard navigation
 - ✅ **Interactive Help System** - Built-in markdown reference
 - ✅ **Production Monitoring** - Error tracking and performance metrics
+- ✅ **Diamond Drill Plugin** - Rust-based file analyzer with TUI
 
-### 🚧 In Progress (v3.1.0)
-- 🔄 **Real User Monitoring (RUM)** - Client-side performance tracking
-- 🔄 **Advanced Benchmarking** - Cross-browser performance comparison
-- 🔄 **Performance Budgets** - Team performance goals and enforcement
+### 🚧 In Progress (v4.1.0) - Plugin System Foundation
+- 🔄 **Edit Mode Toggle** - Settings to disable editing (viewer mode)
+- 🔄 **Plugin Loader** - Lazy-load plugins on activation
+- 🔄 **Plugin Registry** - Manifest parsing and plugin tracking
+- 🔄 **Plugin Menu** - UI integration for plugins
+- 🔄 **Diamond Drill Integration** - IPC bridge to Rust plugin
 
-### 📋 Planned (v3.2.0+)
+### 📋 Planned (v4.2.0) - Plugin Storefront
+- [ ] **Local Storefront UI** - Browse and manage installed plugins
+- [ ] **Plugin Configuration** - Per-plugin settings panel
+- [ ] **WASM Support** - WebAssembly plugins for browser-only mode
+- [ ] **Plugin Panel Slots** - Sidebar and panel integration
+
+### 📋 Planned (v4.3.0) - Advanced Features
 - [ ] **Syntax Highlighting** - Code block syntax highlighting with Prism.js
 - [ ] **Export Functionality** - HTML/PDF export with custom styling
 - [ ] **Live Statistics** - Real-time word/character/reading time count
 - [ ] **Theme System** - Customizable themes and color schemes
-- [ ] **Plugin Architecture** - Extension system for custom functionality
-- [ ] **Collaborative Features** - Real-time collaboration and sharing
 - [ ] **Advanced Search** - Full-text search with regex support
-- [ ] **Version Control** - Git integration for document versioning
 
-### 🔮 Future Vision (v4.0.0+)
+### 🔮 Future Vision (v5.0.0+)
+- [ ] **Collaborative Features** - Real-time collaboration and sharing
+- [ ] **Version Control** - Git integration for document versioning
 - [ ] **AI Integration** - Smart writing assistance and suggestions
 - [ ] **Cloud Sync** - Cross-device document synchronization
 - [ ] **Mobile App** - Native mobile applications

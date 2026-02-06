@@ -1,5 +1,7 @@
 //! Configuration Module
 
+#![allow(dead_code)] // Config API for future settings persistence
+
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;

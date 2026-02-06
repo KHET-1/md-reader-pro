@@ -1,7 +1,7 @@
 [package]
 name = "diamond-drill"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 authors = ["Diamond Forgemaster <forge@diamond.dev>"]
 description = "Blazing-fast secure file analyzer with read-only enforcement"
 license = "MIT"
@@ -13,13 +13,22 @@ categories = ["command-line-utilities", "filesystem"]
 default = ["tui"]
 tui = ["ratatui", "crossterm"]
 gui = ["iced"]
+wasm = ["wasm-bindgen", "console_error_panic_hook"]
 full = ["tui", "gui"]
 
 [[bin]]
 name = "diamond"
 path = "src/main.rs"
 
+[lib]
+name = "diamond_drill"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
+# WASM
+wasm-bindgen = { version = "0.2", optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
 # Async runtime
 tokio = { version = "1.44", features = ["full", "fs", "process"] }
 

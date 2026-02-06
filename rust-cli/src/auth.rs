@@ -3,6 +3,8 @@
 //! CRITICAL SECURITY: This module enforces authentication in production.
 //! If DISABLE_AUTH=true in production, the application PANICS immediately.
 
+#![allow(dead_code)] // API surface for future CLI integration
+
 use std::env;
 use thiserror::Error;
 use tracing::{warn, error, info};
