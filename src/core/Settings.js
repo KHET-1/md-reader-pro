@@ -94,10 +94,20 @@ class Settings {
     _merge(defaults, overrides) {
         const result = { ...defaults };
         for (const key of Object.keys(overrides)) {
-            if (typeof defaults[key] === 'object' && !Array.isArray(defaults[key])) {
-                result[key] = this._merge(defaults[key], overrides[key]);
+            const defaultVal = defaults[key];
+            const overrideVal = overrides[key];
+
+            if (
+                defaultVal &&
+                overrideVal &&
+                typeof defaultVal === 'object' &&
+                !Array.isArray(defaultVal) &&
+                typeof overrideVal === 'object' &&
+                !Array.isArray(overrideVal)
+            ) {
+                result[key] = this._merge(defaultVal, overrideVal);
             } else {
-                result[key] = overrides[key];
+                result[key] = overrideVal;
             }
         }
         return result;
