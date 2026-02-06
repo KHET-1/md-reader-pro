@@ -27,7 +27,7 @@ fn test_golden_path_cli() {
     cmd.args([
         "--source", source_dir.to_str().unwrap(),
         "--dest", dest_file.to_str().unwrap(),
-        "--ro-lock", "true",
+        "--ro-lock",  // Defaults to true
         "-v",
     ])
     .env("ENVIRONMENT", "development")
@@ -49,14 +49,23 @@ fn test_golden_path_cli() {
 /// Test auth fail-safe in production
 #[test]
 fn test_auth_failsafe_production() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("test.txt");
+    fs::write(&source, "test").unwrap();
+    let dest = temp.path().join("out.json");
+
     let mut cmd = Command::cargo_bin("diamond").unwrap();
-    cmd.args(["--help"])  // Just trigger init
-        .env("ENVIRONMENT", "production")
-        .env("DISABLE_AUTH", "true");
+    cmd.args([
+        "--source", source.to_str().unwrap(),
+        "--dest", dest.to_str().unwrap(),
+    ])
+    .env("ENVIRONMENT", "production")
+    .env("DISABLE_AUTH", "true");
 
     // Should panic/fail due to auth disabled in production
     cmd.assert()
-        .failure();
+        .failure()
+        .stderr(predicate::str::contains("SECURITY VIOLATION"));
 }
 
 /// Test auth works in development with auth disabled
@@ -92,7 +101,7 @@ fn test_ro_lock_enforcement() {
     cmd.args([
         "--source", source.to_str().unwrap(),
         "--dest", dest.to_str().unwrap(),
-        "--ro-lock", "true",
+        "--ro-lock",  // Defaults to true
     ])
     .env("ENVIRONMENT", "development");
 
@@ -186,6 +195,74 @@ fn test_verbose_output() {
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Diamond Drill"));
+}
+
+/// Test plugin mode requires authentication token
+#[test]
+fn test_plugin_mode_requires_token() {
+    // Test plugin mode without token should fail
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .env_remove("DIAMOND_PLUGIN_TOKEN")
+        .timeout(std::time::Duration::from_secs(5));
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("Plugin mode requires authentication token"));
+}
+
+/// Test plugin mode with invalid token (too short) should fail
+#[test]
+fn test_plugin_mode_invalid_token_too_short() {
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .arg("--plugin-token")
+        .arg("short") // Too short, needs 32+ chars
+        .timeout(std::time::Duration::from_secs(5));
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("at least 32 characters"));
+}
+
+/// Test plugin mode with valid token via CLI
+#[test]
+fn test_plugin_mode_valid_token_cli() {
+    let valid_token = "a".repeat(32); // Minimum valid token
+    
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .arg("--plugin-token")
+        .arg(&valid_token)
+        .timeout(std::time::Duration::from_secs(2));
+
+    // Should start successfully (will timeout waiting for IPC, which is expected)
+    // The important part is it doesn't fail with auth error
+    let result = cmd.output().unwrap();
+    
+    // Should not have authentication-related errors
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(!stderr.contains("Plugin mode requires authentication token"));
+    assert!(!stderr.contains("at least 32 characters"));
+}
+
+/// Test plugin mode with valid token via environment variable
+#[test]
+fn test_plugin_mode_valid_token_env() {
+    let valid_token = "abcdefghijklmnopqrstuvwxyz123456"; // 32 chars
+    
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .env("DIAMOND_PLUGIN_TOKEN", &valid_token)
+        .timeout(std::time::Duration::from_secs(2));
+
+    // Should start successfully (will timeout waiting for IPC, which is expected)
+    let result = cmd.output().unwrap();
+    
+    // Should not have authentication-related errors
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(!stderr.contains("Plugin mode requires authentication token"));
+    assert!(!stderr.contains("at least 32 characters"));
 }
 
 /// Test nonexistent source fails gracefully
