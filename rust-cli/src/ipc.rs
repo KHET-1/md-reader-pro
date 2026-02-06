@@ -5,10 +5,12 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
+use std::sync::OnceLock;
 use tracing::debug;
 
 use crate::analyzer;
 use crate::config::Config;
+use crate::path_validator::PathValidator;
 
 /// Incoming message from host
 #[derive(Debug, Deserialize)]
@@ -61,6 +63,40 @@ pub struct FileAnalysis {
     pub line_count: Option<u64>,
     pub word_count: Option<u64>,
     pub is_binary: bool,
+}
+
+/// Global path validator for IPC mode
+static PATH_VALIDATOR: OnceLock<PathValidator> = OnceLock::new();
+
+/// Initialize the path validator with allowed directories
+///
+/// This should be called when the IPC server starts, typically with
+/// user-selected directories passed from the host application.
+#[allow(dead_code)] // May be used for initialization in the future
+pub fn init_path_validator(allowed_dirs: Vec<String>) -> Result<()> {
+    let validator = PathValidator::new();
+    
+    for dir in allowed_dirs {
+        if let Err(e) = validator.add_allowed_directory(&dir) {
+            tracing::warn!("Failed to add allowed directory {}: {}", dir, e);
+        }
+    }
+    
+    PATH_VALIDATOR.set(validator)
+        .map_err(|_| anyhow::anyhow!("Path validator already initialized"))?;
+    
+    Ok(())
+}
+
+/// Get the path validator instance
+///
+/// For now, we create a permissive validator if not initialized.
+/// In production, this should require initialization.
+fn get_path_validator() -> &'static PathValidator {
+    PATH_VALIDATOR.get_or_init(|| {
+        tracing::warn!("Path validator not initialized, using permissive mode");
+        PathValidator::new_permissive()
+    })
 }
 
 /// Report result
@@ -134,6 +170,7 @@ async fn handle_message(msg: PluginMessage) -> PluginResponse {
         "report" => handle_report(msg.id, msg.payload).await,
         "browse" => handle_browse(msg.id, msg.payload).await,
         "set_theme" => handle_set_theme(msg.id, msg.payload),
+        "set_allowed_dirs" => handle_set_allowed_dirs(msg.id, msg.payload),
         "get_capabilities" => handle_capabilities(msg.id),
         "shutdown" => handle_shutdown(msg.id),
         _ => PluginResponse::error(
@@ -182,14 +219,22 @@ async fn handle_analyze(id: String, payload: serde_json::Value) -> PluginRespons
 }
 
 async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
-    let metadata = tokio::fs::metadata(path).await?;
+    // SECURITY: Validate path before any filesystem access
+    let validator = get_path_validator();
+    let validated_path = validator.validate_path(path)
+        .map_err(|e| anyhow::anyhow!("Path validation failed: {}", e))?;
+    
+    let path_str = validated_path.to_string_lossy();
+    debug!("Analyzing validated path: {}", path_str);
+    
+    let metadata = tokio::fs::metadata(&validated_path).await?;
     let file_type = if metadata.is_dir() {
         "directory".to_string()
     } else if metadata.is_symlink() {
         "symlink".to_string()
     } else {
         // Try to detect by extension
-        std::path::Path::new(path)
+        validated_path
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase())
@@ -210,7 +255,7 @@ async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
 
     // Read file for text analysis if not too large
     let (line_count, word_count, is_binary) = if metadata.is_file() && metadata.len() < 10_000_000 {
-        match tokio::fs::read(path).await {
+        match tokio::fs::read(&validated_path).await {
             Ok(content) => {
                 let is_binary = content.iter().take(8192).any(|&b| b == 0);
                 if is_binary {
@@ -278,9 +323,18 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
         .and_then(|p| p.as_str())
         .unwrap_or(".");
 
+    // SECURITY: Validate path before browsing
+    let validator = get_path_validator();
+    let validated_path = match validator.validate_path(path) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Path validation failed: {}", e));
+        }
+    };
+
     let mut entries = Vec::new();
 
-    match tokio::fs::read_dir(path).await {
+    match tokio::fs::read_dir(&validated_path).await {
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
                 let name = entry.file_name().to_string_lossy().to_string();
@@ -317,13 +371,74 @@ async fn handle_deep_analyze(id: String, payload: serde_json::Value) -> PluginRe
         None => return PluginResponse::error(id, "Missing 'path' in payload".to_string()),
     };
 
+    // SECURITY: Validate path before deep analysis
+    let validator = get_path_validator();
+    let validated_path = match validator.validate_path(path) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Path validation failed: {}", e));
+        }
+    };
+
     let config = Config::default();
 
-    match analyzer::analyze(path, &config).await {
+    match analyzer::analyze(validated_path.to_str().unwrap(), &config).await {
         Ok(results) => {
             PluginResponse::success(id, serde_json::to_value(results).unwrap_or_default())
         }
         Err(e) => PluginResponse::error(id, format!("Deep analysis failed: {}", e)),
+    }
+}
+
+/// Handle setting allowed directories for path validation
+fn handle_set_allowed_dirs(id: String, payload: serde_json::Value) -> PluginResponse {
+    let dirs: Vec<String> = match payload.get("directories") {
+        Some(d) => match serde_json::from_value(d.clone()) {
+            Ok(dirs) => dirs,
+            Err(e) => {
+                return PluginResponse::error(
+                    id,
+                    format!("Invalid directories format: {}", e)
+                );
+            }
+        },
+        None => {
+            return PluginResponse::error(id, "Missing 'directories' in payload".to_string());
+        }
+    };
+
+    let validator = get_path_validator();
+    
+    // Clear existing directories if requested
+    if payload.get("clear").and_then(|v| v.as_bool()).unwrap_or(false) {
+        validator.clear_allowed_directories();
+    }
+
+    let mut added = 0;
+    let mut failed = Vec::new();
+
+    for dir in dirs {
+        match validator.add_allowed_directory(&dir) {
+            Ok(_) => added += 1,
+            Err(e) => {
+                failed.push(format!("{}: {}", dir, e));
+            }
+        }
+    }
+
+    if !failed.is_empty() {
+        PluginResponse::error(
+            id,
+            format!("Added {} directories, failed: {:?}", added, failed)
+        )
+    } else {
+        PluginResponse::success(
+            id,
+            serde_json::json!({
+                "added": added,
+                "total": validator.allowed_directory_count()
+            }),
+        )
     }
 }
 
@@ -369,11 +484,21 @@ fn handle_capabilities(id: String) -> PluginResponse {
     PluginResponse::success(
         id,
         serde_json::json!({
-            "actions": ["ping", "analyze", "deep_analyze", "report", "browse", "set_theme", "shutdown"],
+            "actions": [
+                "ping", 
+                "analyze", 
+                "deep_analyze", 
+                "report", 
+                "browse", 
+                "set_theme", 
+                "set_allowed_dirs",
+                "shutdown"
+            ],
             "version": env!("CARGO_PKG_VERSION"),
             "features": {
                 "tui": cfg!(feature = "tui"),
-                "gui": cfg!(feature = "gui")
+                "gui": cfg!(feature = "gui"),
+                "path_validation": true
             }
         }),
     )
