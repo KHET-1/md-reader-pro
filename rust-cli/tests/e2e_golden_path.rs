@@ -27,7 +27,7 @@ fn test_golden_path_cli() {
     cmd.args([
         "--source", source_dir.to_str().unwrap(),
         "--dest", dest_file.to_str().unwrap(),
-        "--ro-lock", "true",
+        "--ro-lock",  // Defaults to true
         "-v",
     ])
     .env("ENVIRONMENT", "development")
@@ -49,14 +49,23 @@ fn test_golden_path_cli() {
 /// Test auth fail-safe in production
 #[test]
 fn test_auth_failsafe_production() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("test.txt");
+    fs::write(&source, "test").unwrap();
+    let dest = temp.path().join("out.json");
+
     let mut cmd = Command::cargo_bin("diamond").unwrap();
-    cmd.args(["--help"])  // Just trigger init
-        .env("ENVIRONMENT", "production")
-        .env("DISABLE_AUTH", "true");
+    cmd.args([
+        "--source", source.to_str().unwrap(),
+        "--dest", dest.to_str().unwrap(),
+    ])
+    .env("ENVIRONMENT", "production")
+    .env("DISABLE_AUTH", "true");
 
     // Should panic/fail due to auth disabled in production
     cmd.assert()
-        .failure();
+        .failure()
+        .stderr(predicate::str::contains("SECURITY VIOLATION"));
 }
 
 /// Test auth works in development with auth disabled
@@ -92,7 +101,7 @@ fn test_ro_lock_enforcement() {
     cmd.args([
         "--source", source.to_str().unwrap(),
         "--dest", dest.to_str().unwrap(),
-        "--ro-lock", "true",
+        "--ro-lock",  // Defaults to true
     ])
     .env("ENVIRONMENT", "development");
 
