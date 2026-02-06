@@ -391,6 +391,75 @@ const settings = {
 | `system:exec` | Execute system commands | **High** |
 | `network:fetch` | Make network requests | **Medium** |
 
+### Path Validation & Security (Implemented)
+
+The Diamond Drill plugin implements comprehensive path validation to enforce the security principle: **"File access restricted to user-selected files"**.
+
+#### Security Features
+
+1. **Path Traversal Prevention**
+   - Detects and blocks `../` sequences in paths
+   - Validates against encoded traversal attempts (`%2e%2e`, etc.)
+   - Prevents directory traversal attacks
+
+2. **Allowlist Enforcement**
+   - Maintains a list of user-selected directories
+   - Only allows file access within approved directories
+   - Validates both files and directories against allowlist
+
+3. **Symlink Validation**
+   - Resolves symlinks to canonical paths
+   - Ensures symlinks don't point outside allowed directories
+   - Prevents symlink-based privilege escalation
+
+4. **Runtime Protection**
+   - All IPC file operations validate paths before access
+   - `analyze`, `browse`, `deep_analyze` actions protected
+   - Host can configure allowed directories via `set_allowed_dirs` action
+
+#### Implementation Details
+
+```rust
+// Path validator with allowlist enforcement
+pub struct PathValidator {
+    allowed_dirs: RwLock<HashSet<PathBuf>>,
+    enforce_allowlist: bool,
+}
+
+// Validation checks:
+// 1. Path traversal detection
+// 2. Canonicalization (resolves symlinks)
+// 3. Symlink target validation
+// 4. Allowlist verification
+pub fn validate_path<P: AsRef<Path>>(&self, path: P) 
+    -> Result<PathBuf, PathValidationError>
+```
+
+#### IPC Security Protocol
+
+```javascript
+// Host must configure allowed directories before file access
+{
+    "id": "setup-1",
+    "action": "set_allowed_dirs",
+    "payload": {
+        "directories": ["/home/user/documents", "/home/user/projects"],
+        "clear": false
+    }
+}
+
+// All file operations are validated:
+// analyze, deep_analyze, browse, report
+{
+    "id": "analyze-1",
+    "action": "analyze",
+    "payload": {
+        "files": ["/home/user/documents/file.md"]
+        // Path validated against allowlist before access
+    }
+}
+```
+
 ### Sandbox Enforcement
 
 ```javascript
