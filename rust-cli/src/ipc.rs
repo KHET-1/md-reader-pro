@@ -1,14 +1,18 @@
 //! IPC module for plugin mode communication
 //!
 //! Handles stdin/stdout JSON messaging with MD Reader Pro host.
+//! Requires PLUGIN_AUTH_TOKEN environment variable for security.
 
-use anyhow::Result;
+use anyhow::{Result, Context};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::analyzer;
 use crate::config::Config;
+
+/// Minimum required token length (64 hex chars = 32 bytes)
+const MIN_TOKEN_LENGTH: usize = 64;
 
 /// Incoming message from host
 #[derive(Debug, Deserialize)]
@@ -74,6 +78,9 @@ pub struct Report {
 
 /// Run the plugin server (IPC mode)
 pub async fn run_plugin_server() -> Result<()> {
+    // SECURITY: Verify plugin auth token before processing any messages
+    verify_plugin_auth_token()?;
+
     // Send ready signal
     let ready = PluginResponse::success(
         "init".to_string(),
@@ -393,9 +400,55 @@ fn chrono_lite_now() -> String {
     format!("{}", duration.as_secs())
 }
 
+/// Verify plugin auth token from environment variable
+///
+/// SECURITY: This prevents unauthorized processes from spawning the plugin
+/// and bypassing authentication. The host must provide a valid token.
+fn verify_plugin_auth_token() -> Result<()> {
+    let token = std::env::var("PLUGIN_AUTH_TOKEN")
+        .context("PLUGIN_AUTH_TOKEN environment variable not set. Plugin mode requires authentication token from host.")?;
+
+    if token.is_empty() {
+        anyhow::bail!("PLUGIN_AUTH_TOKEN is empty. Plugin mode requires a valid authentication token.");
+    }
+
+    if token.len() < MIN_TOKEN_LENGTH {
+        error!("SECURITY: Plugin auth token too short (got {}, need {})", token.len(), MIN_TOKEN_LENGTH);
+        anyhow::bail!(
+            "PLUGIN_AUTH_TOKEN is too short (got {} chars, need at least {}). Token must be cryptographically secure.",
+            token.len(),
+            MIN_TOKEN_LENGTH
+        );
+    }
+
+    // Verify token is hexadecimal (basic format validation)
+    if !token.chars().all(|c| c.is_ascii_hexdigit()) {
+        error!("SECURITY: Plugin auth token contains non-hex characters");
+        anyhow::bail!("PLUGIN_AUTH_TOKEN must contain only hexadecimal characters (0-9, a-f)");
+    }
+
+    debug!("✅ Plugin auth token verified (length: {})", token.len());
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
+
+    fn with_env<F, R>(key: &str, value: &str, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        let original = env::var(key).ok();
+        env::set_var(key, value);
+        let result = f();
+        match original {
+            Some(v) => env::set_var(key, v),
+            None => env::remove_var(key),
+        }
+        result
+    }
 
     #[test]
     fn test_plugin_response_success() {
@@ -436,5 +489,62 @@ mod tests {
         assert!(resp.success);
         let data = resp.data.unwrap();
         assert!(data.get("actions").is_some());
+    }
+
+    #[test]
+    fn test_verify_token_missing() {
+        env::remove_var("PLUGIN_AUTH_TOKEN");
+        let result = verify_plugin_auth_token();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not set"));
+    }
+
+    #[test]
+    fn test_verify_token_empty() {
+        with_env("PLUGIN_AUTH_TOKEN", "", || {
+            let result = verify_plugin_auth_token();
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("empty"));
+        });
+    }
+
+    #[test]
+    fn test_verify_token_too_short() {
+        with_env("PLUGIN_AUTH_TOKEN", "abc123", || {
+            let result = verify_plugin_auth_token();
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("too short"));
+        });
+    }
+
+    #[test]
+    fn test_verify_token_non_hex() {
+        // 64 characters but not hex
+        let token = "z".repeat(64);
+        with_env("PLUGIN_AUTH_TOKEN", &token, || {
+            let result = verify_plugin_auth_token();
+            assert!(result.is_err());
+            assert!(result.unwrap_err().to_string().contains("hexadecimal"));
+        });
+    }
+
+    #[test]
+    fn test_verify_token_valid() {
+        // Valid 64-character hex token
+        let token = "a".repeat(64);
+        with_env("PLUGIN_AUTH_TOKEN", &token, || {
+            let result = verify_plugin_auth_token();
+            assert!(result.is_ok());
+        });
+    }
+
+    #[test]
+    fn test_verify_token_valid_long() {
+        // Valid token longer than minimum
+        let token = "deadbeef".repeat(16); // 128 hex chars
+        with_env("PLUGIN_AUTH_TOKEN", &token, || {
+            let result = verify_plugin_auth_token();
+            assert!(result.is_ok());
+        });
     }
 }

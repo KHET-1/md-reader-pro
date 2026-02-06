@@ -17,6 +17,28 @@ function generateMessageId() {
 }
 
 /**
+ * Generate secure random token for plugin authentication
+ * @returns {string} - 64-character hex token
+ */
+function generateAuthToken() {
+    // Generate 32 random bytes (256 bits) for strong security
+    const array = new Uint8Array(32);
+    if (typeof window !== 'undefined' && window.crypto) {
+        window.crypto.getRandomValues(array);
+    } else if (typeof require !== 'undefined') {
+        // Node.js environment
+        const crypto = require('crypto');
+        return crypto.randomBytes(32).toString('hex');
+    } else {
+        // Fallback for environments without crypto (not secure, but better than nothing)
+        for (let i = 0; i < array.length; i++) {
+            array[i] = Math.floor(Math.random() * 256);
+        }
+    }
+    return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * PluginBridge handles IPC with a single plugin instance
  */
 class PluginBridge {
@@ -37,6 +59,9 @@ class PluginBridge {
         this.ready = false;
         this.pendingRequests = new Map(); // messageId -> { resolve, reject, timeout }
         this.buffer = '';
+
+        // Security: Generate auth token for this plugin instance
+        this.authToken = generateAuthToken();
 
         // Detect environment
         this.isNode = typeof process !== 'undefined' && process.versions?.node;
@@ -65,8 +90,15 @@ class PluginBridge {
 
         return new Promise((resolve, reject) => {
             try {
+                // Pass auth token via environment variable
+                const env = {
+                    ...process.env,
+                    PLUGIN_AUTH_TOKEN: this.authToken
+                };
+
                 this.process = spawn(this.binary, this.args, {
-                    stdio: ['pipe', 'pipe', 'pipe']
+                    stdio: ['pipe', 'pipe', 'pipe'],
+                    env: env
                 });
 
                 // Handle stdout (plugin responses)
