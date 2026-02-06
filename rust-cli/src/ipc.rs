@@ -9,6 +9,7 @@ use tracing::debug;
 
 use crate::analyzer;
 use crate::config::Config;
+use crate::path_validator;
 
 /// Incoming message from host
 #[derive(Debug, Deserialize)]
@@ -181,15 +182,23 @@ async fn handle_analyze(id: String, payload: serde_json::Value) -> PluginRespons
     )
 }
 
-async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
-    let metadata = tokio::fs::metadata(path).await?;
+async fn analyze_file(path: &str, config: &Config) -> Result<FileAnalysis> {
+    // Validate path for security
+    let validated_path = path_validator::validate_path(path, config)?;
+    
+    let metadata = tokio::fs::metadata(&validated_path).await?;
+    // Validate symlinks separately
+    if metadata.is_symlink() {
+        path_validator::validate_symlink(&validated_path, config)?;
+    }
+    
     let file_type = if metadata.is_dir() {
         "directory".to_string()
     } else if metadata.is_symlink() {
         "symlink".to_string()
     } else {
         // Try to detect by extension
-        std::path::Path::new(path)
+        validated_path
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase())
@@ -210,7 +219,7 @@ async fn analyze_file(path: &str, _config: &Config) -> Result<FileAnalysis> {
 
     // Read file for text analysis if not too large
     let (line_count, word_count, is_binary) = if metadata.is_file() && metadata.len() < 10_000_000 {
-        match tokio::fs::read(path).await {
+        match tokio::fs::read(&validated_path).await {
             Ok(content) => {
                 let is_binary = content.iter().take(8192).any(|&b| b == 0);
                 if is_binary {
@@ -278,9 +287,19 @@ async fn handle_browse(id: String, payload: serde_json::Value) -> PluginResponse
         .and_then(|p| p.as_str())
         .unwrap_or(".");
 
+    let config = Config::default();
+    
+    // Validate the directory path
+    let validated_path = match path_validator::validate_path(path, &config) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Invalid path: {}", e));
+        }
+    };
+
     let mut entries = Vec::new();
 
-    match tokio::fs::read_dir(path).await {
+    match tokio::fs::read_dir(&validated_path).await {
         Ok(mut dir) => {
             while let Ok(Some(entry)) = dir.next_entry().await {
                 let name = entry.file_name().to_string_lossy().to_string();
@@ -319,7 +338,15 @@ async fn handle_deep_analyze(id: String, payload: serde_json::Value) -> PluginRe
 
     let config = Config::default();
 
-    match analyzer::analyze(path, &config).await {
+    // Validate the path before deep analysis
+    let validated_path = match path_validator::validate_path(path, &config) {
+        Ok(p) => p,
+        Err(e) => {
+            return PluginResponse::error(id, format!("Invalid path: {}", e));
+        }
+    };
+
+    match analyzer::analyze(validated_path.to_str().unwrap_or(path), &config).await {
         Ok(results) => {
             PluginResponse::success(id, serde_json::to_value(results).unwrap_or_default())
         }

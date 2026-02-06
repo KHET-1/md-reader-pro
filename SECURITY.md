@@ -34,4 +34,34 @@ If you discover a security vulnerability, **please do not open a public issue**.
 
 ---
 
+## Security Features
+
+### Path Validation (Diamond Drill Plugin)
+
+The Diamond Drill plugin implements comprehensive path validation to prevent common security vulnerabilities:
+
+- **Directory Traversal Prevention**: Rejects paths containing `../`, `..\\`, or URL-encoded traversal sequences
+- **Allowed Directory Enforcement**: Restricts file access to user-configured allowed directories
+- **Symlink Validation**: Ensures symbolic links resolve to permitted locations
+- **Path Canonicalization**: Resolves all paths to their canonical form to prevent bypass attempts
+
+This protection is applied to all file operations including:
+- File analysis (`analyze_file`)
+- Directory browsing (`handle_browse`)
+- Deep analysis (`handle_deep_analyze`)
+
+### XSS Prevention
+
+- All user-generated content is sanitized with DOMPurify before rendering
+- Strict Content Security Policy (CSP) headers are enforced
+- HTML output is escaped by default
+
+### Input Validation
+
+- File uploads are validated for size limits (10MB maximum)
+- Supported file extensions are whitelisted
+- All IPC messages are validated and sanitized
+
+---
+
 Thank you for helping keep this project and its users safe!

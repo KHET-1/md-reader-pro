@@ -391,6 +391,31 @@ const settings = {
 | `system:exec` | Execute system commands | **High** |
 | `network:fetch` | Make network requests | **Medium** |
 
+### Path Validation
+
+All file operations in the plugin system enforce strict path validation to prevent security vulnerabilities:
+
+1. **Directory Traversal Prevention**: Paths containing `../`, `..\\`, or encoded traversal sequences are rejected
+2. **Allowed Directory Enforcement**: When `allowed_paths` is configured in security settings, only files within those directories can be accessed
+3. **Symlink Validation**: Symlinks are validated to ensure they resolve to allowed locations
+4. **Canonicalization**: All paths are canonicalized to resolve symbolic links and relative paths
+
+The validation is implemented in the `path_validator` module and integrated into:
+- `analyze_file`: File analysis operations
+- `handle_browse`: Directory browsing operations  
+- `handle_deep_analyze`: Deep analysis operations
+
+Configuration example:
+```toml
+[security]
+enforce_ro_lock = true
+require_auth = true
+allowed_paths = [
+    "/home/user/documents",
+    "/home/user/projects"
+]
+```
+
 ### Sandbox Enforcement
 
 ```javascript
