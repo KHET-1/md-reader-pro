@@ -188,6 +188,74 @@ fn test_verbose_output() {
         .stdout(predicate::str::contains("Diamond Drill"));
 }
 
+/// Test plugin mode requires authentication token
+#[test]
+fn test_plugin_mode_requires_token() {
+    // Test plugin mode without token should fail
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .env_remove("DIAMOND_PLUGIN_TOKEN")
+        .timeout(std::time::Duration::from_secs(5));
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("Plugin mode requires authentication token"));
+}
+
+/// Test plugin mode with invalid token (too short) should fail
+#[test]
+fn test_plugin_mode_invalid_token_too_short() {
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .arg("--plugin-token")
+        .arg("short") // Too short, needs 32+ chars
+        .timeout(std::time::Duration::from_secs(5));
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("at least 32 characters"));
+}
+
+/// Test plugin mode with valid token via CLI
+#[test]
+fn test_plugin_mode_valid_token_cli() {
+    let valid_token = "a".repeat(32); // Minimum valid token
+    
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .arg("--plugin-token")
+        .arg(&valid_token)
+        .timeout(std::time::Duration::from_secs(2));
+
+    // Should start successfully (will timeout waiting for IPC, which is expected)
+    // The important part is it doesn't fail with auth error
+    let result = cmd.output().unwrap();
+    
+    // Should not have authentication-related errors
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(!stderr.contains("Plugin mode requires authentication token"));
+    assert!(!stderr.contains("at least 32 characters"));
+}
+
+/// Test plugin mode with valid token via environment variable
+#[test]
+fn test_plugin_mode_valid_token_env() {
+    let valid_token = "abcdefghijklmnopqrstuvwxyz123456"; // 32 chars
+    
+    let mut cmd = Command::cargo_bin("diamond").unwrap();
+    cmd.arg("--plugin-mode")
+        .env("DIAMOND_PLUGIN_TOKEN", &valid_token)
+        .timeout(std::time::Duration::from_secs(2));
+
+    // Should start successfully (will timeout waiting for IPC, which is expected)
+    let result = cmd.output().unwrap();
+    
+    // Should not have authentication-related errors
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(!stderr.contains("Plugin mode requires authentication token"));
+    assert!(!stderr.contains("at least 32 characters"));
+}
+
 /// Test nonexistent source fails gracefully
 #[test]
 fn test_nonexistent_source() {

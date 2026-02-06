@@ -73,7 +73,18 @@ pub struct Report {
 }
 
 /// Run the plugin server (IPC mode)
-pub async fn run_plugin_server() -> Result<()> {
+///
+/// # Security
+///
+/// The plugin token has been validated before this function is called.
+/// The token is stored but not actively used for per-request validation
+/// in this initial implementation. Future versions may add per-request
+/// authentication by including the token in each message.
+///
+/// # Arguments
+///
+/// * `_plugin_token` - Validated authentication token from the host process
+pub async fn run_plugin_server(_plugin_token: String) -> Result<()> {
     // Send ready signal
     let ready = PluginResponse::success(
         "init".to_string(),

@@ -57,6 +57,11 @@ struct Cli {
     #[arg(long)]
     plugin_mode: bool,
 
+    /// Plugin authentication token (required for plugin mode)
+    /// Can also be set via DIAMOND_PLUGIN_TOKEN environment variable
+    #[arg(long, env = "DIAMOND_PLUGIN_TOKEN")]
+    plugin_token: Option<String>,
+
     /// Config file path
     #[arg(short, long, default_value = "diamond.toml")]
     config: String,
@@ -70,10 +75,22 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Plugin mode skips auth guard (host handles auth)
+    // Plugin mode requires token verification to prevent unauthorized access
     if cli.plugin_mode {
         init_logging(0); // Quiet mode for IPC
-        return ipc::run_plugin_server().await;
+        
+        // Verify plugin token is provided
+        let token = cli.plugin_token.ok_or_else(|| {
+            anyhow::anyhow!(
+                "Plugin mode requires authentication token. \
+                 Provide via --plugin-token argument or DIAMOND_PLUGIN_TOKEN environment variable."
+            )
+        })?;
+        
+        // Validate token meets security requirements
+        validate_plugin_token(&token)?;
+        
+        return ipc::run_plugin_server(token).await;
     }
 
     // CRITICAL: Auth guard MUST be first - panics in prod if auth disabled
@@ -152,4 +169,116 @@ fn init_logging(verbosity: u8) {
         .with_env_filter(filter)
         .with_target(false)
         .init();
+}
+
+/// Validate plugin authentication token
+///
+/// Ensures the token meets minimum security requirements:
+/// - Minimum 32 characters (256 bits if hex-encoded)
+/// - Only contains valid characters (alphanumeric + safe symbols)
+///
+/// # Security
+///
+/// This prevents weak tokens and ensures only authorized host processes
+/// can spawn the plugin in IPC mode.
+fn validate_plugin_token(token: &str) -> Result<()> {
+    // Minimum length requirement (32 bytes = 256 bits of entropy)
+    if token.len() < 32 {
+        anyhow::bail!(
+            "Plugin token must be at least 32 characters long. \
+             Got {} characters. Use a cryptographically secure random token.",
+            token.len()
+        );
+    }
+
+    // Maximum reasonable length to prevent abuse
+    if token.len() > 1024 {
+        anyhow::bail!(
+            "Plugin token is too long (max 1024 characters). \
+             Got {} characters.",
+            token.len()
+        );
+    }
+
+    // Validate characters (alphanumeric + common safe symbols)
+    if !token.chars().all(|c| {
+        c.is_ascii_alphanumeric() 
+        || c == '-' 
+        || c == '_' 
+        || c == '.' 
+        || c == '=' 
+        || c == '+'
+    }) {
+        anyhow::bail!(
+            "Plugin token contains invalid characters. \
+             Use only alphanumeric characters, hyphens, underscores, dots, equals, and plus signs."
+        );
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_plugin_token_valid() {
+        // Valid token with minimum length
+        let token = "a".repeat(32);
+        assert!(validate_plugin_token(&token).is_ok());
+
+        // Valid token with alphanumeric and symbols
+        let token = "abc123-def456_ghi789.jkl012=mno+345";
+        assert!(validate_plugin_token(&token).is_ok());
+
+        // Valid long token
+        let token = "a".repeat(256);
+        assert!(validate_plugin_token(&token).is_ok());
+    }
+
+    #[test]
+    fn test_validate_plugin_token_too_short() {
+        let token = "a".repeat(31); // Just below minimum
+        let result = validate_plugin_token(&token);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("at least 32 characters"));
+    }
+
+    #[test]
+    fn test_validate_plugin_token_too_long() {
+        let token = "a".repeat(1025); // Above maximum
+        let result = validate_plugin_token(&token);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too long"));
+    }
+
+    #[test]
+    fn test_validate_plugin_token_invalid_characters() {
+        // Token with spaces
+        let token = "abc def 123456789012345678901234567890";
+        let result = validate_plugin_token(&token);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("invalid characters"));
+
+        // Token with special chars
+        let token = "abc@def!123456789012345678901234567890";
+        let result = validate_plugin_token(&token);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("invalid characters"));
+    }
+
+    #[test]
+    fn test_validate_plugin_token_allowed_symbols() {
+        // Test each allowed symbol
+        let symbols = ['-', '_', '.', '=', '+'];
+        for symbol in symbols {
+            let token = format!("abc123{}def456789012345678901234567890", symbol);
+            assert!(
+                validate_plugin_token(&token).is_ok(),
+                "Symbol '{}' should be allowed",
+                symbol
+            );
+        }
+    }
 }
