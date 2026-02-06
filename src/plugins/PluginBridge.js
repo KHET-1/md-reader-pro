@@ -38,8 +38,11 @@ class PluginBridge {
         this.pendingRequests = new Map(); // messageId -> { resolve, reject, timeout }
         this.buffer = '';
 
-        // Detect environment
-        this.isNode = typeof process !== 'undefined' && process.versions?.node;
+        // Detect environment - check for Node.js-specific module system
+        this.isNode = typeof globalThis.process !== 'undefined' && 
+                      typeof globalThis.process.versions !== 'undefined' && 
+                      typeof globalThis.process.versions.node !== 'undefined' &&
+                      typeof window === 'undefined'; // Browser has window, Node doesn't
     }
 
     /**
