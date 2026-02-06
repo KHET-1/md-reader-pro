@@ -8,6 +8,8 @@
  * @version 1.0.0
  */
 
+import DOMPurify from 'dompurify';
+
 class PluginPanel {
     constructor(options = {}) {
         this.container = null;
@@ -23,6 +25,16 @@ class PluginPanel {
         // v13b/c: Analysis history for batch export
         this._analysisHistory = [];
         this._maxHistory = 50;
+
+        // DOMPurify sanitization config for plugin content
+        this.sanitizeConfig = {
+            ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                          'strong', 'em', 'br', 'hr', 'ul', 'ol', 'li',
+                          'button', 'input', 'select', 'option', 'label',
+                          'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+            ALLOWED_ATTR: ['style', 'class', 'id', 'type', 'checked', 'selected',
+                          'disabled', 'value', 'data-*']
+        };
     }
 
     /**
@@ -175,29 +187,33 @@ class PluginPanel {
      */
     setTitle(title, icon = '🔌') {
         if (this.titleEl) {
-            this.titleEl.innerHTML = `${icon} ${title}`;
+            const safeIcon = this._escapeHtml(icon);
+            const safeTitle = this._escapeHtml(title);
+            this.titleEl.innerHTML = `${safeIcon} ${safeTitle}`;
         }
     }
 
     /**
-     * Set content as HTML
+     * Set content as HTML (sanitized for security)
      * @param {string} html
      */
     setContent(html) {
         if (this.contentArea) {
-            this.contentArea.innerHTML = html;
+            const cleanHtml = DOMPurify.sanitize(html, this.sanitizeConfig);
+            this.contentArea.innerHTML = cleanHtml;
         }
     }
 
     /**
-     * Append content
+     * Append content (sanitized for security)
      * @param {HTMLElement|string} content
      */
     appendContent(content) {
         if (!this.contentArea) return;
 
         if (typeof content === 'string') {
-            this.contentArea.insertAdjacentHTML('beforeend', content);
+            const cleanHtml = DOMPurify.sanitize(content, this.sanitizeConfig);
+            this.contentArea.insertAdjacentHTML('beforeend', cleanHtml);
         } else {
             this.contentArea.appendChild(content);
         }
@@ -213,10 +229,24 @@ class PluginPanel {
     }
 
     /**
+     * Escape HTML entities to prevent XSS
+     * @private
+     * @param {string} text - Text to escape
+     * @returns {string} - Escaped text safe for HTML
+     */
+    _escapeHtml(text) {
+        if (typeof text !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
      * Show loading state
      * @param {string} message
      */
     showLoading(message = 'Loading...') {
+        const safeMessage = this._escapeHtml(message);
         this.setContent(`
             <div style="text-align: center; padding: 40px;">
                 <div class="spinner" style="
@@ -228,7 +258,7 @@ class PluginPanel {
                     animation: spin 1s linear infinite;
                     margin: 0 auto 16px;
                 "></div>
-                <p style="color: #888;">${message}</p>
+                <p style="color: #888;">${safeMessage}</p>
             </div>
             <style>
                 @keyframes spin { to { transform: rotate(360deg); } }
@@ -241,10 +271,11 @@ class PluginPanel {
      * @param {string} message
      */
     showError(message) {
+        const safeMessage = this._escapeHtml(message);
         this.setContent(`
             <div style="text-align: center; padding: 40px; color: #ff6b6b;">
                 <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                <p>${message}</p>
+                <p>${safeMessage}</p>
             </div>
         `);
     }
@@ -267,7 +298,7 @@ class PluginPanel {
                         📊 Analysis Complete
                     </span>
                     <span style="color: #888; font-size: 12px;">
-                        ${files_analyzed} file(s)
+                        ${parseInt(files_analyzed) || 0} file(s)
                     </span>
                 </div>
             </div>
@@ -277,8 +308,11 @@ class PluginPanel {
             html += '<div style="display: flex; flex-direction: column; gap: 12px;">';
 
             for (const analysis of analyses) {
-                const fileName = analysis.path.split('/').pop();
-                const sizeStr = this._formatSize(analysis.size);
+                const fileName = this._escapeHtml(analysis.path.split('/').pop());
+                const fileType = this._escapeHtml(analysis.file_type);
+                const sizeStr = this._escapeHtml(this._formatSize(analysis.size));
+                const lineCount = parseInt(analysis.line_count) || 0;
+                const wordCount = parseInt(analysis.word_count) || 0;
 
                 html += `
                     <div style="
@@ -291,10 +325,10 @@ class PluginPanel {
                             📄 ${fileName}
                         </div>
                         <div style="font-size: 12px; color: #888; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                            <span>Type: ${analysis.file_type}</span>
+                            <span>Type: ${fileType}</span>
                             <span>Size: ${sizeStr}</span>
-                            ${analysis.line_count ? `<span>Lines: ${analysis.line_count}</span>` : ''}
-                            ${analysis.word_count ? `<span>Words: ${analysis.word_count}</span>` : ''}
+                            ${lineCount ? `<span>Lines: ${lineCount}</span>` : ''}
+                            ${wordCount ? `<span>Words: ${wordCount}</span>` : ''}
                         </div>
                         ${analysis.is_binary ? '<div style="color: #ff9800; font-size: 11px; margin-top: 4px;">⚠️ Binary file</div>' : ''}
                     </div>
@@ -323,6 +357,9 @@ class PluginPanel {
      */
     showDeepAnalysisResults(results) {
         const { source_path, total_files, total_size, file_types, files } = results;
+        const safePath = this._escapeHtml(source_path || 'Unknown');
+        const safeFiles = parseInt(total_files) || 0;
+        const safeSize = parseInt(total_size) || 0;
 
         let html = `
             <div style="margin-bottom: 16px;">
@@ -330,17 +367,17 @@ class PluginPanel {
                     📂 Deep Analysis Report
                 </div>
                 <div style="font-size: 12px; color: #888;">
-                    Source: ${source_path || 'Unknown'}
+                    Source: ${safePath}
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                 <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; color: #4caf50;">${total_files || 0}</div>
+                    <div style="font-size: 24px; color: #4caf50;">${safeFiles}</div>
                     <div style="font-size: 11px; color: #888;">Files</div>
                 </div>
                 <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 24px; color: #2196f3;">${this._formatSize(total_size || 0)}</div>
+                    <div style="font-size: 24px; color: #2196f3;">${this._escapeHtml(this._formatSize(safeSize))}</div>
                     <div style="font-size: 11px; color: #888;">Total Size</div>
                 </div>
             </div>
@@ -355,6 +392,8 @@ class PluginPanel {
             `;
 
             for (const [ext, count] of Object.entries(file_types)) {
+                const safeExt = this._escapeHtml(ext);
+                const safeCount = parseInt(count) || 0;
                 html += `
                     <span style="
                         background: rgba(255, 215, 0, 0.1);
@@ -363,7 +402,7 @@ class PluginPanel {
                         border-radius: 12px;
                         font-size: 11px;
                         color: #e0e0e0;
-                    ">.${ext} (${count})</span>
+                    ">.${safeExt} (${safeCount})</span>
                 `;
             }
 
@@ -775,11 +814,12 @@ ${JSON.stringify(entry.results, null, 2)}</pre>
 
         this._analysisHistory.forEach((entry, idx) => {
             const results = entry.results;
-            const fileCount = results.files_analyzed || results.total_files || 1;
-            const time = new Date(entry.timestamp).toLocaleString();
+            const fileCount = parseInt(results.files_analyzed || results.total_files || 1);
+            const time = this._escapeHtml(new Date(entry.timestamp).toLocaleString());
+            const safeIdx = parseInt(idx);
 
             html += `
-                <div class="history-item" data-idx="${idx}" style="
+                <div class="history-item" data-idx="${safeIdx}" style="
                     background: rgba(255, 215, 0, 0.05);
                     border: 1px solid #333;
                     border-radius: 8px;
@@ -796,7 +836,7 @@ ${JSON.stringify(entry.results, null, 2)}</pre>
                                 ${time}
                             </div>
                         </div>
-                        <button class="history-view-btn" data-idx="${idx}" style="
+                        <button class="history-view-btn" data-idx="${safeIdx}" style="
                             padding: 4px 8px; border: 1px solid #666;
                             background: transparent; color: #888;
                             border-radius: 4px; cursor: pointer; font-size: 10px;
