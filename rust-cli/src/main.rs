@@ -8,6 +8,7 @@ mod config;
 mod ro_lock;
 mod picker;
 mod analyzer;
+mod path_validator;
 
 #[cfg(feature = "tui")]
 mod tui;

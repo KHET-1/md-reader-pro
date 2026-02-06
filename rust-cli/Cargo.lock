@@ -993,6 +993,7 @@ dependencies = [
  "console_error_panic_hook",
  "crossterm",
  "iced",
+ "lazy_static",
  "libc",
  "nix",
  "notify",
