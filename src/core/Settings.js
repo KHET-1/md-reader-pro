@@ -140,11 +140,32 @@ class Settings {
     set(key, value) {
         const parts = key.split('.');
         let obj = this.settings;
+
+        // Prevent prototype pollution via malicious key segments
+        const isUnsafeKey = (segment) => (
+            segment === '__proto__' ||
+            segment === 'constructor' ||
+            segment === 'prototype'
+        );
+
         for (let i = 0; i < parts.length - 1; i++) {
-            if (!obj[parts[i]]) obj[parts[i]] = {};
-            obj = obj[parts[i]];
+            const segment = parts[i];
+            if (isUnsafeKey(segment)) {
+                // Abort setting if an unsafe segment is encountered
+                return;
+            }
+            if (!obj[segment] || typeof obj[segment] !== 'object') {
+                obj[segment] = {};
+            }
+            obj = obj[segment];
         }
-        obj[parts[parts.length - 1]] = value;
+
+        const lastSegment = parts[parts.length - 1];
+        if (isUnsafeKey(lastSegment)) {
+            return;
+        }
+
+        obj[lastSegment] = value;
         this._save();
         this.onChange(key, value);
     }
