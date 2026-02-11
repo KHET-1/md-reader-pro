@@ -14,6 +14,39 @@ class ErrorManager {
     static CLEANUP_PERCENT = 0.25;
     static MAX_AGE_DAYS = 7;
 
+    /**
+     * Generate a cryptographically secure random base36 string of given length.
+     * Falls back to Math.random if crypto.getRandomValues is unavailable.
+     * @param {number} length
+     * @returns {string}
+     * @private
+     */
+    static _secureRandomIdPart(length = 9) {
+        const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
+        let result = '';
+
+        if (typeof window !== 'undefined' &&
+            window.crypto &&
+            typeof window.crypto.getRandomValues === 'function') {
+            const buffer = new Uint32Array(length);
+            window.crypto.getRandomValues(buffer);
+            for (let i = 0; i < length; i++) {
+                // 32 % 36 is acceptable here; any minor bias is not security-critical
+                const idx = buffer[i] % alphabet.length;
+                result += alphabet.charAt(idx);
+            }
+            return result;
+        }
+
+        // Fallback: non-cryptographic, but maintains functionality where crypto is unavailable
+        result = Math.random().toString(36).substring(2, 2 + length);
+        // If substring shorter than requested length, pad with another random segment
+        while (result.length < length) {
+            result += Math.random().toString(36).substring(2, 2 + (length - result.length));
+        }
+        return result.substring(0, length);
+    }
+
     constructor(options = {}) {
         this.maxErrors = options.maxErrors || ErrorManager.MAX_ERRORS;
         this.cleanupPercent = options.cleanupPercent || ErrorManager.CLEANUP_PERCENT;
@@ -200,7 +233,7 @@ class ErrorManager {
     }
 
     _generateId() {
-        return `err_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        return `err_${Date.now()}_${ErrorManager._secureRandomIdPart(9)}`;
     }
 
     _getSessionId() {
@@ -209,7 +242,7 @@ class ErrorManager {
         try {
             let sessionId = window.sessionStorage.getItem('md-reader-session-id');
             if (!sessionId) {
-                sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                sessionId = `session_${Date.now()}_${ErrorManager._secureRandomIdPart(9)}`;
                 window.sessionStorage.setItem('md-reader-session-id', sessionId);
             }
             return sessionId;
