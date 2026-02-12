@@ -61,7 +61,7 @@ class PluginBridge {
      * @private
      */
     async _startNativeNode() {
-        const { spawn } = await import('child_process');
+        const { spawn } = await import(/* webpackIgnore: true */ 'child_process');
 
         return new Promise((resolve, reject) => {
             try {
