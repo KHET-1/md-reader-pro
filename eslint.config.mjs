@@ -24,7 +24,8 @@ export default [
         URL: 'readonly',
         alert: 'readonly',
         Event: 'readonly',
-        navigator: 'readonly'
+        navigator: 'readonly',
+        process: 'readonly'
       }
     },
     rules: {
