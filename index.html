@@ -2101,7 +2101,7 @@
             margin-top: 0.5rem;
         }
     </style>
-<script defer src="bundle.f16ee7e8620fac0055b6.js"></script><link href="styles.38944a0bb37075c05caf.css" rel="stylesheet"></head>
+<script defer src="bundle.f425b0d48966459c6286.js"></script><link href="styles.fa213dafbf53e4ab2862.css" rel="stylesheet"></head>
 <body>
     <!-- App Background Layer with Etched Logo -->
     <div class="app-background" id="app-background">
@@ -2152,11 +2152,12 @@
     </div>
     <main id="main-content" class="content-area swipeable" role="main">
         <div class="main-pane">
-            <div class="toolbar">
-                <button class="toolbar-btn">💾 Save</button>
+            <div class="toolbar editor-header">
+                <button id="save-btn" class="toolbar-btn" type="button">💾 Save</button>
                 <button class="toolbar-btn">📋 Copy</button>
-                <button class="toolbar-btn">🔍 Find</button>
-                <button class="toolbar-btn">⚙️ Settings</button>
+                <button id="find-btn" class="toolbar-btn" type="button">🔍 Find</button>
+                <button id="replace-btn" class="toolbar-btn" type="button">🔄 Replace</button>
+                <button id="export-btn" class="toolbar-btn" type="button" title="Export as HTML file">📤 Export</button>
             </div>
             <div class="editor-container" id="editor-container">
         <div class="editor-pane">
@@ -2177,8 +2178,7 @@ console.log('Hello, Markdown!');
 > This is a blockquote example
 **Bold text** and *italic text* are supported!
 [Visit GitHub](https://github.com)"></textarea>
-            <div class="upload-area" onclick="document.getElementById('file-input').click()">
-                <input type="file" id="file-input" accept=".md,.txt,.markdown" />
+            <div class="upload-area" onclick="document.getElementById('file-input').click()" role="button" tabindex="0" aria-label="Open or drop markdown file">
                 <div>📄 Drop markdown files here or click to browse</div>
                 <div class="upload-hint">
                     Supports .md, .txt, .markdown files
@@ -2627,8 +2627,9 @@ def hello_world():
                         document.getElementById('file-input').click();
                         break;
                     case 'save-file':
-                        // Future: implement save functionality
-                        console.log('Save file command');
+                        if (window.markdownEditor && typeof window.markdownEditor.saveMarkdown === 'function') {
+                            window.markdownEditor.saveMarkdown();
+                        }
                         break;
                     case 'toggle-preview':
                         document.querySelector('[data-tab="preview"]').click();
@@ -3471,11 +3472,13 @@ def hello_world():
             init() {
                 const exportBtn = document.getElementById('export-btn');
                 const exportOptions = document.getElementById('export-options');
-                
-                exportBtn?.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    exportOptions.classList.toggle('show');
-                });
+                // Only attach dropdown behavior if export-options exists; else bundle handles Export
+                if (exportBtn && exportOptions) {
+                    exportBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        exportOptions.classList.toggle('show');
+                    });
+                }
                 
                 // Close export options when clicking outside
                 document.addEventListener('click', () => {
