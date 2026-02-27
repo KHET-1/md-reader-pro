@@ -62,7 +62,7 @@ npm install
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+The application will be available at `http://localhost:3080` (default port 3080 to avoid conflicts with other apps; override with `PORT=3000 npm run dev` if needed).
 
 ## 📋 Development Commands
 

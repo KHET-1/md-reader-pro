@@ -1,29 +1,64 @@
+/* Design tokens – calm, readable editor */
 :root {
-  --accent-color: #00d4ff;
-  --accent-glow: rgba(0, 212, 255, 0.4);
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #111111;
-  --bg-tertiary: #1a1a1a;
-  --text-primary: #ffffff;
-  --text-secondary: #cccccc;
-  --text-muted: #888888;
-  --border-color: #333333;
-  --border-hover: #555555;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.3s ease;
-  --transition-slow: 0.5s ease;
+  /* Palette – warm dark, soft accent */
+  --accent-color: #0ea5e9;
+  --accent-glow: rgba(14, 165, 233, 0.4);
+  --accent-subtle: rgba(14, 165, 233, 0.12);
+  --accent-muted: rgba(14, 165, 233, 0.08);
+  --bg-page: #0f1114;
+  --bg-surface: #161a1f;
+  --bg-elevated: #1c2127;
+  --bg-input: #1c2127;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border-subtle: #21262d;
+  --border-default: #30363d;
+  --success: #3fb950;
+  --error: #f85149;
+  --warning: #d29922;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --leading-tight: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.7;
+
+  /* Layout */
+  --header-height: 52px;
+  --toolbar-height: 40px;
+  --help-bar-width: 380px;
+  --read-width: 720px;
+  --editor-read-width: 85ch;
+
+  /* Radius – subtle */
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Motion */
+  --ease: 0.15s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

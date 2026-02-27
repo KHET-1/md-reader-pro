@@ -1,0 +1,40 @@
+{
+  "concurrency": 4,
+  "batchTimeoutMs": 300000,
+  "batches": [
+    {
+      "id": "batch-1",
+      "name": "Quality gates",
+      "parallel": true,
+      "steps": [
+        { "id": "lint", "script": "lint", "critical": true },
+        { "id": "test", "script": "test", "critical": true }
+      ]
+    },
+    {
+      "id": "batch-2",
+      "name": "Build",
+      "parallel": false,
+      "steps": [
+        { "id": "build", "script": "build", "critical": true },
+        { "id": "e2e", "script": "test:e2e", "critical": false }
+      ]
+    },
+    {
+      "id": "batch-3",
+      "name": "Deploy prep",
+      "parallel": false,
+      "steps": [
+        { "id": "deploy-prep", "script": "deploy:prepare", "critical": false }
+      ]
+    }
+  ],
+  "npmScripts": {
+    "lint": "lint",
+    "test": "test",
+    "build": "build",
+    "deploy:prepare": "deploy:prepare",
+    "test:e2e": "test:e2e",
+    "test:e2e:smoke": "test:e2e:smoke"
+  }
+}

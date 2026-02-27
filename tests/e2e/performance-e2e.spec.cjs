@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 
 test.describe('MD Reader Pro - Performance E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3017');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
   });
 
   test('Page load performance metrics', async ({ page }) => {
     // Measure page load time
     const startTime = Date.now();
-    await page.goto('http://localhost:3017');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
     const loadTime = Date.now() - startTime;
     
@@ -227,7 +227,7 @@ test.describe('MD Reader Pro - Performance E2E Tests', () => {
       });
     });
     
-    await page.goto('http://localhost:3017');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
     
     // Check that we're not making unnecessary requests

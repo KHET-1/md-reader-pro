@@ -9,7 +9,7 @@ const fs = require('fs');
 test.describe('File Upload - No Freeze Fix Verification', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to the app
-        await page.goto('http://localhost:3000', { waitUntil: 'networkidle' });
+        await page.goto('/', { waitUntil: 'networkidle' });
     });
 
     test('should upload a file without showing duplicate banners or freezing', async ({ page }) => {

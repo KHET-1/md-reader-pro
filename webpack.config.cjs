@@ -54,7 +54,7 @@ module.exports = (env, argv) => {
     },
     plugins,
     devServer: {
-      port: Number(process.env.PORT) || 3000,
+      port: Number(process.env.PORT) || 3080,
       host: process.env.HOST || 'localhost',
       open: false,
       hot: true,

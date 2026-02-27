@@ -1,11 +1,9 @@
 module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  testMatch: [
-    '<rootDir>/tests/**/*.test.js',
-    '!<rootDir>/tests/e2e/**/*',
-    '!<rootDir>/tests/edge-tools.test.js'
-  ],
+  // testRegex only (no testMatch): avoids glob issues when path contains brackets (e.g. [[[ Nexus ]]] on Windows)
+  // Exclude e2e/ and edge-tools.test.js (Playwright) via negative lookahead so Jest doesn't load them
+  testRegex: 'tests/(?!e2e/)(?!edge-tools\\.test\\.js).*\\.test\\.js$',
   testPathIgnorePatterns: [
     '<rootDir>/tests/e2e/',
     '<rootDir>/tests/edge-tools.test.js',

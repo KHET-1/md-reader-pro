@@ -14,10 +14,10 @@ const MAX_RETRIES = Number(process.env.PORT_RETRY_LIMIT || 5);
 const READINESS_TIMEOUT_MS = Number(process.env.READINESS_TIMEOUT_MS || 120_000);
 const EXIT_ON_READY = process.argv.includes('--exit-on-ready');
 
-// Prefer explicit PORT, then E2E_PORT, then 3000 for dev runs
+// Prefer explicit PORT, then E2E_PORT, then 3080 (avoid 3000 conflicts)
 function getInitialPort() {
-  const envPort = Number(process.env.PORT || process.env.E2E_PORT || 3000);
-  return Number.isFinite(envPort) && envPort > 0 ? envPort : 3000;
+  const envPort = Number(process.env.PORT || process.env.E2E_PORT || 3080);
+  return Number.isFinite(envPort) && envPort > 0 ? envPort : 3080;
 }
 
 function now() {

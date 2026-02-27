@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.E2E_PORT || process.env.PORT || 3100);
+const headed = process.env.PLAYWRIGHT_HEADED === '1';
 
 const serveDist = process.env.PLAYWRIGHT_SERVE_DIST === '1';
 const webServer = process.env.PLAYWRIGHT_NO_WEBSERVER === '1'
@@ -23,6 +24,7 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: `http://localhost:${port}`,
+    headless: !headed,
     trace: 'on-first-retry',
     actionTimeout: 10000,
     navigationTimeout: 30000,
@@ -31,7 +33,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // On Windows, if chromium_headless_shell is missing, use system Chrome
+        ...(process.platform === 'win32' && process.env.PLAYWRIGHT_USE_CHROME === '1'
+          ? { channel: 'chrome' }
+          : {}),
+      },
     },
   ],
 

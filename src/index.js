@@ -309,6 +309,7 @@ class MarkdownEditor {
         this.setupStatsCounter();
         this.setupAutoSave();
         this.setupUndoRedo();
+        this.ui.setupSaveButton();
         this.ui.setupToolbarCopyDropdown();
         this.ui.setupExportButton();
         this.ui.setupKeyboardShortcutsModal();

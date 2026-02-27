@@ -447,6 +447,14 @@ class EditorUI {
             fns.forEach(fn => uploadArea.addEventListener(event, fn, false));
             document.body.addEventListener(event, preventDefaults, false);
         });
+
+        // Keyboard: Enter/Space activate (upload area has role="button")
+        const fileInput = this.fileInput;
+        uploadArea.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            if (fileInput) fileInput.click();
+        });
     }
 
     // === Preview & Rendering ===
@@ -734,10 +742,10 @@ class EditorUI {
         } else {
             // Initial render with class names for future caching
             this.statsDisplay.innerHTML = `
-                <span class="stat-words" title="Word count">📝 ${words} words</span>
-                <span class="stat-chars" title="Character count">🔤 ${characters} (${charactersNoSpaces}) chars</span>
-                <span class="stat-lines" title="Line count">📄 ${lines} lines</span>
-                <span class="stat-time" title="Reading time">⏱️ ${readingTime} min read</span>
+                <span id="word-count" class="stat-words" title="Word count">📝 ${words} words</span>
+                <span id="char-count" class="stat-chars" title="Character count">🔤 ${characters} (${charactersNoSpaces}) chars</span>
+                <span id="line-count" class="stat-lines" title="Line count">📄 ${lines} lines</span>
+                <span id="reading-time" class="stat-time" title="Reading time">⏱️ ${readingTime} min read</span>
             `;
             // Cache elements after initial render
             this.statElements = {
@@ -864,19 +872,31 @@ class EditorUI {
         return container;
     }
 
+    // === Save Button (toolbar) ===
+
+    setupSaveButton() {
+        const saveBtn = document.getElementById('save-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.onSave());
+            saveBtn.title = 'Save markdown (Ctrl+S)';
+        }
+    }
+
     // === Export Button ===
 
     setupExportButton() {
-        const toolbar = document.querySelector('.toolbar');
-        if (!toolbar) return;
-
-        const exportBtn = document.createElement('button');
-        exportBtn.className = 'toolbar-btn';
-        exportBtn.innerHTML = '📤 Export';
-        exportBtn.title = 'Export as HTML file';
+        let exportBtn = document.getElementById('export-btn');
+        if (!exportBtn) {
+            const toolbar = document.querySelector('.toolbar');
+            if (!toolbar) return;
+            exportBtn = document.createElement('button');
+            exportBtn.id = 'export-btn';
+            exportBtn.className = 'toolbar-btn';
+            exportBtn.innerHTML = '📤 Export';
+            exportBtn.title = 'Export as HTML file';
+            toolbar.appendChild(exportBtn);
+        }
         exportBtn.addEventListener('click', () => this.onExport());
-
-        toolbar.appendChild(exportBtn);
     }
 
     // === Theme Toggle ===
@@ -1109,6 +1129,7 @@ class EditorUI {
         const isError = type === 'error';
 
         const notification = document.createElement('div');
+        notification.setAttribute('data-testid', 'notification');
         notification.textContent = message;
         notification.style.cssText = `
             position: fixed; top: 20px;

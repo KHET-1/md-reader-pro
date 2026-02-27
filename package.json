@@ -7,7 +7,7 @@
     "node": ">=22.14.0"
   },
   "scripts": {
-    "dev": "webpack serve --config webpack.config.cjs --mode development",
+    "dev": "cross-env FORCE_COLOR= NO_COLOR= webpack serve --config webpack.config.cjs --mode development",
     "dev:server": "webpack serve --config webpack.config.cjs --mode development",
     "dev:ready": "node scripts/dev-ready.js",
     "dev:orchestrate": "node scripts/dev-orchestrator.cjs",
@@ -17,7 +17,7 @@
     "build:clean": "webpack --mode production --config webpack.config.cjs --no-color",
     "build:analyze": "webpack --mode production --config webpack.config.cjs --analyze",
     "build:bundle-analyzer": "webpack-bundle-analyzer dist",
-    "test": "jest",
+    "test": "cross-env FORCE_COLOR= NO_COLOR= jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:performance": "jest tests/performance.test.js --verbose",
@@ -38,12 +38,16 @@
     "test:edge-tools": "npx playwright test tests/edge-tools.test.js --project=edge",
     "test:accessibility": "npx playwright test tests/accessibility.test.js --project=edge",
     "test:performance:edge": "npx playwright test tests/performance-edge.test.js --project=edge",
-    "test:e2e": "npx playwright test",
+    "test:e2e": "cross-env FORCE_COLOR= NO_COLOR= npx playwright test",
+    "test:e2e:trace-warnings": "cross-env FORCE_COLOR= NO_COLOR= NODE_OPTIONS=--trace-warnings npx playwright test",
     "test:e2e:production": "npx playwright test tests/e2e/production-coverage-simple.spec.js",
-    "test:e2e:headed": "npx playwright test --headed",
-    "test:e2e:ui": "npx playwright test --ui",
-    "test:e2e:comprehensive": "npx playwright test tests/e2e/comprehensive-e2e.spec.js",
-    "test:e2e:performance": "npx playwright test tests/e2e/performance-e2e.spec.js",
+    "test:e2e:headed": "cross-env FORCE_COLOR= NO_COLOR= PLAYWRIGHT_HEADED=1 npx playwright test",
+    "test:e2e:watch": "cross-env FORCE_COLOR= NO_COLOR= PLAYWRIGHT_HEADED=1 npx playwright test",
+    "test:e2e:ui": "cross-env FORCE_COLOR= NO_COLOR= npx playwright test --ui",
+    "test:e2e:smoke": "cross-env FORCE_COLOR= NO_COLOR= npx playwright test tests/e2e/smoke-e2e.spec.cjs",
+    "test:e2e:smoke:dist": "npm run build && cross-env FORCE_COLOR= NO_COLOR= PLAYWRIGHT_SERVE_DIST=1 npx playwright test tests/e2e/smoke-e2e.spec.cjs",
+    "test:e2e:comprehensive": "npx playwright test tests/e2e/comprehensive-e2e.spec.cjs",
+    "test:e2e:performance": "npx playwright test tests/e2e/performance-e2e.spec.cjs",
     "test:e2e:all": "npx playwright test tests/e2e/ --reporter=html",
     "test:e2e:run": "node scripts/run-e2e-tests.js",
     "test:server": "node test-server.cjs",
@@ -57,7 +61,9 @@
     "deploy:github-pages": "npm run deploy:validate",
     "pages:setup": "echo 'Setting up GitHub Pages - see GITHUB_PAGES_SETUP.md for instructions'",
     "pages:status": "echo 'Check deployment status at: https://khet-1.github.io/md-reader-pro/status.html'",
-    "deploy:validate": "node scripts/validate-deployment.js"
+    "deploy:validate": "node scripts/validate-deployment.js",
+    "swarm": "node scripts/swarm-orchestrator.js",
+    "swarm:batches": "node scripts/swarm-orchestrator.js"
   },
   "repository": {
     "type": "git",
@@ -72,6 +78,7 @@
     "prismjs": "^1.30.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@jest/globals": "^30.2.0",

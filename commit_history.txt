@@ -1,0 +1,30 @@
+88969fb9c035d15e59bcf0a9f4a16dfc180df1d4|2025-12-02 23:59:21 -0700|Ryan Cashman|ryacashm@uat.edu|Merge branch 'main' into claude/production-ready-01SvBxUgVJa5DC7iTWXaPrAf
+62540b76c7e0fd2958f1646a8bd5fc394a40811a|2025-12-03 06:38:24 +0000|Claude|noreply@anthropic.com|chore: update package-lock.json from session start
+82cd3b1745fbd65af0dd76b3d8735d1aecefdaf8|2025-12-02 23:27:40 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #107 from KHET-1/dependabot/npm_and_yarn/npm_and_yarn-ea4f9575c3
+548a268ba5d858042a70f28a0ffa29063969217a|2025-12-03 04:58:56 +0000|Claude|noreply@anthropic.com|feat: ≡ƒÅ░ THE CATHEDRAL EDITION v4.0.0 - MASSIVE FEATURE NOVA!
+f0d83c4c42dc08c303319da65e7e8a285bbc4ebd|2025-12-03 04:47:19 +0000|Claude|noreply@anthropic.com|chore: fix security vulnerabilities via npm audit fix
+cbc9897d1de5b536f69e51f0e34ace8bbfea5cc5|2025-12-03 04:45:48 +0000|dependabot[bot]|49699333+dependabot[bot]@users.noreply.github.com|build(deps): bump the npm_and_yarn group across 1 directory with 1 update
+d67bbe2688a8c2cf9362b11e91c5c19b8d52b4ba|2025-12-03 04:44:48 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(ci): regenerate package-lock.json
+17fb38f0d503d7eec81ba54179eea658d41e9728|2025-12-02 21:44:28 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #108 from KHET-1/claude/production-ready-01SvBxUgVJa5DC7iTWXaPrAf
+9f43dce882ac08f1a5d5b0cd332eef3ed872a7f5|2025-12-03 02:32:19 +0000|Claude|noreply@anthropic.com|feat: Make MD Reader Pro production-ready with session hooks and containerization
+56eafdf993eebeab80edc995700d4c023e98dace|2025-11-27 08:53:14 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #106 from KHET-1/dependabot/npm_and_yarn/npm_and_yarn-c0657a3c3e
+a7cf4f4883f9ceabb388cd0337d213b18876d6ab|2025-11-27 08:25:35 +0000|dependabot[bot]|49699333+dependabot[bot]@users.noreply.github.com|build(deps-dev): bump node-forge
+05eee9014b1cf0478a48f9d459b524da250a750b|2025-11-25 11:47:59 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(ci): regenerate package-lock.json
+f03f2f2d3b407e0efb5cd78945fb1da05324122b|2025-11-25 04:47:38 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #105 from KHET-1/copilot/update-glob-cli-cmd-injection
+c1810bba0fdaddd4cbb1f3af7607def8ec341feb|2025-11-25 11:01:26 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Add npm overrides for CVE-2025-64756 glob command injection vulnerability
+6ebab733baf7598f903924404029839f8be0bb43|2025-11-25 10:54:19 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Fix dependency issues: lower Node.js requirement to >=20.0.0, remove vulnerable semantic-release packages
+eb8f7a542562ae09ec2828078470bf4491f45472|2025-11-25 10:46:09 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+aedd709210aef711fc7fe1177c4334b7508aaf74|2025-11-25 10:44:39 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial assessment of dependency issues
+af3885df782e285687682d98165d023e9934fad5|2025-11-25 10:42:10 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+0fa08cc4dfe21dc4f1cb1148fdea3d1c0b6569f8|2025-11-25 06:48:49 +0000|github-actions[bot]|41898282+github-actions[bot]@users.noreply.github.com|chore(ci): regenerate package-lock.json
+1b040c1b85f9ac95797cd77f00d1aee1665d1a41|2025-11-24 23:48:31 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #103 from KHET-1/copilot/fix-ci-failure-lockfile-sync
+924d26753e0c269aa8c44b9818f01ab13edf6cea|2025-11-25 05:25:34 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|chore(ci): pin Node/npm and auto-regenerate package-lock.json on mismatch
+a475c190270207f50ccfb73698bbd1b174d68a10|2025-11-25 05:22:53 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+be261255cc6679d7faca8c504a2a49f4683d7d97|2025-11-24 22:06:45 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #101 from KHET-1/copilot/check-branch-for-fixes
+a8a37ba8d453e61ad6f0277019318aa4da876bcd|2025-11-24 22:06:35 -0700|Ryan Cashman|ryacashm@uat.edu|Merge branch 'main' into copilot/check-branch-for-fixes
+8b5de1e489ffd87db7f4222f81730787ac35918a|2025-11-25 04:57:08 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Upgrade Node.js to 22.14.0+ to fix security vulnerabilities
+4d091d8cf1b5cce8e21f12c2a0bcbcba1ce76923|2025-11-24 21:49:29 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #102 from KHET-1/copilot/update-github-advisory-database
+e99963144d50626b5275389dfffde25b20c80e18|2025-11-25 04:47:06 +0000|copilot-swe-agent[bot]|198982749+Copilot@users.noreply.github.com|Initial plan
+d57d286c09779832d62f9c4b7742b5f886ada486|2025-11-24 21:43:17 -0700|Ryan Cashman|ryacashm@uat.edu|Merge branch 'main' into copilot/check-branch-for-fixes
+ce56609a88708476aec4c106e5481f3a5b3db23b|2025-11-24 21:42:11 -0700|Ryan Cashman|ryacashm@uat.edu|Update SECURITY_AUDIT_NOTES.md
+0f31efc0b7cd91eb27cb076682d6ddef1ee73ef8|2025-11-24 21:41:42 -0700|Ryan Cashman|ryacashm@uat.edu|Merge pull request #100 from KHET-1/dependabot/github_actions/actions/checkout-6
