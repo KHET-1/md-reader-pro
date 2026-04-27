@@ -73,7 +73,7 @@
   "dependencies": {
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "dompurify": "^3.3.0",
-    "express-rate-limit": "^8.2.1",
+    "express-rate-limit": "^8.4.1",
     "marked": "^17.0.6",
     "prismjs": "^1.30.0"
   },
