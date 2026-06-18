@@ -72,8 +72,8 @@
   "homepage": "https://khet-1.github.io/md-reader-pro",
   "dependencies": {
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
-    "dompurify": "^3.4.8",
-    "express-rate-limit": "^8.2.2",
+    "dompurify": "^3.4.9",
+    "express-rate-limit": "^8.5.2",
     "marked": "^17.0.6",
     "prismjs": "^1.30.0"
   },
