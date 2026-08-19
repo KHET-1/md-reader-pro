@@ -38,7 +38,7 @@ describe('package.json Validation', () => {
     });
 
     test('should have correct version', () => {
-      expect(packageJson.dependencies['express-rate-limit']).toBe('^8.2.1');
+      expect(packageJson.dependencies['express-rate-limit']).toBe('^8.5.2');
     });
 
     test('should be in dependencies, not devDependencies', () => {
