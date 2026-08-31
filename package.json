@@ -98,7 +98,7 @@
     "semantic-release": "^25.0.5",
     "style-loader": "^4.0.0",
     "webpack": "^5.108.4",
-    "webpack-bundle-analyzer": "^5.0.1",
+    "webpack-bundle-analyzer": "^5.3.2",
     "webpack-cli": "^7.2.1",
     "webpack-dev-server": "^6.0.0"
   },
